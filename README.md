@@ -17,7 +17,7 @@ Installing
 ----------
 
 ```
-python -m pip install ldlite
+python3 -m pip install ldlite
 ```
 
 
