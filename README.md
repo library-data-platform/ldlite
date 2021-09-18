@@ -12,3 +12,12 @@ LDLite is a lightweight reporting tool for Okapi-based services.  It
 is part of the Library Data Platform project and provides basic LDP
 functions without requiring the platform to be installed.
 
+
+Installing
+----------
+
+```
+python -m pip install ldlite
+```
+
+
