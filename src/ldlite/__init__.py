@@ -3,8 +3,9 @@ import sys
 
 import pandas
 import requests
-from tabulate import tabulate
 from tqdm import tqdm
+
+from .select import _select
 
 def _escape_sql(sql):
     n = ""
@@ -105,7 +106,7 @@ class LDLite:
         if not self.quiet:
             pbar.close()
 
-    def query(self, table: str, path: str, query: str, transform: str =True):
+    def query(self, table, path, query, transform=True):
         """Submits a CQL query to an Okapi module.
 
         The *path* parameter is the request path, and *query* is the CQL query.
@@ -159,22 +160,18 @@ class LDLite:
             if not self.quiet:
                 print("ldlite: transforming data", file=sys.stderr)
             self._transform_json(table, count)
+        print()
 
-    def select(self, table: str, limit: int):
+    def select(self, table, limit=None, file=sys.stdout):
         """Prints rows of a table in the analytic database.
 
         Up to *limit* rows of *table* are printed to standard output.
         """
-        q = "SELECT * FROM \""+table+"\" LIMIT "+str(limit)
-        self.db.execute(q)
-        hdr = []
-        for a in self.db.description:
-            hdr.append(a[0])
         if self.debug:
             print("ldlite: reading from table: "+table, file=sys.stderr)
-        print(tabulate(self.db.fetchall(), headers=hdr, tablefmt='fancy_grid'))
+        _select(self.db, table, limit, file)
 
-    def to_csv(self, filename: str, table: str, limit: int):
+    def to_csv(self, filename, table, limit):
         """Export a table in the analytic database to a CSV file.
 
         Up to *limit* rows of *table* are exported to *filename* in CSV format.
@@ -187,7 +184,7 @@ class LDLite:
             print("ldlite: exporting CSV to file: "+filename, file=sys.stderr)
         df.to_csv(filename, encoding="utf-8", index=False)
 
-    def set_debug(self, enable: bool):
+    def set_debug(self, enable):
         """Configures debugging output.
 
         If *enable* is True, debugging output is enabled; otherwise it is
@@ -197,7 +194,7 @@ class LDLite:
             raise ValueError("\"debug\" and \"quiet\" modes cannot both be enabled")
         self.debug = enable
 
-    def set_quiet(self, enable: bool):
+    def set_quiet(self, enable):
         """Configures suppression of progress output.
 
         If *enable* is True, progress output is suppressed; otherwise it is not
