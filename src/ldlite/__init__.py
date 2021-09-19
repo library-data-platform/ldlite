@@ -1,3 +1,39 @@
+"""
+LDLite is a lightweight reporting tool for Okapi-based services.  It is part of
+the Library Data Platform project and provides basic LDP functions without
+requiring the platform to be installed.
+
+LDLite functions include extracting data from an Okapi instance, transforming
+the data for reporting purposes, and storing the data in an analytic database
+for further querying.
+
+To install LDLite or upgrade to the latest version::
+
+    python3 -m pip install --upgrade ldlite
+
+Example::
+
+    import ldlite
+
+    ld = ldlite.LDLite()
+
+    from duckdb import connect
+
+    db = connect(database="ldlite.db")
+
+    ld.config_db(db)
+
+    ld.config_okapi(url="https://folio-snapshot-okapi.dev.folio.org",
+                    tenant="diku",
+                    user="diku_admin",
+                    password="admin")
+
+    ld.query(table="g", path="/groups", query="cql.allRecords=1 sortby id")
+
+    ld.select(table="g")
+
+"""
+
 import json
 import sys
 
@@ -5,49 +41,66 @@ import pandas
 import requests
 from tqdm import tqdm
 
-from .camelcase import _decode_camel_case
-from .select import _select
-
-def _escape_sql(sql):
-    n = ""
-    for c in sql:
-        if c == "'":
-            n += "''"
-        else:
-            n += c
-    return n
+from ._jsonx import _transform_json
+from ._select import _select
+from ._sqlx import _escape_sql
 
 class LDLite:
 
     def __init__(self):
-        """Creates an instance of LDLite."""
+        """Creates an instance of LDLite.
+
+        Example::
+
+            import ldlite
+
+            ld = ldlite.LDLite()
+
+        """
         self.page_size = 1000
-        self.debug = False
-        self.quiet = False
+        self.v = False
+        self.q = False
 
     def _set_page_size(self, page_size):
         self.page_size = page_size
+
+    def config_db(self, db):
+        """Configures the analytic database.
+
+        The *db* parameter must be an existing database connection.
+
+        Example::
+
+            from duckdb import connect
+
+            db = connect(database="ldlite.db")
+
+            ld.config_db(db)
+
+        """
+        self.db = db
 
     def config_okapi(self, url, tenant, user, password):
         """Configures the connection to Okapi.
 
         The *url*, *tenant*, *user*, and *password* settings are Okapi-specific
         connection parameters.
+
+        Example::
+
+            ld.config_okapi(url="https://folio-snapshot-okapi.dev.folio.org",
+                            tenant="diku",
+                            user="diku_admin",
+                            password="admin")
+
         """
         self.okapi_url = url
         self.okapi_tenant = tenant
         self.okapi_user = user
         self.okapi_password = password
 
-    def config_db(self, db):
-        """Configures the analytic database.
-
-        The *db* parameter must be an existing database connection.
-        """
-        self.db = db
-
     def _login(self):
-        if self.debug:
+        if self.v:
             print("ldlite: logging in to okapi", file=sys.stderr)
         hdr = { 'X-Okapi-Tenant': self.okapi_tenant,
                 'Content-Type': 'application/json' }
@@ -56,64 +109,18 @@ class LDLite:
         resp = requests.post(self.okapi_url+'/authn/login', headers=hdr, data=json.dumps(data))
         return resp.headers['x-okapi-token']
 
-    def _transform_json(self, table, total):
-        cur = self.db.cursor()
-        cur.execute("SELECT jsonb FROM "+table)
-        attrset = set()
-        while True:
-            row = cur.fetchone()
-            if row == None:
-                break
-            if row[0] is None or row[0] == "":
-                d = {}
-            else:
-                d = json.loads(row[0])
-            for a in d.keys():
-                attrset.add(a)
-        self.db.execute("DROP TABLE IF EXISTS "+table+"_j")
-        self.db.execute("CREATE TABLE "+table+"_j(__id integer)")
-        for a in attrset:
-            self.db.execute("ALTER TABLE \""+table+"_j\" ADD COLUMN \""+_decode_camel_case(a)+"\" varchar")
-        cur = self.db.cursor()
-        cur.execute("SELECT __id, jsonb FROM "+table)
-        if not self.quiet:
-            pbar = tqdm(total=total)
-            pbartotal = 0
-        while True:
-            row = cur.fetchone()
-            if row == None:
-                break
-            if row[1] is None or row[1] == "":
-                d = {}
-            else:
-                d = json.loads(row[1])
-            attrs = []
-            values = []
-            for a in d.keys():
-                attrs.append("\""+_decode_camel_case(a)+"\"")
-                values.append("'"+_escape_sql(str(d[a]))+"'")
-            if len(attrs) != 0:
-                q = "INSERT INTO \""+table+"_j\" ("
-                q += "__id,"
-                q += ",".join(attrs)
-                q += ")VALUES("
-                q += str(row[0])+","
-                q += ",".join(values)
-                q += ")"
-                self.db.execute(q)
-            if not self.quiet:
-                pbartotal += 1
-                pbar.update(1)
-        if not self.quiet:
-            pbar.close()
-
     def query(self, table, path, query, transform=True):
-        """Submits a CQL query to an Okapi module.
+        """Submits a CQL query to an Okapi module, and transforms and stores the result.
 
         The *path* parameter is the request path, and *query* is the CQL query.
         The result is stored in *table* within the analytic database.  If
-        *transform* is True, JSON data are transformed into one or more tables
-        that are created in addition to *table*.
+        *transform* is True (the default), JSON data are transformed into one
+        or more tables that are created in addition to *table*.
+
+        Example::
+
+            ld.query(table="g", path="/groups", query="cql.allRecords=1 sortby id")
+
         """
         token = self._login()
         self.db.execute("DROP TABLE IF EXISTS "+table)
@@ -125,14 +132,14 @@ class LDLite:
         j = resp.json()
         total_records = j["totalRecords"]
         total = total_records if total_records is not None else 0
-        if self.debug:
+        if self.v:
             print("ldlite: estimated row count: "+str(total), file=sys.stderr)
         # Read result pages
-        if not self.quiet:
+        if not self.q:
             print("ldlite: reading results", file=sys.stderr)
         count = 0
         page = 0
-        if not self.quiet:
+        if not self.q:
             pbar = tqdm(total=total, bar_format="{l_bar}{bar}| [{elapsed}<{remaining}, {rate_fmt}{postfix}]")
             pbartotal = 0
         while True:
@@ -147,7 +154,7 @@ class LDLite:
             for d in data:
                 self.db.execute("INSERT INTO "+table+" VALUES ("+str(count+1)+", '"+_escape_sql(json.dumps(d, indent=4))+"')")
                 count += 1
-                if not self.quiet:
+                if not self.q:
                     if pbartotal + 1 > total:
                         pbartotal = total
                         pbar.update(total - pbartotal)
@@ -155,55 +162,82 @@ class LDLite:
                         pbartotal += 1
                         pbar.update(1)
             page += 1
-        if not self.quiet:
+        if not self.q:
             pbar.close()
         if transform:
-            if not self.quiet:
+            if not self.q:
                 print("ldlite: transforming data", file=sys.stderr)
-            self._transform_json(table, count)
+            _transform_json(self.db, table, count, self.q)
         print()
 
-    def select(self, table, limit=None, file=sys.stdout):
+    def quiet(self, enable):
+        """Configures suppression of progress messages.
+
+        If *enable* is True, progress messages are suppressed; if False, they
+        are not suppressed.
+
+        Example::
+
+            ld.quiet(True)
+
+        """
+        if enable is None:
+            raise ValueError("quiet(None) is invalid")
+        if enable and self.v:
+            raise ValueError("\"verbose\" and \"quiet\" modes cannot both be enabled")
+        self.q = enable
+
+    def select(self, table, limit=None, file=None):
         """Prints rows of a table in the analytic database.
 
-        Up to *limit* rows of *table* are printed to standard output.
+        By default all rows of *table* are printed to standard output.  If
+        *limit* is specified, then only up to *limit* rows are printed.  If
+        *file* is specified, then the rows are printed to *file*.
+
+        Example::
+
+            ld.select(table="g")
+
         """
-        if self.debug:
+        f = sys.stdout if file is None else file
+        if self.v:
             print("ldlite: reading from table: "+table, file=sys.stderr)
-        _select(self.db, table, limit, file)
+        _select(self.db, table, limit, f)
 
     def to_csv(self, filename, table, limit):
         """Export a table in the analytic database to a CSV file.
 
         Up to *limit* rows of *table* are exported to *filename* in CSV format.
+
+        Example::
+
+            ld.to_csv(filename="g.csv", table="g", limit=10)
+
         """
         q = "SELECT * FROM \""+table+"\" LIMIT "+str(limit)
-        if self.debug:
+        if self.v:
             print("ldlite: reading from table: "+table, file=sys.stderr)
         df = self.db.execute(q).fetchdf()
-        if self.debug:
+        if self.v:
             print("ldlite: exporting CSV to file: "+filename, file=sys.stderr)
         df.to_csv(filename, encoding="utf-8", index=False)
 
-    def set_debug(self, enable):
-        """Configures debugging output.
+    def verbose(self, enable):
+        """Configures verbose output.
 
-        If *enable* is True, debugging output is enabled; otherwise it is
+        If *enable* is True, verbose output is enabled; if False, it is
         disabled.
-        """
-        if enable and self.quiet:
-            raise ValueError("\"debug\" and \"quiet\" modes cannot both be enabled")
-        self.debug = enable
 
-    def set_quiet(self, enable):
-        """Configures suppression of progress output.
+        Example::
 
-        If *enable* is True, progress output is suppressed; otherwise it is not
-        suppressed.
+            ld.verbose(True)
+
         """
-        if enable and self.debug:
-            raise ValueError("\"debug\" and \"quiet\" modes cannot both be enabled")
-        self.quiet = enable
+        if enable is None:
+            raise ValueError("verbose(None) is invalid")
+        if enable and self.q:
+            raise ValueError("\"verbose\" and \"quiet\" modes cannot both be enabled")
+        self.v = enable
 
 if __name__ == '__main__':
     pass

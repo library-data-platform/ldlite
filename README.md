@@ -16,8 +16,10 @@ functions without requiring the platform to be installed.
 Installing
 ----------
 
+To install LDLite or upgrade to the latest version:
+
 ```
-python3 -m pip install ldlite
+python3 -m pip install --upgrade ldlite
 ```
 
 

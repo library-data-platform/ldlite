@@ -33,7 +33,9 @@ def _format_row(row, attrs, width):
     maxlen = []
     maxlines = 1
     for i, data in enumerate(row):
-        lines = _rstrip_lines(str(data).splitlines())
+        lines = [""]
+        if data is not None:
+            lines = _rstrip_lines(str(data).splitlines())
         maxlen.append(_maxlen(lines))
         rowlines.append(lines)
         lines_len = len(lines)
@@ -76,7 +78,9 @@ def _select(db, table, limit=None, file=sys.stdout):
         if row is None:
             break
         for i, v in enumerate(row):
-            lines = str(v).splitlines()
+            lines = [""]
+            if v is not None:
+                lines = str(v).splitlines()
             for j, l in enumerate(lines):
                 len_l = len(l.rstrip())
                 if len_l > width[i]:
@@ -108,5 +112,6 @@ def _select(db, table, limit=None, file=sys.stdout):
         s = _format_row(row, attrs, width)
         print(s, end ="", file=file)
         row_i += 1
+    print("("+str(row_i)+" "+("row" if row_i == 1 else "rows")+")", file=file)
     print("", file=file)
 
