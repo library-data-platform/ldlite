@@ -5,6 +5,7 @@ import pandas
 import requests
 from tqdm import tqdm
 
+from .camelcase import _decode_camel_case
 from .select import _select
 
 def _escape_sql(sql):
@@ -72,7 +73,7 @@ class LDLite:
         self.db.execute("DROP TABLE IF EXISTS "+table+"_j")
         self.db.execute("CREATE TABLE "+table+"_j(__id integer)")
         for a in attrset:
-            self.db.execute("ALTER TABLE \""+table+"_j\" ADD COLUMN \""+a+"\" varchar")
+            self.db.execute("ALTER TABLE \""+table+"_j\" ADD COLUMN \""+_decode_camel_case(a)+"\" varchar")
         cur = self.db.cursor()
         cur.execute("SELECT __id, jsonb FROM "+table)
         if not self.quiet:
@@ -89,7 +90,7 @@ class LDLite:
             attrs = []
             values = []
             for a in d.keys():
-                attrs.append("\""+a+"\"")
+                attrs.append("\""+_decode_camel_case(a)+"\"")
                 values.append("'"+_escape_sql(str(d[a]))+"'")
             if len(attrs) != 0:
                 q = "INSERT INTO \""+table+"_j\" ("
