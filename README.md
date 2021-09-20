@@ -56,3 +56,9 @@ python3 -m pip install --upgrade ldlite
 ```
 
 
+Issues
+------
+
+[Bug reports](https://github.com/library-data-platform/ldlite/issues)
+
+
