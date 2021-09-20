@@ -23,3 +23,9 @@ python3 -m pip install --upgrade ldlite
 ```
 
 
+Example
+-------
+
+[An example running in Jupyter Notebook](example/example.md)
+
+

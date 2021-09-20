@@ -136,7 +136,8 @@ class LDLite:
         self.okapi_tenant = tenant
         self.okapi_user = user
         self.okapi_password = password
-        token = self._login()
+        # Test connection
+        _ = self._login()
 
     def query(self, table, path, query, transform=True):
         """Submits a CQL query to an Okapi module, and transforms and stores the result.
