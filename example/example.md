@@ -223,7 +223,7 @@ print(df)
 
 import matplotlib
 
-df.plot(kind='bar', x='user_group')
+df.plot(kind="bar", x="user_group")
 ```
 
 
