@@ -40,7 +40,7 @@ Example
 -------
 
 [An example running in Jupyter
-Notebook](https://github.com/library-data-platform/ldlite/blob/main/example/example.md)
+Notebook](https://github.com/library-data-platform/ldlite/blob/main/examples/example.md)
 
 
 Documentation
