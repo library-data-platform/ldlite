@@ -7,30 +7,34 @@ LDLite functions include extracting data from an Okapi instance, transforming
 the data for reporting purposes, and storing the data in an analytic database
 for further querying.
 
-To install LDLite or upgrade to the latest version::
+To install LDLite or upgrade to the latest version:
 
     python3 -m pip install --upgrade ldlite
 
-Example::
+Example:
 
+    # Import and initialize LDLite.
     import ldlite
-
     ld = ldlite.LDLite()
 
+    # Connect to a database.
     from duckdb import connect
-
     db = connect(database="ldlite.db")
-
     ld.config_db(db)
 
+    # Connect to Okapi.
     ld.config_okapi(url="https://folio-snapshot-okapi.dev.folio.org",
                     tenant="diku",
                     user="diku_admin",
                     password="admin")
 
+    # Send a CQL query and store the results in table "g", "g_j", etc.
     ld.query(table="g", path="/groups", query="cql.allRecords=1 sortby id")
 
+    # Print the result tables.
     ld.select(table="g")
+    ld.select(table="g_j")
+    # etc.
 
 """
 
@@ -51,7 +55,7 @@ class LDLite:
     def __init__(self):
         """Creates an instance of LDLite.
 
-        Example::
+        Example:
 
             import ldlite
 
@@ -71,7 +75,7 @@ class LDLite:
         The *db* parameter must be an existing database connection.  Supported
         values for *dbtype* are "duckdb" and "postgresql".
 
-        Example::
+        Example:
 
             from duckdb import connect
 
@@ -92,7 +96,7 @@ class LDLite:
         The *url*, *tenant*, *user*, and *password* settings are Okapi-specific
         connection parameters.
 
-        Example::
+        Example:
 
             ld.config_okapi(url="https://folio-snapshot-okapi.dev.folio.org",
                             tenant="diku",
@@ -121,9 +125,12 @@ class LDLite:
         The *path* parameter is the request path, and *query* is the CQL query.
         The result is stored in *table* within the analytic database.  If
         *transform* is True (the default), JSON data are transformed into one
-        or more tables that are created in addition to *table*.
+        or more tables that are created in addition to *table*.  New tables add
+        a suffix "_j" to *table* and overwrite any existing tables with the
+        same name.  A list of newly created tables is returned by this
+        function.
 
-        Example::
+        Example:
 
             ld.query(table="g", path="/groups", query="cql.allRecords=1 sortby id")
 
@@ -194,7 +201,7 @@ class LDLite:
         If *enable* is True, progress messages are suppressed; if False, they
         are not suppressed.
 
-        Example::
+        Example:
 
             ld.quiet(True)
 
@@ -212,7 +219,7 @@ class LDLite:
         *limit* is specified, then only up to *limit* rows are printed.  If
         *file* is specified, then the rows are printed to *file*.
 
-        Example::
+        Example:
 
             ld.select(table="g")
 
@@ -227,7 +234,7 @@ class LDLite:
 
         All rows of *table* are exported to *filename*.
 
-        Example::
+        Example:
 
             ld.to_csv(table="g", filename="g.csv")
 
@@ -240,7 +247,7 @@ class LDLite:
         If *enable* is True, verbose output is enabled; if False, it is
         disabled.
 
-        Example::
+        Example:
 
             ld.verbose(True)
 
