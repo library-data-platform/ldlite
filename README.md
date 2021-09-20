@@ -8,9 +8,10 @@ Version 2.0.  See the file
 [LICENSE](https://github.com/library-data-platform/ldlite/blob/master/LICENSE)
 for more information.
 
-LDLite is a lightweight reporting tool for Okapi-based services.  It
-is part of the Library Data Platform project and provides basic LDP
-functions without requiring the server to be installed.
+LDLite is a lightweight, open source reporting tool for Okapi-based
+services.  It is part of the Library Data Platform project and
+provides basic LDP functions without requiring the server to be
+installed.
 
 
 Features
@@ -27,14 +28,12 @@ Features
 
 * Easy installation (`pip install ldlite`)
 
-* Supports DuckDB and PostgreSQL database systems
+* Supports DuckDB, PostgreSQL, and Redshift database systems
 
-* PostgreSQL support enables:
+* PostgreSQL/Redshift support enables:
   * Data sharing in a multiuser environment
   * Integration with the LDP query builder app
   * Storing data in an LDP database if available
-
-* Open source
 
 
 Example
