@@ -13,6 +13,24 @@ is part of the Library Data Platform project and provides basic LDP
 functions without requiring the platform to be installed.
 
 
+Features
+--------
+
+* LDLite provides very lightweight LDP functions, with no
+  infrastructure needed.  It requires only Python, and Okapi access to
+  send CQL queries.
+
+* Full SQL query support.  By default it uses an embedded DuckDB
+  analytic database stored in a local file (no set up needed), and
+  also supports PostgreSQL as an option.
+
+* Easy installation: `pip install ldlite`
+
+* Works with Jupyter Notebook and Python's data science ecosystem.
+
+* Open source
+
+
 Example
 -------
 
@@ -34,23 +52,5 @@ To install LDLite or upgrade to the latest version:
 ```
 python3 -m pip install --upgrade ldlite
 ```
-
-
-Features
---------
-
-* LDLite provides very lightweight LDP functions, with no
-  infrastructure needed.  It requires only Python, and Okapi access to
-  send CQL queries.
-
-* Full SQL query support.  By default it uses an embedded DuckDB
-  analytic database stored in a local file (no set up needed), and
-  also supports PostgreSQL as an option.
-
-* Easy installation: `pip install ldlite`
-
-* Works with Jupyter Notebook and Python's data science ecosystem.
-
-* Open source
 
 
