@@ -29,6 +29,11 @@ Features
 
 * Supports DuckDB and PostgreSQL database systems
 
+* PostgreSQL support enables:
+  * Data sharing in a multiuser environment
+  * Integration with the LDP query builder app
+  * Storing data in an LDP database if available
+
 * Open source
 
 
