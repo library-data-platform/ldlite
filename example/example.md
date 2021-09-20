@@ -37,7 +37,7 @@ db = ld.connect_db(filename="ldlite.db")
 # The function "ld.query()" is used to send CQL queries to Okapi.  In this case
 # we will query patron groups and store the result in a new table named "g".
 # In addition to "g", this will create other tables having names beginning with
-# "g_j" where JSON will be transformed to tables.
+# "g_j" where JSON data will be transformed to tables.
 
 ld.query(table="g", path="/groups", query="cql.allRecords=1 sortby id")
 ```
@@ -47,18 +47,9 @@ ld.query(table="g", path="/groups", query="cql.allRecords=1 sortby id")
     ldlite: transforming data
     100%|█████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████| 4/4 [00:00<00:00, 210.19it/s]
 
-    
-
-
-    
     ldlite: created tables: g, g_j, g_j_metadata
 
-
-
-
-
     ['g', 'g_j', 'g_j_metadata']
-
 
 
 
@@ -160,18 +151,9 @@ ld.query(table="u", path="/users", query="cql.allRecords=1 sortby id")
     ldlite: transforming data
     100%|█████████████████████████████████████████████████████████████████████████████████████████████████████████████████████| 336/336 [00:01<00:00, 206.59it/s]
 
-    
-
-
-    
     ldlite: created tables: u, u_j, u_j_metadata, u_j_personal
 
-
-
-
-
     ['u', 'u_j', 'u_j_metadata', 'u_j_personal']
-
 
 
 
