@@ -161,10 +161,6 @@ ld.query('u', '/users', 'cql.allRecords=1 sortby id')
 # "user_groups".
 
 db.execute("""
-    DROP TABLE IF EXISTS user_groups;
-    """)
-
-db.execute("""
     CREATE TABLE user_groups AS
     SELECT u.id, u.username, g.group
         FROM u_j AS u
