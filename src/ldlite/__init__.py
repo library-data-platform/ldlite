@@ -83,7 +83,7 @@ class LDLite:
 
         Example:
 
-            db = ld.connect_db(filename="ldlite.db")
+            db = ld.connect_db(filename='ldlite.db')
 
         """
         self.dbtype = 1
@@ -100,7 +100,7 @@ class LDLite:
 
         Example:
 
-            db = ld.connect_db(dsn="dbname=ldlite host=localhost user=ldlite")
+            db = ld.connect_db(dsn='dbname=ldlite host=localhost user=ldlite')
 
         """
         self.dbtype = 2
@@ -110,7 +110,7 @@ class LDLite:
 
     def _login(self):
         if self._verbose:
-            print("ldlite: logging in to okapi", file=sys.stderr)
+            print('ldlite: logging in to okapi', file=sys.stderr)
         hdr = { 'X-Okapi-Tenant': self.okapi_tenant,
                 'Content-Type': 'application/json' }
         data = { 'username': self.okapi_user,
@@ -126,10 +126,10 @@ class LDLite:
 
         Example:
 
-            ld.connect_okapi(url="https://folio-snapshot-okapi.dev.folio.org",
-                             tenant="diku",
-                             user="diku_admin",
-                             password="admin")
+            ld.connect_okapi(url='https://folio-snapshot-okapi.dev.folio.org',
+                             tenant='diku',
+                             user='diku_admin',
+                             password='admin')
 
         """
         self.okapi_url = url
@@ -152,15 +152,15 @@ class LDLite:
 
         Example:
 
-            ld.query(table="g", path="/groups", query="cql.allRecords=1 sortby id")
+            ld.query(table='g', path='/groups', query='cql.allRecords=1 sortby id')
 
         """
         _autocommit(self.db, self.dbtype, True)
         token = self._login()
         cur = self.db.cursor()
-        cur.execute("DROP TABLE IF EXISTS "+table)
+        cur.execute('DROP TABLE IF EXISTS '+table)
         cur = self.db.cursor()
-        cur.execute("CREATE TABLE "+table+"(__id integer, jsonb varchar)")
+        cur.execute('CREATE TABLE '+table+'(__id integer, jsonb varchar)')
         hdr = { 'X-Okapi-Tenant': self.okapi_tenant,
                 'X-Okapi-Token': token }
         # First get total number of records
@@ -171,17 +171,17 @@ class LDLite:
             j = resp.json()
         except Exception as e:
             raise RuntimeError(resp.text)
-        total_records = j["totalRecords"]
+        total_records = j['totalRecords']
         total = total_records if total_records is not None else 0
         if self._verbose:
-            print("ldlite: estimated row count: "+str(total), file=sys.stderr)
+            print('ldlite: estimated row count: '+str(total), file=sys.stderr)
         # Read result pages
         if not self._quiet:
-            print("ldlite: reading results", file=sys.stderr)
+            print('ldlite: reading results', file=sys.stderr)
         count = 0
         page = 0
         if not self._quiet:
-            pbar = tqdm(total=total, bar_format="{l_bar}{bar}| [{elapsed}<{remaining}, {rate_fmt}{postfix}]")
+            pbar = tqdm(total=total, bar_format='{l_bar}{bar}| [{elapsed}<{remaining}, {rate_fmt}{postfix}]')
             pbartotal = 0
         while True:
             offset = page * self.page_size
@@ -194,7 +194,7 @@ class LDLite:
                 break
             for d in data:
                 cur = self.db.cursor()
-                cur.execute("INSERT INTO "+table+" VALUES ("+str(count+1)+", '"+_escape_sql(json.dumps(d, indent=4))+"')")
+                cur.execute('INSERT INTO '+table+' VALUES ('+str(count+1)+', \''+_escape_sql(json.dumps(d, indent=4))+'\')')
                 count += 1
                 if not self._quiet:
                     if pbartotal + 1 > total:
@@ -209,10 +209,10 @@ class LDLite:
         newtables = [table]
         if transform:
             if not self._quiet:
-                print("ldlite: transforming data", file=sys.stderr)
+                print('ldlite: transforming data', file=sys.stderr)
             newtables += _transform_json(self.db, table, count, self._quiet)
         if not self._quiet:
-            print("ldlite: created tables: "+", ".join(newtables), file=sys.stderr)
+            print('ldlite: created tables: '+', '.join(newtables), file=sys.stderr)
         print()
         return newtables
 
@@ -228,9 +228,9 @@ class LDLite:
 
         """
         if enable is None:
-            raise ValueError("quiet(None) is invalid")
+            raise ValueError('quiet(None) is invalid')
         if enable and self._verbose:
-            raise ValueError("\"verbose\" and \"quiet\" modes cannot both be enabled")
+            raise ValueError('"verbose" and "quiet" modes cannot both be enabled')
         self._quiet = enable
 
     def select(self, table, limit=None):
@@ -241,14 +241,14 @@ class LDLite:
 
         Example:
 
-            ld.select(table="g")
+            ld.select(table='g')
 
         """
         _autocommit(self.db, self.dbtype, True)
         # f = sys.stdout if file is None else file
         f = sys.stdout
         if self._verbose:
-            print("ldlite: reading from table: "+table, file=sys.stderr)
+            print('ldlite: reading from table: '+table, file=sys.stderr)
         _select(self.db, table, limit, f)
 
     def to_csv(self, filename, table):
@@ -258,7 +258,7 @@ class LDLite:
 
         Example:
 
-            ld.to_csv(table="g", filename="g.csv")
+            ld.to_csv(table='g', filename='g.csv')
 
         """
         _autocommit(self.db, self.dbtype, True)
@@ -276,9 +276,9 @@ class LDLite:
 
         """
         if enable is None:
-            raise ValueError("verbose(None) is invalid")
+            raise ValueError('verbose(None) is invalid')
         if enable and self._quiet:
-            raise ValueError("\"verbose\" and \"quiet\" modes cannot both be enabled")
+            raise ValueError('"verbose" and "quiet" modes cannot both be enabled')
         self._verbose = enable
 
 if __name__ == '__main__':

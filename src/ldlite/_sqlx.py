@@ -3,13 +3,13 @@ def _autocommit(db, dbtype, enable):
         db.set_session(autocommit=enable)
 
 def _sqlid(identifier):
-    return "\""+identifier+"\""
+    return '"'+identifier+'"'
 
 def _escape_sql(sql):
-    n = ""
+    n = ''
     for c in sql:
-        if c == "'":
-            n += "''"
+        if c == '\'':
+            n += '\'\''
         else:
             n += c
     return n
