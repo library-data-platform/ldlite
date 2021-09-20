@@ -10,23 +10,24 @@ for more information.
 
 LDLite is a lightweight reporting tool for Okapi-based services.  It
 is part of the Library Data Platform project and provides basic LDP
-functions without requiring the platform to be installed.
+functions without requiring the server to be installed.
 
 
 Features
 --------
 
-* LDLite provides very lightweight LDP functions, with no
-  infrastructure needed.  It requires only Python, and Okapi access to
-  send CQL queries.
+* Queries Okapi-based modules and transforms the data for easier
+  reporting
 
-* Full SQL query support.  By default it uses an embedded DuckDB
-  analytic database stored in a local file (no set up needed), and
-  also supports PostgreSQL as an option.
+* Full SQL query support on transformed data, using an embedded
+  database
 
-* Easy installation: `pip install ldlite`
+* No LDP server needed; only Python, and Okapi access to send CQL
+  queries
 
-* Works with Jupyter Notebook and Python's data science ecosystem.
+* Easy installation (`pip install ldlite`)
+
+* Supports DuckDB and PostgreSQL database systems
 
 * Open source
 
