@@ -30,7 +30,7 @@ Features
 
 * Supports DuckDB, PostgreSQL, and Redshift database systems
 
-* The optional PostgreSQL/Redshift support enables:
+* PostgreSQL/Redshift support enables:
   * Sharing the data in a multiuser database
   * Querying the data from within the LDP query builder app
   * Storing the data in an existing LDP database if available
