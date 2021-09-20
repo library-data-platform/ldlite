@@ -18,15 +18,13 @@ Example:
     ld = ldlite.LDLite()
 
     # Connect to a database.
-    from duckdb import connect
-    db = connect(database="ldlite.db")
-    ld.config_db(db)
+    db = ld.connect_db(filename="ldlite.db")
 
     # Connect to Okapi.
-    ld.config_okapi(url="https://folio-snapshot-okapi.dev.folio.org",
-                    tenant="diku",
-                    user="diku_admin",
-                    password="admin")
+    ld.connect_okapi(url="https://folio-snapshot-okapi.dev.folio.org",
+                     tenant="diku",
+                     user="diku_admin",
+                     password="admin")
 
     # Send a CQL query and store the results in table "g", "g_j", etc.
     ld.query(table="g", path="/groups", query="cql.allRecords=1 sortby id")
@@ -41,7 +39,9 @@ Example:
 import json
 import sys
 
+import duckdb
 import pandas
+import psycopg2
 import requests
 from tqdm import tqdm
 
@@ -49,6 +49,7 @@ from ._csv import _to_csv
 from ._jsonx import _transform_json
 from ._select import _select
 from ._sqlx import _escape_sql
+from ._sqlx import _autocommit
 
 class LDLite:
 
@@ -65,49 +66,47 @@ class LDLite:
         self.page_size = 1000
         self._verbose = False
         self._quiet = False
+        self.dbtype = 0
+        self.db = None
 
     def _set_page_size(self, page_size):
         self.page_size = page_size
 
-    def config_db(self, db, dbtype):
-        """Configures the analytic database.
+    def connect_db(self, filename):
+        """Connects to an embedded analytic database.
 
-        The *db* parameter must be an existing database connection.  Supported
-        values for *dbtype* are "duckdb" and "postgresql".
-
-        Example:
-
-            from duckdb import connect
-
-            db = connect(database="ldlite.db")
-
-            ld.config_db(db)
-
-        """
-        if dbtype is None or dbtype == "":
-            raise ValueError("dbtype not specified")
-        if dbtype != "duckdb" and dbtype != "postgresql":
-            raise ValueError("unknown dbtype \""+str(dbtype)+"\"")
-        self.db = db
-
-    def config_okapi(self, url, tenant, user, password):
-        """Configures the connection to Okapi.
-
-        The *url*, *tenant*, *user*, and *password* settings are Okapi-specific
-        connection parameters.
+        The *filename* specifies a local file containing the database or where
+        the database will be created if it does not exist.  By default LDLite
+        uses DuckDB to provide embedded analytic database features.  This
+        function returns a connection to the database which can be used to
+        submit SQL queries.
 
         Example:
 
-            ld.config_okapi(url="https://folio-snapshot-okapi.dev.folio.org",
-                            tenant="diku",
-                            user="diku_admin",
-                            password="admin")
+            db = ld.connect_db(filename="ldlite.db")
 
         """
-        self.okapi_url = url
-        self.okapi_tenant = tenant
-        self.okapi_user = user
-        self.okapi_password = password
+        self.dbtype = 1
+        self.db = duckdb.connect(database=filename)
+        return self.db
+
+    def connect_db_postgresql(self, dsn):
+        """Connects to an analytic PostgreSQL database.
+
+        PostgreSQL can be used as an alternative to the default embedded
+        database.  The data source name is specified by *dsn*.  This function
+        returns a connection to the database which can be used to submit SQL
+        queries.  The returned connection defaults to autocommit mode.
+
+        Example:
+
+            db = ld.connect_db(dsn="dbname=ldlite host=localhost user=ldlite")
+
+        """
+        self.dbtype = 2
+        self.db = psycopg2.connect(dsn)
+        _autocommit(self.db, self.dbtype, True)
+        return self.db
 
     def _login(self):
         if self._verbose:
@@ -118,6 +117,26 @@ class LDLite:
                 'password': self.okapi_password }
         resp = requests.post(self.okapi_url+'/authn/login', headers=hdr, data=json.dumps(data))
         return resp.headers['x-okapi-token']
+
+    def connect_okapi(self, url, tenant, user, password):
+        """Connects to an Okapi instance.
+
+        The *url*, *tenant*, *user*, and *password* settings are Okapi-specific
+        connection parameters.
+
+        Example:
+
+            ld.connect_okapi(url="https://folio-snapshot-okapi.dev.folio.org",
+                             tenant="diku",
+                             user="diku_admin",
+                             password="admin")
+
+        """
+        self.okapi_url = url
+        self.okapi_tenant = tenant
+        self.okapi_user = user
+        self.okapi_password = password
+        token = self._login()
 
     def query(self, table, path, query, transform=True):
         """Submits a CQL query to an Okapi module, and transforms and stores the result.
@@ -135,6 +154,7 @@ class LDLite:
             ld.query(table="g", path="/groups", query="cql.allRecords=1 sortby id")
 
         """
+        _autocommit(self.db, self.dbtype, True)
         token = self._login()
         cur = self.db.cursor()
         cur.execute("DROP TABLE IF EXISTS "+table)
@@ -212,19 +232,20 @@ class LDLite:
             raise ValueError("\"verbose\" and \"quiet\" modes cannot both be enabled")
         self._quiet = enable
 
-    def select(self, table, limit=None, file=None):
+    def select(self, table, limit=None):
         """Prints rows of a table in the analytic database.
 
         By default all rows of *table* are printed to standard output.  If
-        *limit* is specified, then only up to *limit* rows are printed.  If
-        *file* is specified, then the rows are printed to *file*.
+        *limit* is specified, then only up to *limit* rows are printed.
 
         Example:
 
             ld.select(table="g")
 
         """
-        f = sys.stdout if file is None else file
+        _autocommit(self.db, self.dbtype, True)
+        # f = sys.stdout if file is None else file
+        f = sys.stdout
         if self._verbose:
             print("ldlite: reading from table: "+table, file=sys.stderr)
         _select(self.db, table, limit, f)
@@ -239,6 +260,7 @@ class LDLite:
             ld.to_csv(table="g", filename="g.csv")
 
         """
+        _autocommit(self.db, self.dbtype, True)
         _to_csv(self.db, table, filename)
 
     def _verbose(self, enable):

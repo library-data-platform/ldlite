@@ -1,3 +1,7 @@
+def _autocommit(db, dbtype, enable):
+    if dbtype == 2:
+        db.set_session(autocommit=enable)
+
 def _sqlid(identifier):
     return "\""+identifier+"\""
 
