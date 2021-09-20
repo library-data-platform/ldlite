@@ -108,7 +108,7 @@ ld.select(table='g', limit=10)
 # When ld.query() created table "g", it also created another table "g_j" with
 # JSON fields extracted into columns.
 
-ld.select('g_j', 10)
+ld.select(table='g_j', limit=10)
 ```
 
      __id |                  id                  |         desc          | expiration_offset_in_days |   group   
@@ -125,7 +125,7 @@ ld.select('g_j', 10)
 ```python
 # And "g_j_metadata".
 
-ld.select('g_j_metadata', 10)
+ld.select(table='g_j_metadata', limit=10)
 ```
 
      __id |                  id                  |         created_date          |         updated_date          
@@ -142,7 +142,7 @@ ld.select('g_j_metadata', 10)
 ```python
 # We will also query user data and store the result in table "u" etc.
 
-ld.query('u', '/users', 'cql.allRecords=1 sortby id')
+ld.query(table='u', path='/users', query='cql.allRecords=1 sortby id')
 ```
 
     ldlite: reading results
@@ -167,7 +167,7 @@ db.execute("""
             JOIN g_j AS g ON u.patron_group = g.id;
     """)
 
-ld.select('user_groups', 10)
+ld.select(table='user_groups', limit=10)
 ```
 
                       id                  | username |   group   

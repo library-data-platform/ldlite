@@ -31,7 +31,7 @@ Example:
 
     # Print the result tables.
     ld.select(table='g')
-    ld.select('g_j')
+    ld.select(table='g_j')
     # etc.
 
 """
