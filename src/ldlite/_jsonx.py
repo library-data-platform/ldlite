@@ -1,4 +1,5 @@
 import json
+import sys
 
 from tqdm import tqdm
 
@@ -17,6 +18,11 @@ def _compile_attrs(table, jdict, newattrs, level):
         elif isinstance(v, list):
             # TODO array
             pass
+        elif isinstance(v, bool):
+            if table not in newattrs:
+                newattrs[table] = {"id": ("id", "varchar")}
+            if k not in newattrs[table]:
+                newattrs[table][k] = (_decode_camel_case(k), "boolean")
         elif isinstance(v, int):
             if table not in newattrs:
                 newattrs[table] = {"id": ("id", "varchar")}
@@ -47,6 +53,8 @@ def _transform_data(db, table, jdict, newattrs, level, record_id, row_ids):
         decoded_attr, dtype = newattrs[table][k]
         if dtype == "integer":
             rowdict[decoded_attr] = str(v)
+        elif dtype == "boolean":
+            rowdict[decoded_attr] = "TRUE" if v else "FALSE"
         else:
             rowdict[decoded_attr] = "'"+str(v)+"'"
     row = list(rowdict.items())
@@ -68,7 +76,7 @@ def _transform_json(db, table, total, quiet):
     cur.execute("SELECT * FROM \""+table+"\" LIMIT 1")
     str_attrs = set()
     for a in cur.description:
-        if a[1] == "STRING":
+        if a[1] == "STRING" or a[1] == 1043:
             str_attrs.add(a[0])
     # Scan data for JSON objects
     str_attr_list = list(str_attrs)
@@ -135,5 +143,5 @@ def _transform_json(db, table, total, quiet):
             pbar.update(1)
     if not quiet:
         pbar.close()
-
+    return sorted(newattrs.keys())
 

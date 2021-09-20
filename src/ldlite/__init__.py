@@ -59,16 +59,17 @@ class LDLite:
 
         """
         self.page_size = 1000
-        self.v = False
-        self.q = False
+        self._verbose = False
+        self._quiet = False
 
     def _set_page_size(self, page_size):
         self.page_size = page_size
 
-    def config_db(self, db):
+    def config_db(self, db, dbtype):
         """Configures the analytic database.
 
-        The *db* parameter must be an existing database connection.
+        The *db* parameter must be an existing database connection.  Supported
+        values for *dbtype* are "duckdb" and "postgresql".
 
         Example::
 
@@ -79,6 +80,10 @@ class LDLite:
             ld.config_db(db)
 
         """
+        if dbtype is None or dbtype == "":
+            raise ValueError("dbtype not specified")
+        if dbtype != "duckdb" and dbtype != "postgresql":
+            raise ValueError("unknown dbtype \""+str(dbtype)+"\"")
         self.db = db
 
     def config_okapi(self, url, tenant, user, password):
@@ -101,7 +106,7 @@ class LDLite:
         self.okapi_password = password
 
     def _login(self):
-        if self.v:
+        if self._verbose:
             print("ldlite: logging in to okapi", file=sys.stderr)
         hdr = { 'X-Okapi-Tenant': self.okapi_tenant,
                 'Content-Type': 'application/json' }
@@ -124,23 +129,30 @@ class LDLite:
 
         """
         token = self._login()
-        self.db.execute("DROP TABLE IF EXISTS "+table)
-        self.db.execute("CREATE TABLE "+table+"(__id integer, jsonb varchar)")
+        cur = self.db.cursor()
+        cur.execute("DROP TABLE IF EXISTS "+table)
+        cur = self.db.cursor()
+        cur.execute("CREATE TABLE "+table+"(__id integer, jsonb varchar)")
         hdr = { 'X-Okapi-Tenant': self.okapi_tenant,
                 'X-Okapi-Token': token }
         # First get total number of records
         resp = requests.get(self.okapi_url+path+'?offset=0&limit=1&query='+query, headers=hdr)
-        j = resp.json()
+        if resp.status_code != 200:
+            resp.raise_for_status()
+        try:
+            j = resp.json()
+        except Exception as e:
+            raise RuntimeError(resp.text)
         total_records = j["totalRecords"]
         total = total_records if total_records is not None else 0
-        if self.v:
+        if self._verbose:
             print("ldlite: estimated row count: "+str(total), file=sys.stderr)
         # Read result pages
-        if not self.q:
+        if not self._quiet:
             print("ldlite: reading results", file=sys.stderr)
         count = 0
         page = 0
-        if not self.q:
+        if not self._quiet:
             pbar = tqdm(total=total, bar_format="{l_bar}{bar}| [{elapsed}<{remaining}, {rate_fmt}{postfix}]")
             pbartotal = 0
         while True:
@@ -153,9 +165,10 @@ class LDLite:
             if lendata == 0:
                 break
             for d in data:
-                self.db.execute("INSERT INTO "+table+" VALUES ("+str(count+1)+", '"+_escape_sql(json.dumps(d, indent=4))+"')")
+                cur = self.db.cursor()
+                cur.execute("INSERT INTO "+table+" VALUES ("+str(count+1)+", '"+_escape_sql(json.dumps(d, indent=4))+"')")
                 count += 1
-                if not self.q:
+                if not self._quiet:
                     if pbartotal + 1 > total:
                         pbartotal = total
                         pbar.update(total - pbartotal)
@@ -163,13 +176,17 @@ class LDLite:
                         pbartotal += 1
                         pbar.update(1)
             page += 1
-        if not self.q:
+        if not self._quiet:
             pbar.close()
+        newtables = [table]
         if transform:
-            if not self.q:
+            if not self._quiet:
                 print("ldlite: transforming data", file=sys.stderr)
-            _transform_json(self.db, table, count, self.q)
+            newtables += _transform_json(self.db, table, count, self._quiet)
+        if not self._quiet:
+            print("ldlite: created tables: "+", ".join(newtables), file=sys.stderr)
         print()
+        return newtables
 
     def quiet(self, enable):
         """Configures suppression of progress messages.
@@ -184,9 +201,9 @@ class LDLite:
         """
         if enable is None:
             raise ValueError("quiet(None) is invalid")
-        if enable and self.v:
+        if enable and self._verbose:
             raise ValueError("\"verbose\" and \"quiet\" modes cannot both be enabled")
-        self.q = enable
+        self._quiet = enable
 
     def select(self, table, limit=None, file=None):
         """Prints rows of a table in the analytic database.
@@ -201,7 +218,7 @@ class LDLite:
 
         """
         f = sys.stdout if file is None else file
-        if self.v:
+        if self._verbose:
             print("ldlite: reading from table: "+table, file=sys.stderr)
         _select(self.db, table, limit, f)
 
@@ -217,7 +234,7 @@ class LDLite:
         """
         _to_csv(self.db, table, filename)
 
-    def verbose(self, enable):
+    def _verbose(self, enable):
         """Configures verbose output.
 
         If *enable* is True, verbose output is enabled; if False, it is
@@ -230,9 +247,9 @@ class LDLite:
         """
         if enable is None:
             raise ValueError("verbose(None) is invalid")
-        if enable and self.q:
+        if enable and self._quiet:
             raise ValueError("\"verbose\" and \"quiet\" modes cannot both be enabled")
-        self.v = enable
+        self._verbose = enable
 
 if __name__ == '__main__':
     pass
