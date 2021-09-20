@@ -14,7 +14,7 @@ def _compile_attrs(table, jdict, newattrs, level):
         if k is None or v is None:
             continue
         if isinstance(v, dict):
-            _compile_attrs(table+"_"+k, v, newattrs, level+1)
+            _compile_attrs(table+"_"+_decode_camel_case(k), v, newattrs, level+1)
         elif isinstance(v, list):
             # TODO array
             pass
@@ -35,6 +35,8 @@ def _compile_attrs(table, jdict, newattrs, level):
                 newattrs[table][k] = (_decode_camel_case(k), "varchar")
 
 def _transform_data(db, table, jdict, newattrs, level, record_id, row_ids):
+    if table not in newattrs:
+        return
     if level > 2:
         return
     if record_id is None and "id" in jdict:
@@ -44,7 +46,7 @@ def _transform_data(db, table, jdict, newattrs, level, record_id, row_ids):
         if k is None:
             continue
         if isinstance(v, dict):
-            _transform_data(db, table+"_"+k, v, newattrs, level+1, rec_id, row_ids)
+            _transform_data(db, table+"_"+_decode_camel_case(k), v, newattrs, level+1, rec_id, row_ids)
         elif isinstance(v, list):
             # TODO array
             pass
@@ -80,6 +82,8 @@ def _transform_json(db, table, total, quiet):
             str_attrs.add(a[0])
     # Scan data for JSON objects
     str_attr_list = list(str_attrs)
+    if len(str_attr_list) == 0:
+        return []
     cur = db.cursor()
     cur.execute("SELECT "+",".join([_sqlid(a) for a in str_attr_list])+" FROM "+_sqlid(table))
     json_attrs = set()
@@ -118,6 +122,8 @@ def _transform_json(db, table, total, quiet):
     # Run transformation
     # Select only JSON columns
     json_attr_list = list(json_attrs)
+    if len(json_attr_list) == 0:
+        return []
     cur = db.cursor()
     cur.execute("SELECT "+",".join([_sqlid(a) for a in json_attr_list])+" FROM "+_sqlid(table)+"")
     if not quiet:
