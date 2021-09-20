@@ -41,6 +41,7 @@ import pandas
 import requests
 from tqdm import tqdm
 
+from ._csv import _to_csv
 from ._jsonx import _transform_json
 from ._select import _select
 from ._sqlx import _escape_sql
@@ -204,23 +205,17 @@ class LDLite:
             print("ldlite: reading from table: "+table, file=sys.stderr)
         _select(self.db, table, limit, f)
 
-    def to_csv(self, filename, table, limit):
+    def to_csv(self, filename, table):
         """Export a table in the analytic database to a CSV file.
 
-        Up to *limit* rows of *table* are exported to *filename* in CSV format.
+        All rows of *table* are exported to *filename*.
 
         Example::
 
-            ld.to_csv(filename="g.csv", table="g", limit=10)
+            ld.to_csv(table="g", filename="g.csv")
 
         """
-        q = "SELECT * FROM \""+table+"\" LIMIT "+str(limit)
-        if self.v:
-            print("ldlite: reading from table: "+table, file=sys.stderr)
-        df = self.db.execute(q).fetchdf()
-        if self.v:
-            print("ldlite: exporting CSV to file: "+filename, file=sys.stderr)
-        df.to_csv(filename, encoding="utf-8", index=False)
+        _to_csv(self.db, table, filename)
 
     def verbose(self, enable):
         """Configures verbose output.

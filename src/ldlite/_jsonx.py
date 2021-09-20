@@ -73,7 +73,7 @@ def _transform_json(db, table, total, quiet):
     # Scan data for JSON objects
     str_attr_list = list(str_attrs)
     cur = db.cursor()
-    cur.execute("SELECT "+",".join([_sqlid(a) for a in str_attr_list])+" FROM "+_sqlid(table)+"")
+    cur.execute("SELECT "+",".join([_sqlid(a) for a in str_attr_list])+" FROM "+_sqlid(table))
     json_attrs = set()
     newattrs = {}
     while True:
