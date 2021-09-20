@@ -29,3 +29,9 @@ Example
 [An example running in Jupyter Notebook](example/example.md)
 
 
+Documentation
+-------------
+
+[API reference documentation](doc/ldlite.html)
+
+
