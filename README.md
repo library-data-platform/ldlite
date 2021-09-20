@@ -34,7 +34,8 @@ Features
 Example
 -------
 
-[An example running in Jupyter Notebook](example/example.md)
+[An example running in Jupyter
+Notebook](https://github.com/library-data-platform/ldlite/blob/main/example/example.md)
 
 
 Documentation
