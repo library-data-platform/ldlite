@@ -18,20 +18,20 @@ Example:
     ld = ldlite.LDLite()
 
     # Connect to a database.
-    db = ld.connect_db(filename="ldlite.db")
+    db = ld.connect_db(filename='ldlite.db')
 
     # Connect to Okapi.
-    ld.connect_okapi(url="https://folio-snapshot-okapi.dev.folio.org",
-                     tenant="diku",
-                     user="diku_admin",
-                     password="admin")
+    ld.connect_okapi(url='https://folio-snapshot-okapi.dev.folio.org',
+                     tenant='diku',
+                     user='diku_admin',
+                     password='admin')
 
     # Send a CQL query and store the results in table "g", "g_j", etc.
-    ld.query(table="g", path="/groups", query="cql.allRecords=1 sortby id")
+    ld.query(table='g', path='/groups', query='cql.allRecords=1 sortby id')
 
     # Print the result tables.
-    ld.select(table="g")
-    ld.select(table="g_j")
+    ld.select(table='g')
+    ld.select(table='g_j')
     # etc.
 
 """
