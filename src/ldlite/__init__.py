@@ -100,7 +100,7 @@ class LDLite:
 
         Example:
 
-            db = ld.connect_db(dsn='dbname=ldlite host=localhost user=ldlite')
+            db = ld.connect_db_postgresql(dsn='dbname=ldlite host=localhost user=ldlite')
 
         """
         self.dbtype = 2
@@ -177,7 +177,7 @@ class LDLite:
             print('ldlite: estimated row count: '+str(total), file=sys.stderr)
         # Read result pages
         if not self._quiet:
-            print('ldlite: reading results', file=sys.stderr)
+            print('ldlite: reading data from '+path, file=sys.stderr)
         count = 0
         page = 0
         if not self._quiet:

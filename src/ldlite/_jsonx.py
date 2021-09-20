@@ -41,6 +41,8 @@ def _transform_data(db, table, jdict, newattrs, level, record_id, row_ids):
         return
     if record_id is None and 'id' in jdict:
         rec_id = jdict['id']
+    else:
+        rec_id = record_id
     rowdict = {}
     for k, v in jdict.items():
         if k is None:
@@ -54,11 +56,20 @@ def _transform_data(db, table, jdict, newattrs, level, record_id, row_ids):
             continue
         decoded_attr, dtype = newattrs[table][k]
         if dtype == 'integer':
-            rowdict[decoded_attr] = str(v)
+            if v is None:
+                rowdict[decoded_attr] = 'NULL'
+            else:
+                rowdict[decoded_attr] = str(v)
         elif dtype == 'boolean':
-            rowdict[decoded_attr] = 'TRUE' if v else 'FALSE'
+            if v is None:
+                rowdict[decoded_attr] = 'NULL'
+            else:
+                rowdict[decoded_attr] = 'TRUE' if v else 'FALSE'
         else:
-            rowdict[decoded_attr] = '\''+str(v)+'\''
+            if v is None:
+                rowdict[decoded_attr] = 'NULL'
+            else:
+                rowdict[decoded_attr] = '\''+_escape_sql(str(v))+'\''
     row = list(rowdict.items())
     if 'id' not in jdict and record_id is not None:
         row.append( ('id', '\''+record_id+'\'') )

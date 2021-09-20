@@ -36,11 +36,14 @@ Features
   * Storing the data in an existing LDP database if available
 
 
-Example
--------
+Examples
+--------
 
 [An example running in Jupyter
-Notebook](https://github.com/library-data-platform/ldlite/blob/main/example/example.md)
+Notebook](https://github.com/library-data-platform/ldlite/blob/main/examples/example.md)
+
+[Load sample data from
+folio-snapshot](https://github.com/library-data-platform/ldlite/blob/main/examples/snapshot.py)
 
 
 Documentation
