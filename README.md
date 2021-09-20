@@ -32,6 +32,6 @@ Example
 Documentation
 -------------
 
-[API reference documentation](doc/ldlite.html)
+[API reference documentation](https://library-data-platform.github.io/ldlite/ldlite.html)
 
 
