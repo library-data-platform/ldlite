@@ -18,10 +18,10 @@ ld = ldlite.LDLite()
 # that will be used for reporting.  To configure the Okapi connection, we use
 # the function "ld.connect_okapi()".
 
-ld.connect_okapi(url="https://folio-snapshot-okapi.dev.folio.org",
-                 tenant="diku",
-                 user="diku_admin",
-                 password="admin")
+ld.connect_okapi(url='https://folio-snapshot-okapi.dev.folio.org',
+                 tenant='diku',
+                 user='diku_admin',
+                 password='admin')
 ```
 
 
@@ -29,7 +29,7 @@ ld.connect_okapi(url="https://folio-snapshot-okapi.dev.folio.org",
 # Next we call "ld.connect_db()" to create a database and connect it to DBLite.
 # The database will be stored in a file called "ldlite.db".
 
-db = ld.connect_db(filename="ldlite.db")
+db = ld.connect_db(filename='ldlite.db')
 ```
 
 
@@ -39,7 +39,7 @@ db = ld.connect_db(filename="ldlite.db")
 # In addition to "g", this will create other tables having names beginning with
 # "g_j" where JSON data will be transformed to tables.
 
-ld.query(table="g", path="/groups", query="cql.allRecords=1 sortby id")
+ld.query(table='g', path='/groups', query='cql.allRecords=1 sortby id')
 ```
 
     ldlite: reading results
@@ -56,7 +56,7 @@ ld.query(table="g", path="/groups", query="cql.allRecords=1 sortby id")
 # We can use "ld.select()" to show a quick view of a table, in this case table
 # "g".
 
-ld.select(table="g", limit=10)
+ld.select(table='g', limit=10)
 ```
 
      __id |                          jsonb                          
@@ -108,7 +108,7 @@ ld.select(table="g", limit=10)
 # When ld.query() created table "g", it also created another table "g_j" with
 # JSON fields extracted into columns.
 
-ld.select("g_j", 10)
+ld.select('g_j', 10)
 ```
 
      __id |                  id                  |         desc          | expiration_offset_in_days |   group   
@@ -125,7 +125,7 @@ ld.select("g_j", 10)
 ```python
 # And "g_j_metadata".
 
-ld.select("g_j_metadata", 10)
+ld.select('g_j_metadata', 10)
 ```
 
      __id |                  id                  |         created_date          |         updated_date          
@@ -142,7 +142,7 @@ ld.select("g_j_metadata", 10)
 ```python
 # We will also query user data and store the result in table "u" etc.
 
-ld.query("u", "/users", "cql.allRecords=1 sortby id")
+ld.query('u', '/users', 'cql.allRecords=1 sortby id')
 ```
 
     ldlite: reading results
@@ -160,7 +160,9 @@ ld.query("u", "/users", "cql.allRecords=1 sortby id")
 # their associated group.  The result will be stored in a new table
 # "user_groups".
 
-db.execute("DROP TABLE IF EXISTS user_groups;")
+db.execute("""
+    DROP TABLE IF EXISTS user_groups;
+    """)
 
 db.execute("""
     CREATE TABLE user_groups AS
@@ -169,7 +171,7 @@ db.execute("""
             JOIN g_j AS g ON u.patron_group = g.id;
     """)
 
-ld.select("user_groups", 10)
+ld.select('user_groups', 10)
 ```
 
                       id                  | username |   group   
@@ -192,7 +194,7 @@ ld.select("user_groups", 10)
 ```python
 # The "user_groups" table can also be exported to a CSV file.
 
-ld.to_csv(table="user_groups", filename="user_groups.csv")
+ld.to_csv(table='user_groups', filename='user_groups.csv')
 ```
 
 
@@ -223,7 +225,7 @@ print(df)
 
 import matplotlib
 
-df.plot(kind="bar", x="user_group")
+df.plot(kind='bar', x='user_group')
 ```
 
 
@@ -243,7 +245,7 @@ df.plot(kind="bar", x="user_group")
 ```python
 # Or a pie chart.
 
-df.plot(kind="pie", x="user_group", y="count")
+df.plot(kind='pie', x='user_group', y='count')
 ```
 
 
