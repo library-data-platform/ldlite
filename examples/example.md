@@ -211,15 +211,8 @@ print(df)
 
 import matplotlib
 
-df.plot(kind='bar', x='user_group')
+_ = df.plot(kind='bar', x='user_group')
 ```
-
-
-
-
-    <AxesSubplot:xlabel='user_group'>
-
-
 
 
     
@@ -231,15 +224,8 @@ df.plot(kind='bar', x='user_group')
 ```python
 # Or a pie chart.
 
-df.plot(kind='pie', x='user_group', y='count')
+_ = df.plot(kind='pie', x='user_group', y='count')
 ```
-
-
-
-
-    <AxesSubplot:ylabel='count'>
-
-
 
 
     
