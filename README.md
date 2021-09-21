@@ -54,10 +54,9 @@ Example
 ...                  user='diku_admin',
 ...                  password='admin')
 >>> db = ld.connect_db(filename='ldlite.db')
->>> ld.query(table='g', path='/groups', query='cql.allRecords=1 sortby id')
+>>> _ = ld.query(table='g', path='/groups', query='cql.allRecords=1 sortby id')
 ldlite: querying: /groups
 ldlite: created tables: g, g_j, g_j_metadata                                                                                            
-['g', 'g_j', 'g_j_metadata']
 >>> ld.select(table='g_j', limit=10)
 ```
 ```

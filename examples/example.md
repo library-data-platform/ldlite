@@ -39,12 +39,11 @@ db = ld.connect_db(filename='ldlite.db')
 # In addition to "g", this will create other tables having names beginning with
 # "g_j" where JSON data will be transformed to tables.
 
-ld.query(table='g', path='/groups', query='cql.allRecords=1 sortby id')
+_ = ld.query(table='g', path='/groups', query='cql.allRecords=1 sortby id')
 ```
 
     ldlite: querying: /groups
     ldlite: created tables: g, g_j, g_j_metadata
-    ['g', 'g_j', 'g_j_metadata']
 
 
 
@@ -138,12 +137,11 @@ ld.select(table='g_j_metadata', limit=10)
 ```python
 # We will also query user data and store the result in table "u" etc.
 
-ld.query(table='u', path='/users', query='cql.allRecords=1 sortby id')
+_ = ld.query(table='u', path='/users', query='cql.allRecords=1 sortby id')
 ```
 
     ldlite: querying: /users
     ldlite: created tables: u, u_j, u_j_metadata, u_j_personal
-    ['u', 'u_j', 'u_j_metadata', 'u_j_personal']
 
 
 
