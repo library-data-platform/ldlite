@@ -18,34 +18,28 @@ Features
 
 * Queries Okapi-based modules and transforms JSON data for easier
   reporting
-
 * Full SQL query support on transformed data, using an embedded
   database
-
 * No LDP server needed; only Python, and Okapi access to send CQL
   queries
-
 * Supports DuckDB, PostgreSQL, and Redshift database systems
-
 * PostgreSQL/Redshift support enables:
   * Sharing the data in a multiuser database
   * Querying the data from within the LDP query builder app
   * Storing the data in an existing LDP database if available
 
 
-Installing
-----------
-
-To install LDLite or upgrade to the latest version:
-
-```
-python3 -m pip install --upgrade ldlite
-```
-
-
 Example
 -------
 
+To install LDLite or upgrade to the latest version:
+```bash
+$ python3 -m pip install --upgrade ldlite
+```
+To extract and transform data:
+```
+$ python3
+```
 ```python
 >>> import ldlite
 >>> ld = ldlite.LDLite()
