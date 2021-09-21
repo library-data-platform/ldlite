@@ -91,6 +91,6 @@ Documentation
 Issues
 ------
 
-[Bug reports](https://github.com/library-data-platform/ldlite/issues)
+Report bugs at [Issues](https://github.com/library-data-platform/ldlite/issues)
 
 
