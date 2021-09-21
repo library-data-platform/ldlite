@@ -43,7 +43,16 @@ ldlite: created tables: g, g_j, g_j_metadata
 (4 rows)
 ```
 ```python
->>> ld.to_csv(table='g_j', filename='groups.csv')
+>>> _ = ld.query(table='u', path='/users', query='cql.allRecords=1 sortby id')
+ldlite: querying: /users
+ldlite: created tables: u, u_j, u_j_departments, u_j_metadata, u_j_personal, u_j_proxy_for                                              
+>>> _ = db.execute("""
+        CREATE TABLE user_groups AS
+        SELECT u.id, u.username, g.group
+            FROM u_j AS u
+                JOIN g_j AS g ON u.patron_group = g.id;
+        """)
+>>> ld.to_csv(table='user_groups', filename='user_groups.csv')
 ```
 
 
