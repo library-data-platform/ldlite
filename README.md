@@ -12,10 +12,6 @@ services.  It is part of the Library Data Platform project and
 provides basic LDP functions without requiring the server to be
 installed.
 
-
-Features
---------
-
 * Queries Okapi-based modules and transforms JSON data for easier
   reporting
 * Full SQL query support on transformed data, using an embedded
@@ -27,10 +23,6 @@ Features
   * Sharing the data in a multiuser database
   * Querying the data from within the LDP query builder app
   * Storing the data in an existing LDP database if available
-
-
-Example
--------
 
 To install LDLite or upgrade to the latest version:
 ```bash
