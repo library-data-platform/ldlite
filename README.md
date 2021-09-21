@@ -30,6 +30,8 @@ $ python3
 ldlite: querying: /groups
 ldlite: created tables: g, g_j, g_j_metadata
 >>> ld.select(table='g_j')
+```
+```
  __id |                  id                  |         desc          | expiration_offset_in_days |   group   
 ------+--------------------------------------+-----------------------+---------------------------+-----------
     1 | 3684a786-6671-4268-8ed0-9db82ebca60b | Staff Member          |                       730 | staff     
@@ -37,7 +39,8 @@ ldlite: created tables: g, g_j, g_j_metadata
     3 | ad0bc554-d5bc-463c-85d1-5562127ae91b | Graduate Student      |                           | graduate  
     4 | bdc2b6d4-5ceb-4a12-ab46-249b9a68473e | Undergraduate Student |                           | undergrad 
 (4 rows)
-
+```
+```python
 >>> _ = ld.query(table='u', path='/users', query='cql.allRecords=1 sortby id')
 ldlite: querying: /users
 ldlite: created tables: u, u_j, u_j_departments, u_j_metadata, u_j_personal, u_j_proxy_for
