@@ -42,6 +42,10 @@ To install LDLite or upgrade to the latest version:
 python3 -m pip install --upgrade ldlite
 ```
 
+
+Example
+-------
+
 ```python
 >>> import ldlite
 >>> ld = ldlite.LDLite()
@@ -55,6 +59,8 @@ ldlite: querying: /groups
 ldlite: created tables: g, g_j, g_j_metadata                                                                                            
 ['g', 'g_j', 'g_j_metadata']
 >>> ld.select(table='g_j', limit=10)
+```
+```
  __id |                  id                  |         desc          | expiration_offset_in_days |   group   
 ------+--------------------------------------+-----------------------+---------------------------+-----------
     1 | 3684a786-6671-4268-8ed0-9db82ebca60b | Staff Member          |                       730 | staff     
@@ -62,18 +68,19 @@ ldlite: created tables: g, g_j, g_j_metadata
     3 | ad0bc554-d5bc-463c-85d1-5562127ae91b | Graduate Student      |                           | graduate  
     4 | bdc2b6d4-5ceb-4a12-ab46-249b9a68473e | Undergraduate Student |                           | undergrad 
 (4 rows)
-
+```
+```python
 >>> ld.to_csv(table='g_j', filename='groups.csv')
 ```
 
 
-Examples
---------
+More examples
+-------------
 
 * [An example running in Jupyter
 Notebook](https://github.com/library-data-platform/ldlite/blob/main/examples/example.md)
 
-[Loading sample data from
+* [Loading sample data from
 folio-snapshot](https://github.com/library-data-platform/ldlite/blob/main/examples/snapshot.py)
 
 
