@@ -42,7 +42,7 @@ $ python3
 >>> db = ld.connect_db(filename='ldlite.db')
 >>> _ = ld.query(table='g', path='/groups', query='cql.allRecords=1 sortby id')
 ldlite: querying: /groups
-ldlite: created tables: g, g_j, g_j_metadata                                                                                            
+ldlite: created tables: g, g_j, g_j_metadata
 >>> ld.select(table='g_j')
 ```
 ```
