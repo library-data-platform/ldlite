@@ -44,7 +44,6 @@ ld.query(table='g', path='/groups', query='cql.allRecords=1 sortby id')
 
     ldlite: querying: /groups
     ldlite: created tables: g, g_j, g_j_metadata
-
     ['g', 'g_j', 'g_j_metadata']
 
 
@@ -144,7 +143,6 @@ ld.query(table='u', path='/users', query='cql.allRecords=1 sortby id')
 
     ldlite: querying: /users
     ldlite: created tables: u, u_j, u_j_metadata, u_j_personal
-
     ['u', 'u_j', 'u_j_metadata', 'u_j_personal']
 
 
