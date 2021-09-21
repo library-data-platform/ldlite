@@ -152,9 +152,9 @@ _ = ld.query(table='u', path='/users', query='cql.allRecords=1 sortby id')
 
 db.execute("""
     CREATE TABLE user_groups AS
-    SELECT u.id, u.username, g.group
-        FROM u_j AS u
-            JOIN g_j AS g ON u.patron_group = g.id;
+    SELECT u_j.id, u_j.username, g_j.group
+        FROM u_j
+            JOIN g_j ON u_j.patron_group = g_j.id;
     """)
 
 ld.select(table='user_groups', limit=10)

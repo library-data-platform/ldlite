@@ -46,9 +46,9 @@ ldlite: querying: /users
 ldlite: created tables: u, u_j, u_j_departments, u_j_metadata, u_j_personal, u_j_proxy_for
 >>> _ = db.execute("""
         CREATE TABLE user_groups AS
-        SELECT u.id, u.username, g.group
-            FROM u_j AS u
-                JOIN g_j AS g ON u.patron_group = g.id;
+        SELECT u_j.id, u_j.username, g_j.group
+            FROM u_j
+                JOIN g_j ON u_j.patron_group = g_j.id;
         """)
 >>> ld.to_csv(table='user_groups', filename='user_groups.csv')
 ```
