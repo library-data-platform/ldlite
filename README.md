@@ -35,8 +35,6 @@ Features
 * No LDP server needed; only Python, and Okapi access to send CQL
   queries
 
-* Easy installation (`pip install ldlite`)
-
 * Supports DuckDB, PostgreSQL, and Redshift database systems
 
 * PostgreSQL/Redshift support enables:
