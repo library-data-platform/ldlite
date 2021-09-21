@@ -43,7 +43,7 @@ $ python3
 >>> _ = ld.query(table='g', path='/groups', query='cql.allRecords=1 sortby id')
 ldlite: querying: /groups
 ldlite: created tables: g, g_j, g_j_metadata                                                                                            
->>> ld.select(table='g_j', limit=10)
+>>> ld.select(table='g_j')
 ```
 ```
  __id |                  id                  |         desc          | expiration_offset_in_days |   group   
