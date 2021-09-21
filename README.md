@@ -12,18 +12,6 @@ services.  It is part of the Library Data Platform project and
 provides basic LDP functions without requiring the server to be
 installed.
 
-* Queries Okapi-based modules and transforms JSON data for easier
-  reporting
-* Full SQL query support on transformed data, using an embedded
-  database
-* No LDP server needed; only Python, and Okapi access to send CQL
-  queries
-* Supports DuckDB, PostgreSQL, and Redshift database systems
-* PostgreSQL/Redshift support enables:
-  * Sharing the data in a multiuser database
-  * Querying the data from within the LDP query builder app
-  * Storing the data in an existing LDP database if available
-
 To install LDLite or upgrade to the latest version:
 ```bash
 $ python3 -m pip install --upgrade ldlite
@@ -59,6 +47,22 @@ ldlite: created tables: g, g_j, g_j_metadata
 ```
 
 
+Features
+--------
+
+* Queries Okapi-based modules and transforms JSON data for easier
+  reporting
+* Full SQL query support on transformed data, using an embedded
+  database
+* No LDP server needed; only Python, and Okapi access to send CQL
+  queries
+* Supports DuckDB, PostgreSQL, and Redshift database systems
+* PostgreSQL/Redshift support enables:
+  * Sharing the data in a multiuser database
+  * Querying the data from within the LDP query builder app
+  * Storing the data in an existing LDP database if available
+
+
 More examples
 -------------
 
@@ -73,7 +77,6 @@ Documentation
 -------------
 
 [API documentation](https://library-data-platform.github.io/ldlite/ldlite.html)
-
 
 
 Issues
