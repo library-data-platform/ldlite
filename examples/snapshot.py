@@ -122,6 +122,7 @@ tables += ld.query(table='user_groups', path='/groups', query='cql.allRecords=1 
 tables += ld.query(table='user_proxiesfor', path='/proxiesfor', query='cql.allRecords=1 sortby id')
 tables += ld.query(table='user_users', path='/users', query='cql.allRecords=1 sortby id')
 
+print()
 print('Tables:')
 for t in tables:
     print(t)

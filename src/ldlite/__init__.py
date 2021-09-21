@@ -211,7 +211,6 @@ class LDLite:
             newtables += _transform_json(self.db, table, count, self._quiet)
         if not self._quiet:
             print('ldlite: created tables: '+', '.join(newtables), file=sys.stderr)
-        print()
         return newtables
 
     def quiet(self, enable):

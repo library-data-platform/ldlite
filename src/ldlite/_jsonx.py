@@ -7,6 +7,28 @@ from ._camelcase import _decode_camel_case
 from ._sqlx import _escape_sql
 from ._sqlx import _sqlid
 
+def _compile_array_attrs(table, jarray, newattrs, level, arrayattr):
+    if level > 2:
+        return
+    if table not in newattrs:
+        newattrs[table] = {'id': ('id', 'varchar')}
+    newattrs[table]['ord'] = ('ord', 'integer')
+    for v in jarray:
+        if isinstance(v, dict):
+            _compile_attrs(table, v, newattrs, level)
+        elif isinstance(v, list):
+            continue
+        elif isinstance(v, int):
+            if table not in newattrs:
+                newattrs[table] = {'id': ('id', 'varchar')}
+            if arrayattr not in newattrs[table]:
+                newattrs[table][arrayattr] = (_decode_camel_case(arrayattr), 'integer')
+        else:
+            if table not in newattrs:
+                newattrs[table] = {'id': ('id', 'varchar')}
+            if arrayattr not in newattrs[table] or newattrs[table][arrayattr] != 'varchar':
+                newattrs[table][arrayattr] = (_decode_camel_case(arrayattr), 'varchar')
+
 def _compile_attrs(table, jdict, newattrs, level):
     if level > 2:
         return
@@ -16,8 +38,7 @@ def _compile_attrs(table, jdict, newattrs, level):
         if isinstance(v, dict):
             _compile_attrs(table+'_'+_decode_camel_case(k), v, newattrs, level+1)
         elif isinstance(v, list):
-            # TODO array
-            pass
+            _compile_array_attrs(table+'_'+_decode_camel_case(k), v, newattrs, level+1, k)
         elif isinstance(v, bool):
             if table not in newattrs:
                 newattrs[table] = {'id': ('id', 'varchar')}
@@ -34,7 +55,43 @@ def _compile_attrs(table, jdict, newattrs, level):
             if k not in newattrs[table] or newattrs[table][k] != 'varchar':
                 newattrs[table][k] = (_decode_camel_case(k), 'varchar')
 
-def _transform_data(db, table, jdict, newattrs, level, record_id, row_ids):
+def _transform_array_data(db, table, jarray, newattrs, level, record_id, row_ids, arrayattr):
+    if table not in newattrs:
+        return
+    if level > 2:
+        return
+    value = None
+    for i, v in enumerate(jarray):
+        if v is None:
+            continue
+        if isinstance(v, dict):
+            _transform_data(db, table, v, newattrs, level, record_id, row_ids, i+1)
+            continue
+        elif isinstance(v, list):
+            continue
+        decoded_attr, dtype = newattrs[table][arrayattr]
+        if dtype == 'integer':
+            if v is None:
+                value = 'NULL'
+            else:
+                value = str(v)
+        elif dtype == 'boolean':
+            if v is None:
+                value = 'NULL'
+            else:
+                value = 'TRUE' if v else 'FALSE'
+        else:
+            if v is None:
+                value = 'NULL'
+            else:
+                value = '\''+_escape_sql(str(v))+'\''
+        q = 'INSERT INTO '+_sqlid(table)+'(__id,id,ord,'+_sqlid(decoded_attr)
+        q += ')VALUES(' + str(row_ids[table]) + ',\'' + record_id + '\',' + str(i+1) + ',' + value + ')'
+        cur = db.cursor()
+        cur.execute(q)
+        row_ids[table] += 1
+
+def _transform_data(db, table, jdict, newattrs, level, record_id, row_ids, ord_n):
     if table not in newattrs:
         return
     if level > 2:
@@ -48,10 +105,9 @@ def _transform_data(db, table, jdict, newattrs, level, record_id, row_ids):
         if k is None:
             continue
         if isinstance(v, dict):
-            _transform_data(db, table+'_'+_decode_camel_case(k), v, newattrs, level+1, rec_id, row_ids)
+            _transform_data(db, table+'_'+_decode_camel_case(k), v, newattrs, level+1, rec_id, row_ids, None)
         elif isinstance(v, list):
-            # TODO array
-            pass
+            _transform_array_data(db, table+'_'+_decode_camel_case(k), v, newattrs, level+1, rec_id, row_ids, k)
         if k not in newattrs[table]:
             continue
         decoded_attr, dtype = newattrs[table][k]
@@ -73,9 +129,11 @@ def _transform_data(db, table, jdict, newattrs, level, record_id, row_ids):
     row = list(rowdict.items())
     if 'id' not in jdict and record_id is not None:
         row.append( ('id', '\''+record_id+'\'') )
-    q = 'INSERT INTO '+_sqlid(table)+'(__id,'
+    ord_attr = 'ord,' if ord_n is not None else ''
+    ord_val = str(ord_n)+',' if ord_n is not None else ''
+    q = 'INSERT INTO ' + _sqlid(table) + '(__id,' + ord_attr
     q += ','.join([_sqlid(kv[0]) for kv in row])
-    q += ')VALUES(' + str(row_ids[table]) + ','
+    q += ')VALUES(' + str(row_ids[table]) + ',' + ord_val
     q += ','.join([kv[1] for kv in row])
     q += ')'
     cur = db.cursor()
@@ -129,8 +187,10 @@ def _transform_json(db, table, total, quiet):
         cur.execute('DROP TABLE IF EXISTS '+_sqlid(t))
         cur.execute('CREATE TABLE '+_sqlid(t)+'(__id integer)')
         cur.execute('ALTER TABLE '+_sqlid(t)+' ADD COLUMN id varchar')
+        if 'ord' in attrs:
+            cur.execute('ALTER TABLE '+_sqlid(t)+' ADD COLUMN ord integer')
         for attr in sorted(list(attrs)):
-            if attr == 'id':
+            if attr == 'id' or attr == 'ord':
                 continue
             decoded_attr, dtype = attrs[attr]
             cur.execute('ALTER TABLE '+_sqlid(t)+' ADD COLUMN '+_sqlid(decoded_attr)+' '+dtype)
@@ -162,7 +222,7 @@ def _transform_json(db, table, total, quiet):
                 jdict = json.loads(d)
             except ValueError as e:
                 continue
-            _transform_data(db, table+'_j', jdict, newattrs, 1, None, row_ids)
+            _transform_data(db, table+'_j', jdict, newattrs, 1, None, row_ids, None)
         if not quiet:
             pbartotal += 1
             pbar.update(1)
