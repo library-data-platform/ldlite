@@ -4,7 +4,8 @@ def _format_attr(attr, width):
     s = ''
     a = attr[0]
     len_a = len(a)
-    start = int(width / 2) - int(len_a / 2)
+    shift_left = 1 if (len_a % 2 == 1 and width % 2 == 0 and len_a < width) else 0
+    start = int(width / 2) - int(len_a / 2) - shift_left
     for i in range(0, start):
         s += ' '
     s += a
