@@ -46,7 +46,10 @@ def _format_row(row, attrs, width):
         for j, lines in enumerate(rowlines):
             s += ' ' if j == 0 else '| '
             if attrs[j][1] == 'NUMBER':
-                start = width[j] - maxlen[j]
+                if i < len(lines):
+                    start = width[j] - len(lines[i])
+                else:
+                    start = width[j]
             else:
                 start = 0
             for k in range(0, start):
@@ -54,7 +57,7 @@ def _format_row(row, attrs, width):
             if i < len(lines):
                 s += lines[i]
             else:
-                s += ' '
+                s += ''
             for k in range(0, width[j] - start - maxlen[j]):
                 s += ' '
             s += ' '
