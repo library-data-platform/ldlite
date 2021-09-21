@@ -17,7 +17,7 @@ installed.
 Features
 --------
 
-* Queries Okapi-based modules and transforms the data for easier
+* Queries Okapi-based modules and transforms JSON data for easier
   reporting
 
 * Full SQL query support on transformed data, using an embedded
@@ -42,7 +42,7 @@ Examples
 [An example running in Jupyter
 Notebook](https://github.com/library-data-platform/ldlite/blob/main/examples/example.md)
 
-[Load sample data from
+[Loading sample data from
 folio-snapshot](https://github.com/library-data-platform/ldlite/blob/main/examples/snapshot.py)
 
 
