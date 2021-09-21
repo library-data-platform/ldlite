@@ -42,10 +42,7 @@ db = ld.connect_db(filename='ldlite.db')
 ld.query(table='g', path='/groups', query='cql.allRecords=1 sortby id')
 ```
 
-    ldlite: reading data from /groups
-    100%|████████████████████████████████████████████████████████| [00:00<00:00, 12.96it/s]
-    ldlite: transforming data
-    100%|███████████████████████████████████████████████████| 4/4 [00:00<00:00, 210.19it/s]
+    ldlite: querying: /groups
     ldlite: created tables: g, g_j, g_j_metadata
 
     ['g', 'g_j', 'g_j_metadata']
@@ -145,10 +142,7 @@ ld.select(table='g_j_metadata', limit=10)
 ld.query(table='u', path='/users', query='cql.allRecords=1 sortby id')
 ```
 
-    ldlite: reading data from /users
-    100%|███████████████████████████████████████████████████████| [00:00<00:00, 484.29it/s]
-    ldlite: transforming data
-    100%|███████████████████████████████████████████████| 336/336 [00:01<00:00, 206.59it/s]
+    ldlite: querying: /users
     ldlite: created tables: u, u_j, u_j_metadata, u_j_personal
 
     ['u', 'u_j', 'u_j_metadata', 'u_j_personal']

@@ -177,11 +177,11 @@ class LDLite:
             print('ldlite: estimated row count: '+str(total), file=sys.stderr)
         # Read result pages
         if not self._quiet:
-            print('ldlite: reading data from '+path, file=sys.stderr)
+            print('ldlite: querying: '+path, file=sys.stderr)
         count = 0
         page = 0
         if not self._quiet:
-            pbar = tqdm(total=total, bar_format='{l_bar}{bar}| [{elapsed}<{remaining}, {rate_fmt}{postfix}]')
+            pbar = tqdm(desc='reading', total=total, leave=False, smoothing=0, colour='#A9A9A9', bar_format='{desc} {bar}{postfix}')
             pbartotal = 0
         while True:
             offset = page * self.page_size
@@ -208,8 +208,6 @@ class LDLite:
             pbar.close()
         newtables = [table]
         if transform:
-            if not self._quiet:
-                print('ldlite: transforming data', file=sys.stderr)
             newtables += _transform_json(self.db, table, count, self._quiet)
         if not self._quiet:
             print('ldlite: created tables: '+', '.join(newtables), file=sys.stderr)

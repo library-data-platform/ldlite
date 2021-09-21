@@ -97,6 +97,9 @@ def _transform_json(db, table, total, quiet):
         return []
     cur = db.cursor()
     cur.execute('SELECT '+','.join([_sqlid(a) for a in str_attr_list])+' FROM '+_sqlid(table))
+    if not quiet:
+        pbar = tqdm(desc='scanning', total=total, leave=False, smoothing=0, colour='#A9A9A9', bar_format='{desc} {bar}{postfix}')
+        pbartotal = 0
     json_attrs = set()
     newattrs = {}
     while True:
@@ -115,6 +118,11 @@ def _transform_json(db, table, total, quiet):
                 continue
             json_attrs.add(str_attr_list[i])
             _compile_attrs(table+'_j', jdict, newattrs, 1)
+        if not quiet:
+            pbartotal += 1
+            pbar.update(1)
+    if not quiet:
+        pbar.close()
     # Create table schemas
     cur = db.cursor()
     for t, attrs in newattrs.items():
@@ -138,7 +146,7 @@ def _transform_json(db, table, total, quiet):
     cur = db.cursor()
     cur.execute('SELECT '+','.join([_sqlid(a) for a in json_attr_list])+' FROM '+_sqlid(table)+'')
     if not quiet:
-        pbar = tqdm(total=total)
+        pbar = tqdm(desc='transforming', total=total, leave=False, smoothing=0, colour='#A9A9A9', bar_format='{desc} {bar}{postfix}')
         pbartotal = 0
     while True:
         row = cur.fetchone()
