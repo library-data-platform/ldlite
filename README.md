@@ -67,6 +67,7 @@ Features
   queries
 * Supports DuckDB, PostgreSQL, and Redshift database systems
 * PostgreSQL/Redshift support enables:
+  * Access to the data using database tools such as DBeaver
   * Sharing the data in a multiuser database
   * Querying the data from within the LDP query builder app
   * Storing the data in an existing LDP database if available
