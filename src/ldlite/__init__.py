@@ -9,7 +9,7 @@ for further querying.
 
 To install LDLite or upgrade to the latest version:
 
-    python3 -m pip install --upgrade ldlite
+    python -m pip install --upgrade ldlite
 
 Example:
 

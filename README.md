@@ -14,11 +14,13 @@ installed.
 
 To install LDLite or upgrade to the latest version:
 ```bash
-$ python3 -m pip install --upgrade ldlite
+$ python -m pip install --upgrade ldlite
 ```
+(On some systems it might be `python3` rather than `python`.)
+
 To extract and transform data:
 ```python
-$ python3
+$ python
 >>> import ldlite
 >>> ld = ldlite.LDLite()
 >>> ld.connect_okapi(url='https://folio-snapshot-okapi.dev.folio.org',
@@ -83,6 +85,8 @@ folio-snapshot](https://github.com/library-data-platform/ldlite/blob/main/exampl
 
 Documentation
 -------------
+
+LDLite runs on Windows, macOS, and Linux.
 
 [API documentation](https://library-data-platform.github.io/ldlite/ldlite.html)
 
