@@ -149,7 +149,7 @@ def _transform_json(db, table, total, quiet):
     # Scan all fields for JSON data
     # First get a list of the string attributes
     cur = db.cursor()
-    cur.execute('SELECT * FROM "'+table+'" LIMIT 1')
+    cur.execute('SELECT * FROM '+_sqlid(table)+' LIMIT 1')
     str_attrs = set()
     for a in cur.description:
         if a[1] == 'STRING' or a[1] == 1043:

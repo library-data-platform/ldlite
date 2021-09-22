@@ -1,5 +1,7 @@
 import sys
 
+from ._sqlx import _sqlid
+
 def _format_attr(attr, width):
     s = ''
     a = attr[0]
@@ -69,7 +71,7 @@ def _format_row(row, attrs, width):
     return s
 
 def _select(db, table, limit=None, file=sys.stdout):
-    query = 'SELECT * FROM "'+table+'"'
+    query = 'SELECT * FROM '+_sqlid(table)
     if limit is not None:
         query += ' LIMIT '+str(limit)
     cur = db.cursor()
