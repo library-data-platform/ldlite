@@ -171,7 +171,10 @@ class LDLite:
             j = resp.json()
         except Exception as e:
             raise RuntimeError(resp.text)
-        total_records = j['totalRecords']
+        if 'totalRecords' in j:
+            total_records = j['totalRecords']
+        else:
+            total_records = -1
         total = total_records if total_records is not None else 0
         if self._verbose:
             print('ldlite: estimated row count: '+str(total), file=sys.stderr)
@@ -181,14 +184,20 @@ class LDLite:
         count = 0
         page = 0
         if not self._quiet:
-            pbar = tqdm(desc='reading', total=total, leave=False, smoothing=0, colour='#A9A9A9', bar_format='{desc} {bar}{postfix}')
+            if total == -1:
+                pbar = tqdm(desc='reading', leave=False, mininterval=1, smoothing=0, colour='#A9A9A9', bar_format='{desc} {elapsed} {bar}{postfix}')
+            else:
+                pbar = tqdm(desc='reading', total=total, leave=False, mininterval=1, smoothing=0, colour='#A9A9A9', bar_format='{desc} {bar}{postfix}')
             pbartotal = 0
         while True:
             offset = page * self.page_size
             limit = self.page_size
             resp = requests.get(self.okapi_url+path+'?offset='+str(offset)+'&limit='+str(limit)+'&query='+query, headers=hdr)
             j = resp.json()
-            data = list(j.values())[0]
+            if isinstance(j, dict):
+                data = list(j.values())[0]
+            else:
+                data = j
             lendata = len(data)
             if lendata == 0:
                 break

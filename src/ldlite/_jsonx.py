@@ -22,7 +22,7 @@ def _compile_array_attrs(table, jarray, newattrs, level, arrayattr):
             if table not in newattrs:
                 newattrs[table] = {'id': ('id', 'varchar')}
             if arrayattr not in newattrs[table]:
-                newattrs[table][arrayattr] = (_decode_camel_case(arrayattr), 'integer')
+                newattrs[table][arrayattr] = (_decode_camel_case(arrayattr), 'bigint')
         else:
             if table not in newattrs:
                 newattrs[table] = {'id': ('id', 'varchar')}
@@ -48,7 +48,7 @@ def _compile_attrs(table, jdict, newattrs, level):
             if table not in newattrs:
                 newattrs[table] = {'id': ('id', 'varchar')}
             if k not in newattrs[table]:
-                newattrs[table][k] = (_decode_camel_case(k), 'integer')
+                newattrs[table][k] = (_decode_camel_case(k), 'bigint')
         else:
             if table not in newattrs:
                 newattrs[table] = {'id': ('id', 'varchar')}
@@ -70,7 +70,7 @@ def _transform_array_data(db, table, jarray, newattrs, level, record_id, row_ids
         elif isinstance(v, list):
             continue
         decoded_attr, dtype = newattrs[table][arrayattr]
-        if dtype == 'integer':
+        if dtype == 'bigint':
             if v is None:
                 value = 'NULL'
             else:
@@ -111,7 +111,7 @@ def _transform_data(db, table, jdict, newattrs, level, record_id, row_ids, ord_n
         if k not in newattrs[table]:
             continue
         decoded_attr, dtype = newattrs[table][k]
-        if dtype == 'integer':
+        if dtype == 'bigint':
             if v is None:
                 rowdict[decoded_attr] = 'NULL'
             else:
@@ -137,7 +137,12 @@ def _transform_data(db, table, jdict, newattrs, level, record_id, row_ids, ord_n
     q += ','.join([kv[1] for kv in row])
     q += ')'
     cur = db.cursor()
-    cur.execute(q)
+    try:
+        cur.execute(q)
+    except Exception as e:
+        print()
+        print('ldlite: '+str(e).strip()+': '+q, file=sys.stderr)
+        sys.exit(1)
     row_ids[table] += 1
 
 def _transform_json(db, table, total, quiet):
@@ -156,7 +161,7 @@ def _transform_json(db, table, total, quiet):
     cur = db.cursor()
     cur.execute('SELECT '+','.join([_sqlid(a) for a in str_attr_list])+' FROM '+_sqlid(table))
     if not quiet:
-        pbar = tqdm(desc='scanning', total=total, leave=False, smoothing=0, colour='#A9A9A9', bar_format='{desc} {bar}{postfix}')
+        pbar = tqdm(desc='scanning', total=total, leave=False, mininterval=1, smoothing=0, colour='#A9A9A9', bar_format='{desc} {bar}{postfix}')
         pbartotal = 0
     json_attrs = set()
     newattrs = {}
@@ -185,7 +190,7 @@ def _transform_json(db, table, total, quiet):
     cur = db.cursor()
     for t, attrs in newattrs.items():
         cur.execute('DROP TABLE IF EXISTS '+_sqlid(t))
-        cur.execute('CREATE TABLE '+_sqlid(t)+'(__id integer)')
+        cur.execute('CREATE TABLE '+_sqlid(t)+'(__id bigint)')
         cur.execute('ALTER TABLE '+_sqlid(t)+' ADD COLUMN id varchar')
         if 'ord' in attrs:
             cur.execute('ALTER TABLE '+_sqlid(t)+' ADD COLUMN ord integer')
@@ -206,7 +211,7 @@ def _transform_json(db, table, total, quiet):
     cur = db.cursor()
     cur.execute('SELECT '+','.join([_sqlid(a) for a in json_attr_list])+' FROM '+_sqlid(table)+'')
     if not quiet:
-        pbar = tqdm(desc='transforming', total=total, leave=False, smoothing=0, colour='#A9A9A9', bar_format='{desc} {bar}{postfix}')
+        pbar = tqdm(desc='transforming', total=total, leave=False, mininterval=1, smoothing=0, colour='#A9A9A9', bar_format='{desc} {bar}{postfix}')
         pbartotal = 0
     while True:
         row = cur.fetchone()
