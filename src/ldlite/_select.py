@@ -28,8 +28,10 @@ def _rstrip_lines(lines):
     return newlines
 
 def _format_value(value, dtype):
+    if len(value) > 1:
+        return value
     if dtype == 'bool' or dtype == 16:
-        return 't' if value == 'True' else 'f'
+        return ['t'] if value[0] == 'True' else ['f']
     else:
         return value
 
@@ -42,7 +44,7 @@ def _format_row(row, attrs, width):
     for i, data in enumerate(row):
         lines = ['']
         if data is not None:
-            lines = _rstrip_lines(str(data).splitlines())
+            lines = _format_value(_rstrip_lines(str(data).splitlines()), attrs[i][1])
         maxlen.append(_maxlen(lines))
         rowlines.append(lines)
         lines_len = len(lines)
@@ -51,7 +53,7 @@ def _format_row(row, attrs, width):
     # Write lines
     for i in range(0, maxlines):
         for j, lines in enumerate(rowlines):
-            lines_i = _format_value(lines[i], attrs[j][1]) if i < len(lines) else ''
+            lines_i = lines[i] if i < len(lines) else ''
             s += ' ' if j == 0 else '| '
             if attrs[j][1] == 'NUMBER' or attrs[j][1] == 23:
                 start = width[j] - len(lines_i)
