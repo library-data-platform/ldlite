@@ -39,16 +39,11 @@ db = ld.connect_db(filename='ldlite.db')
 # In addition to "g", this will create other tables having names beginning with
 # "g_j" where JSON data will be transformed to tables.
 
-ld.query(table='g', path='/groups', query='cql.allRecords=1 sortby id')
+_ = ld.query(table='g', path='/groups', query='cql.allRecords=1 sortby id')
 ```
 
-    ldlite: reading results
-    100%|████████████████████████████████████████████████████████| [00:00<00:00, 12.96it/s]
-    ldlite: transforming data
-    100%|███████████████████████████████████████████████████| 4/4 [00:00<00:00, 210.19it/s]
+    ldlite: querying: /groups
     ldlite: created tables: g, g_j, g_j_metadata
-
-    ['g', 'g_j', 'g_j_metadata']
 
 
 
@@ -142,16 +137,11 @@ ld.select(table='g_j_metadata', limit=10)
 ```python
 # We will also query user data and store the result in table "u" etc.
 
-ld.query(table='u', path='/users', query='cql.allRecords=1 sortby id')
+_ = ld.query(table='u', path='/users', query='cql.allRecords=1 sortby id')
 ```
 
-    ldlite: reading results
-    100%|███████████████████████████████████████████████████████| [00:00<00:00, 484.29it/s]
-    ldlite: transforming data
-    100%|███████████████████████████████████████████████| 336/336 [00:01<00:00, 206.59it/s]
+    ldlite: querying: /users
     ldlite: created tables: u, u_j, u_j_metadata, u_j_personal
-
-    ['u', 'u_j', 'u_j_metadata', 'u_j_personal']
 
 
 
@@ -162,9 +152,9 @@ ld.query(table='u', path='/users', query='cql.allRecords=1 sortby id')
 
 db.execute("""
     CREATE TABLE user_groups AS
-    SELECT u.id, u.username, g.group
-        FROM u_j AS u
-            JOIN g_j AS g ON u.patron_group = g.id;
+    SELECT u_j.id, u_j.username, g_j.group
+        FROM u_j
+            JOIN g_j ON u_j.patron_group = g_j.id;
     """)
 
 ld.select(table='user_groups', limit=10)
@@ -221,15 +211,8 @@ print(df)
 
 import matplotlib
 
-df.plot(kind='bar', x='user_group')
+_ = df.plot(kind='bar', x='user_group')
 ```
-
-
-
-
-    <AxesSubplot:xlabel='user_group'>
-
-
 
 
     
@@ -241,15 +224,8 @@ df.plot(kind='bar', x='user_group')
 ```python
 # Or a pie chart.
 
-df.plot(kind='pie', x='user_group', y='count')
+_ = df.plot(kind='pie', x='user_group', y='count')
 ```
-
-
-
-
-    <AxesSubplot:ylabel='count'>
-
-
 
 
     

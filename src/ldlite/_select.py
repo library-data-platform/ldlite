@@ -4,7 +4,8 @@ def _format_attr(attr, width):
     s = ''
     a = attr[0]
     len_a = len(a)
-    start = int(width / 2) - int(len_a / 2)
+    shift_left = 1 if (len_a % 2 == 1 and width % 2 == 0 and len_a < width) else 0
+    start = int(width / 2) - int(len_a / 2) - shift_left
     for i in range(0, start):
         s += ' '
     s += a
@@ -26,6 +27,12 @@ def _rstrip_lines(lines):
         newlines.append(l.rstrip())
     return newlines
 
+def _format_value(value, dtype):
+    if dtype == 'bool' or dtype == 16:
+        return 't' if value == 'True' else 'f'
+    else:
+        return value
+
 def _format_row(row, attrs, width):
     s = ''
     # Count number of lines
@@ -44,17 +51,15 @@ def _format_row(row, attrs, width):
     # Write lines
     for i in range(0, maxlines):
         for j, lines in enumerate(rowlines):
+            lines_i = _format_value(lines[i], attrs[j][1]) if i < len(lines) else ''
             s += ' ' if j == 0 else '| '
-            if attrs[j][1] == 'NUMBER':
-                start = width[j] - maxlen[j]
+            if attrs[j][1] == 'NUMBER' or attrs[j][1] == 23:
+                start = width[j] - len(lines_i)
             else:
                 start = 0
             for k in range(0, start):
                 s += ' '
-            if i < len(lines):
-                s += lines[i]
-            else:
-                s += ' '
+            s += lines_i
             for k in range(0, width[j] - start - maxlen[j]):
                 s += ' '
             s += ' '
