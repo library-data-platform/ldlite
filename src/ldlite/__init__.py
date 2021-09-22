@@ -132,7 +132,7 @@ class LDLite:
                              password='admin')
 
         """
-        self.okapi_url = url
+        self.okapi_url = url.rstrip('/')
         self.okapi_tenant = tenant
         self.okapi_user = user
         self.okapi_password = password
