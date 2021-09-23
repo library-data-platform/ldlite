@@ -132,7 +132,7 @@ class LDLite:
                              password='admin')
 
         """
-        self.okapi_url = url
+        self.okapi_url = url.rstrip('/')
         self.okapi_tenant = tenant
         self.okapi_user = user
         self.okapi_password = password
@@ -155,7 +155,9 @@ class LDLite:
             ld.query(table='g', path='/groups', query='cql.allRecords=1 sortby id')
 
         """
-        _autocommit(self.db, self.dbtype, True)
+        if not self._quiet:
+            print('ldlite: querying: '+path, file=sys.stderr)
+        _autocommit(self.db, self.dbtype, False)
         token = self._login()
         cur = self.db.cursor()
         cur.execute('DROP TABLE IF EXISTS '+table)
@@ -170,30 +172,40 @@ class LDLite:
         try:
             j = resp.json()
         except Exception as e:
-            raise RuntimeError(resp.text)
-        total_records = j['totalRecords']
+            raise RuntimeError('received server response: ' + resp.text) from e
+        if 'totalRecords' in j:
+            total_records = j['totalRecords']
+        else:
+            total_records = -1
         total = total_records if total_records is not None else 0
         if self._verbose:
             print('ldlite: estimated row count: '+str(total), file=sys.stderr)
         # Read result pages
-        if not self._quiet:
-            print('ldlite: querying: '+path, file=sys.stderr)
         count = 0
         page = 0
         if not self._quiet:
-            pbar = tqdm(desc='reading', total=total, leave=False, smoothing=0, colour='#A9A9A9', bar_format='{desc} {bar}{postfix}')
+            if total == -1:
+                pbar = tqdm(desc='reading', leave=False, mininterval=1, smoothing=0, colour='#A9A9A9', bar_format='{desc} {elapsed} {bar}{postfix}')
+            else:
+                pbar = tqdm(desc='reading', total=total, leave=False, mininterval=1, smoothing=0, colour='#A9A9A9', bar_format='{desc} {bar}{postfix}')
             pbartotal = 0
+        cur = self.db.cursor()
         while True:
             offset = page * self.page_size
             limit = self.page_size
             resp = requests.get(self.okapi_url+path+'?offset='+str(offset)+'&limit='+str(limit)+'&query='+query, headers=hdr)
-            j = resp.json()
-            data = list(j.values())[0]
+            try:
+                j = resp.json()
+            except Exception as e:
+                raise RuntimeError('received server response: ' + resp.text) from e
+            if isinstance(j, dict):
+                data = list(j.values())[0]
+            else:
+                data = j
             lendata = len(data)
             if lendata == 0:
                 break
             for d in data:
-                cur = self.db.cursor()
                 cur.execute('INSERT INTO '+table+' VALUES ('+str(count+1)+', \''+_escape_sql(json.dumps(d, indent=4))+'\')')
                 count += 1
                 if not self._quiet:
@@ -204,6 +216,7 @@ class LDLite:
                         pbartotal += 1
                         pbar.update(1)
             page += 1
+        self.db.commit()
         if not self._quiet:
             pbar.close()
         newtables = [table]
@@ -211,6 +224,7 @@ class LDLite:
             newtables += _transform_json(self.db, table, count, self._quiet)
         if not self._quiet:
             print('ldlite: created tables: '+', '.join(newtables), file=sys.stderr)
+        _autocommit(self.db, self.dbtype, True)
         return newtables
 
     def quiet(self, enable):
@@ -230,15 +244,18 @@ class LDLite:
             raise ValueError('"verbose" and "quiet" modes cannot both be enabled')
         self._quiet = enable
 
-    def select(self, table, limit=None):
+    def select(self, table, columns=None, limit=None):
         """Prints rows of a table in the analytic database.
 
-        By default all rows of *table* are printed to standard output.  If
-        *limit* is specified, then only up to *limit* rows are printed.
+        By default all rows and columns of *table* are printed to standard
+        output.  If *columns* is specified, then only the named columns are
+        printed.  If *limit* is specified, then only up to *limit* rows are
+        printed.
 
-        Example:
+        Examples:
 
-            ld.select(table='g')
+            ld.select(table='loans', limit=10)
+            ld.select(table='loans', columns=['id', 'item_id', 'loan_date'])
 
         """
         _autocommit(self.db, self.dbtype, True)
@@ -246,7 +263,7 @@ class LDLite:
         f = sys.stdout
         if self._verbose:
             print('ldlite: reading from table: '+table, file=sys.stderr)
-        _select(self.db, table, limit, f)
+        _select(self.db, table, columns, limit, f)
 
     def to_csv(self, filename, table):
         """Export a table in the analytic database to a CSV file.

@@ -1,16 +1,21 @@
 def _autocommit(db, dbtype, enable):
     if dbtype == 2:
+        db.rollback()
         db.set_session(autocommit=enable)
 
-def _sqlid(identifier):
-    return '"'+identifier+'"'
+def _sqlid(ident):
+    sp = ident.split('.')
+    if len(sp) == 1:
+        return '"'+ident+'"'
+    else:
+        return '.'.join(['"'+s+'"' for s in sp])
 
 def _escape_sql(sql):
-    n = ''
+    b = ''
     for c in sql:
         if c == '\'':
-            n += '\'\''
+            b += '\'\''
         else:
-            n += c
-    return n
+            b += c
+    return b
 

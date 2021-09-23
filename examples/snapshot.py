@@ -1,5 +1,6 @@
 # This script uses LDLite to extract sample data from folio-snapshot.
 
+import traceback
 import ldlite
 ld = ldlite.LDLite()
 ld.connect_okapi(url='https://folio-snapshot-okapi.dev.folio.org',
@@ -39,6 +40,15 @@ queries = [
         ('course_roles', '/coursereserves/roles', 'cql.allRecords=1 sortby id'),
         ('course_terms', '/coursereserves/terms', 'cql.allRecords=1 sortby id'),
         ('email_email', '/email', 'cql.allRecords=1 sortby id'),
+        ('erm_contacts', '/erm/contacts', 'cql.allRecords=1 sortby id'),
+        ('erm_counter_reports', '/counter-reports', 'cql.allRecords=1 sortby id'),
+        ('erm_entitlements', '/erm/entitlements', 'cql.allRecords=1 sortby id'),
+        ('erm_files', '/erm/files', 'cql.allRecords=1 sortby id'),
+        ('erm_licenses', '/licenses/licenses', 'cql.allRecords=1 sortby id'),
+        ('erm_org', '/erm/org', 'cql.allRecords=1 sortby id'),
+        ('erm_refdata', '/erm/refdata', 'cql.allRecords=1 sortby id'),
+        ('erm_resource', '/erm/resource', 'cql.allRecords=1 sortby id'),
+        ('erm_usage_data_providers', '/usage-data-providers', 'cql.allRecords=1 sortby id'),
         ('feesfines_accounts', '/accounts', 'cql.allRecords=1 sortby id'),
         ('feesfines_comments', '/comments', 'cql.allRecords=1 sortby id'),
         ('feesfines_feefineactions', '/feefineactions', 'cql.allRecords=1 sortby id'),
@@ -125,7 +135,11 @@ queries = [
 
 tables = []
 for q in queries:
-    tables += ld.query(table=q[0], path=q[1], query=q[2])
+    try:
+        t = ld.query(table=q[0], path=q[1], query=q[2])
+    except Exception as e:
+        traceback.print_exception(type(e), e, e.__traceback__)
+    tables += t
 print()
 print('Tables:')
 for t in tables:

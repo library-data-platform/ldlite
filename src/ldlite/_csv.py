@@ -1,5 +1,14 @@
 from ._sqlx import _sqlid
 
+def _escape_csv(field):
+    b = ''
+    for f in field:
+        if f == '"':
+            b += '""'
+        else:
+            b += f
+    return b
+
 def _to_csv(db, table, filename):
     cur = db.cursor()
     cur.execute('SELECT * FROM '+_sqlid(table))
@@ -16,6 +25,6 @@ def _to_csv(db, table, filename):
                 if cur.description[i][1] == 'NUMBER':
                     s += str(d)
                 else:
-                    s += '"'+str(d)+'"'
+                    s += '"'+_escape_csv(str(d))+'"'
             print(s, file=f)
 
