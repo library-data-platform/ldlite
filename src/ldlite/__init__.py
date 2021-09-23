@@ -189,6 +189,8 @@ class LDLite:
             else:
                 pbar = tqdm(desc='reading', total=total, leave=False, mininterval=1, smoothing=0, colour='#A9A9A9', bar_format='{desc} {bar}{postfix}')
             pbartotal = 0
+        cur = self.db.cursor()
+        cur.execute('BEGIN TRANSACTION')
         while True:
             offset = page * self.page_size
             limit = self.page_size
@@ -202,7 +204,6 @@ class LDLite:
             if lendata == 0:
                 break
             for d in data:
-                cur = self.db.cursor()
                 cur.execute('INSERT INTO '+table+' VALUES ('+str(count+1)+', \''+_escape_sql(json.dumps(d, indent=4))+'\')')
                 count += 1
                 if not self._quiet:
@@ -213,6 +214,7 @@ class LDLite:
                         pbartotal += 1
                         pbar.update(1)
             page += 1
+        cur.execute('COMMIT')
         if not self._quiet:
             pbar.close()
         newtables = [table]

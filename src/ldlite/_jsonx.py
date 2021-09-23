@@ -55,7 +55,7 @@ def _compile_attrs(table, jdict, newattrs, level):
             if k not in newattrs[table] or newattrs[table][k] != 'varchar':
                 newattrs[table][k] = (_decode_camel_case(k), 'varchar')
 
-def _transform_array_data(db, table, jarray, newattrs, level, record_id, row_ids, arrayattr):
+def _transform_array_data(curout, table, jarray, newattrs, level, record_id, row_ids, arrayattr):
     if table not in newattrs:
         return
     if level > 2:
@@ -65,7 +65,7 @@ def _transform_array_data(db, table, jarray, newattrs, level, record_id, row_ids
         if v is None:
             continue
         if isinstance(v, dict):
-            _transform_data(db, table, v, newattrs, level, record_id, row_ids, i+1)
+            _transform_data(curout, table, v, newattrs, level, record_id, row_ids, i+1)
             continue
         elif isinstance(v, list):
             continue
@@ -87,11 +87,10 @@ def _transform_array_data(db, table, jarray, newattrs, level, record_id, row_ids
                 value = '\''+_escape_sql(str(v))+'\''
         q = 'INSERT INTO '+_sqlid(table)+'(__id,id,ord,'+_sqlid(decoded_attr)
         q += ')VALUES(' + str(row_ids[table]) + ',\'' + record_id + '\',' + str(i+1) + ',' + value + ')'
-        cur = db.cursor()
-        cur.execute(q)
+        curout.execute(q)
         row_ids[table] += 1
 
-def _transform_data(db, table, jdict, newattrs, level, record_id, row_ids, ord_n):
+def _transform_data(curout, table, jdict, newattrs, level, record_id, row_ids, ord_n):
     if table not in newattrs:
         return
     if level > 2:
@@ -105,9 +104,9 @@ def _transform_data(db, table, jdict, newattrs, level, record_id, row_ids, ord_n
         if k is None:
             continue
         if isinstance(v, dict):
-            _transform_data(db, table+'_'+_decode_camel_case(k), v, newattrs, level+1, rec_id, row_ids, None)
+            _transform_data(curout, table+'_'+_decode_camel_case(k), v, newattrs, level+1, rec_id, row_ids, None)
         elif isinstance(v, list):
-            _transform_array_data(db, table+'_'+_decode_camel_case(k), v, newattrs, level+1, rec_id, row_ids, k)
+            _transform_array_data(curout, table+'_'+_decode_camel_case(k), v, newattrs, level+1, rec_id, row_ids, k)
         if k not in newattrs[table]:
             continue
         decoded_attr, dtype = newattrs[table][k]
@@ -136,9 +135,8 @@ def _transform_data(db, table, jdict, newattrs, level, record_id, row_ids, ord_n
     q += ')VALUES(' + str(row_ids[table]) + ',' + ord_val
     q += ','.join([kv[1] for kv in row])
     q += ')'
-    cur = db.cursor()
     try:
-        cur.execute(q)
+        curout.execute(q)
     except Exception as e:
         print()
         print('ldlite: '+str(e).strip()+': '+q, file=sys.stderr)
@@ -213,6 +211,8 @@ def _transform_json(db, table, total, quiet):
     if not quiet:
         pbar = tqdm(desc='transforming', total=total, leave=False, mininterval=1, smoothing=0, colour='#A9A9A9', bar_format='{desc} {bar}{postfix}')
         pbartotal = 0
+    curout = db.cursor()
+    curout.execute('BEGIN TRANSACTION')
     while True:
         row = cur.fetchone()
         if row == None:
@@ -227,10 +227,11 @@ def _transform_json(db, table, total, quiet):
                 jdict = json.loads(d)
             except ValueError as e:
                 continue
-            _transform_data(db, table+'_j', jdict, newattrs, 1, None, row_ids, None)
+            _transform_data(curout, table+'_j', jdict, newattrs, 1, None, row_ids, None)
         if not quiet:
             pbartotal += 1
             pbar.update(1)
+    curout.execute('COMMIT')
     if not quiet:
         pbar.close()
     return sorted(newattrs.keys())
