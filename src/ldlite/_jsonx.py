@@ -138,9 +138,7 @@ def _transform_data(curout, table, jdict, newattrs, level, record_id, row_ids, o
     try:
         curout.execute(q)
     except Exception as e:
-        print()
-        print('ldlite: '+str(e).strip()+': '+q, file=sys.stderr)
-        sys.exit(1)
+        raise RuntimeError('error executing SQL: ' + q) from e
     row_ids[table] += 1
 
 def _transform_json(db, table, total, quiet):
@@ -212,7 +210,6 @@ def _transform_json(db, table, total, quiet):
         pbar = tqdm(desc='transforming', total=total, leave=False, mininterval=1, smoothing=0, colour='#A9A9A9', bar_format='{desc} {bar}{postfix}')
         pbartotal = 0
     curout = db.cursor()
-    curout.execute('BEGIN TRANSACTION')
     while True:
         row = cur.fetchone()
         if row == None:
@@ -231,7 +228,7 @@ def _transform_json(db, table, total, quiet):
         if not quiet:
             pbartotal += 1
             pbar.update(1)
-    curout.execute('COMMIT')
+    db.commit()
     if not quiet:
         pbar.close()
     return sorted(newattrs.keys())

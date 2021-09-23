@@ -1,5 +1,6 @@
 def _autocommit(db, dbtype, enable):
     if dbtype == 2:
+        db.rollback()
         db.set_session(autocommit=enable)
 
 def _sqlid(ident):

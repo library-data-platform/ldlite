@@ -155,7 +155,9 @@ class LDLite:
             ld.query(table='g', path='/groups', query='cql.allRecords=1 sortby id')
 
         """
-        _autocommit(self.db, self.dbtype, True)
+        if not self._quiet:
+            print('ldlite: querying: '+path, file=sys.stderr)
+        _autocommit(self.db, self.dbtype, False)
         token = self._login()
         cur = self.db.cursor()
         cur.execute('DROP TABLE IF EXISTS '+table)
@@ -170,7 +172,7 @@ class LDLite:
         try:
             j = resp.json()
         except Exception as e:
-            raise RuntimeError(resp.text)
+            raise RuntimeError('received server response: ' + resp.text) from e
         if 'totalRecords' in j:
             total_records = j['totalRecords']
         else:
@@ -179,8 +181,6 @@ class LDLite:
         if self._verbose:
             print('ldlite: estimated row count: '+str(total), file=sys.stderr)
         # Read result pages
-        if not self._quiet:
-            print('ldlite: querying: '+path, file=sys.stderr)
         count = 0
         page = 0
         if not self._quiet:
@@ -190,12 +190,14 @@ class LDLite:
                 pbar = tqdm(desc='reading', total=total, leave=False, mininterval=1, smoothing=0, colour='#A9A9A9', bar_format='{desc} {bar}{postfix}')
             pbartotal = 0
         cur = self.db.cursor()
-        cur.execute('BEGIN TRANSACTION')
         while True:
             offset = page * self.page_size
             limit = self.page_size
             resp = requests.get(self.okapi_url+path+'?offset='+str(offset)+'&limit='+str(limit)+'&query='+query, headers=hdr)
-            j = resp.json()
+            try:
+                j = resp.json()
+            except Exception as e:
+                raise RuntimeError('received server response: ' + resp.text) from e
             if isinstance(j, dict):
                 data = list(j.values())[0]
             else:
@@ -214,7 +216,7 @@ class LDLite:
                         pbartotal += 1
                         pbar.update(1)
             page += 1
-        cur.execute('COMMIT')
+        self.db.commit()
         if not self._quiet:
             pbar.close()
         newtables = [table]
@@ -222,6 +224,7 @@ class LDLite:
             newtables += _transform_json(self.db, table, count, self._quiet)
         if not self._quiet:
             print('ldlite: created tables: '+', '.join(newtables), file=sys.stderr)
+        _autocommit(self.db, self.dbtype, True)
         return newtables
 
     def quiet(self, enable):
