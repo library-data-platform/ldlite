@@ -64,7 +64,7 @@ def _format_row(row, attrs, width):
             for k in range(0, start):
                 s += ' '
             s += lines_i
-            for k in range(0, width[j] - start - maxlen[j]):
+            for k in range(0, width[j] - start - len(lines_i)):
                 s += ' '
             s += ' '
         s += '\n'
