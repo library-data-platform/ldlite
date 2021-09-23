@@ -70,8 +70,12 @@ def _format_row(row, attrs, width):
         s += '\n'
     return s
 
-def _select(db, table, limit=None, file=sys.stdout):
-    query = 'SELECT * FROM '+_sqlid(table)
+def _select(db, table, columns, limit, file=sys.stdout):
+    if columns is None or columns == []:
+        cols = '*'
+    else:
+        cols = ','.join([_sqlid(c) for c in columns])
+    query = 'SELECT ' + cols + ' FROM ' + _sqlid(table)
     if limit is not None:
         query += ' LIMIT '+str(limit)
     cur = db.cursor()

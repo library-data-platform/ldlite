@@ -244,15 +244,18 @@ class LDLite:
             raise ValueError('"verbose" and "quiet" modes cannot both be enabled')
         self._quiet = enable
 
-    def select(self, table, limit=None):
+    def select(self, table, columns=None, limit=None):
         """Prints rows of a table in the analytic database.
 
-        By default all rows of *table* are printed to standard output.  If
-        *limit* is specified, then only up to *limit* rows are printed.
+        By default all rows and columns of *table* are printed to standard
+        output.  If *columns* is specified, then only the named columns are
+        printed.  If *limit* is specified, then only up to *limit* rows are
+        printed.
 
-        Example:
+        Examples:
 
-            ld.select(table='g')
+            ld.select(table='loans', limit=10)
+            ld.select(table='loans', columns=['id', 'item_id', 'loan_date'])
 
         """
         _autocommit(self.db, self.dbtype, True)
@@ -260,7 +263,7 @@ class LDLite:
         f = sys.stdout
         if self._verbose:
             print('ldlite: reading from table: '+table, file=sys.stderr)
-        _select(self.db, table, limit, f)
+        _select(self.db, table, columns, limit, f)
 
     def to_csv(self, filename, table):
         """Export a table in the analytic database to a CSV file.
