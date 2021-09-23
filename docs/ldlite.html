@@ -276,18 +276,21 @@ are not suppressed.</p>
 
         
             <span class="def">def</span>
-            <span class="name">select</span><span class="signature">(self, table, limit=None)</span>:
+            <span class="name">select</span><span class="signature">(self, table, columns=None, limit=None)</span>:
     </div>
 
         
             <div class="docstring"><p>Prints rows of a table in the analytic database.</p>
 
-<p>By default all rows of <em>table</em> are printed to standard output.  If
-<em>limit</em> is specified, then only up to <em>limit</em> rows are printed.</p>
+<p>By default all rows and columns of <em>table</em> are printed to standard
+output.  If <em>columns</em> is specified, then only the named columns are
+printed.  If <em>limit</em> is specified, then only up to <em>limit</em> rows are
+printed.</p>
 
-<p>Example:</p>
+<p>Examples:</p>
 
-<pre><code>ld.select(table='g')
+<pre><code>ld.select(table='loans', limit=10)
+ld.select(table='loans', columns=['id', 'item_id', 'loan_date'])
 </code></pre>
 </div>
 
