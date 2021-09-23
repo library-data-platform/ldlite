@@ -90,6 +90,8 @@ LDLite runs on Windows, macOS, and Linux.
 
 [API documentation](https://library-data-platform.github.io/ldlite/ldlite.html)
 
+New to Python?  [Try these learning resources.](https://www.python.org/about/gettingstarted/)
+
 
 Issues
 ------
