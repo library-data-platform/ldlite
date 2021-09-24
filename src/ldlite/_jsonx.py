@@ -141,7 +141,7 @@ def _transform_data(curout, table, jdict, newattrs, depth, record_id, row_ids, o
         raise RuntimeError('error executing SQL: ' + q) from e
     row_ids[table] += 1
 
-def _transform_json(db, table, total, quiet, max_depth):
+def _transform_json(db, table, total, quiet, max_depth, curout):
     # Scan all fields for JSON data
     # First get a list of the string attributes
     cur = db.cursor()
@@ -183,18 +183,17 @@ def _transform_json(db, table, total, quiet, max_depth):
     if not quiet:
         pbar.close()
     # Create table schemas
-    cur = db.cursor()
     for t, attrs in newattrs.items():
-        cur.execute('DROP TABLE IF EXISTS '+_sqlid(t))
-        cur.execute('CREATE TABLE '+_sqlid(t)+'(__id bigint)')
-        cur.execute('ALTER TABLE '+_sqlid(t)+' ADD COLUMN id varchar')
+        curout.execute('DROP TABLE IF EXISTS '+_sqlid(t))
+        curout.execute('CREATE TABLE '+_sqlid(t)+'(__id bigint)')
+        curout.execute('ALTER TABLE '+_sqlid(t)+' ADD COLUMN id varchar')
         if 'ord' in attrs:
-            cur.execute('ALTER TABLE '+_sqlid(t)+' ADD COLUMN ord integer')
+            curout.execute('ALTER TABLE '+_sqlid(t)+' ADD COLUMN ord integer')
         for attr in sorted(list(attrs)):
             if attr == 'id' or attr == 'ord':
                 continue
             decoded_attr, dtype = attrs[attr]
-            cur.execute('ALTER TABLE '+_sqlid(t)+' ADD COLUMN '+_sqlid(decoded_attr)+' '+dtype)
+            curout.execute('ALTER TABLE '+_sqlid(t)+' ADD COLUMN '+_sqlid(decoded_attr)+' '+dtype)
     # Set all row IDs to 1
     row_ids = {}
     for t in newattrs.keys():
@@ -209,7 +208,6 @@ def _transform_json(db, table, total, quiet, max_depth):
     if not quiet:
         pbar = tqdm(desc='transforming', total=total, leave=False, mininterval=1, smoothing=0, colour='#A9A9A9', bar_format='{desc} {bar}{postfix}')
         pbartotal = 0
-    curout = db.cursor()
     while True:
         row = cur.fetchone()
         if row == None:
@@ -228,7 +226,6 @@ def _transform_json(db, table, total, quiet, max_depth):
         if not quiet:
             pbartotal += 1
             pbar.update(1)
-    db.commit()
     if not quiet:
         pbar.close()
     return sorted(newattrs.keys())

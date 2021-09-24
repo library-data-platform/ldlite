@@ -181,10 +181,9 @@ class LDLite:
         if not self._quiet:
             print('ldlite: querying: '+path, file=sys.stderr)
         _autocommit(self.db, self.dbtype, False)
-        cur = self.db.cursor()
-        cur.execute('DROP TABLE IF EXISTS '+table)
-        cur = self.db.cursor()
-        cur.execute('CREATE TABLE '+table+'(__id integer, jsonb varchar)')
+        curout = self.db.cursor()
+        curout.execute('DROP TABLE IF EXISTS '+table)
+        curout.execute('CREATE TABLE '+table+'(__id integer, jsonb varchar)')
         # First get total number of records
         hdr = { 'X-Okapi-Tenant': self.okapi_tenant,
                 'X-Okapi-Token': self.login_token }
@@ -217,7 +216,6 @@ class LDLite:
             else:
                 pbar = tqdm(desc='reading', total=total, leave=False, mininterval=1, smoothing=0, colour='#A9A9A9', bar_format='{desc} {bar}{postfix}')
             pbartotal = 0
-        cur = self.db.cursor()
         while True:
             offset = page * self.page_size
             limit = self.page_size
@@ -234,7 +232,7 @@ class LDLite:
             if lendata == 0:
                 break
             for d in data:
-                cur.execute('INSERT INTO '+table+' VALUES ('+str(count+1)+', \''+_escape_sql(json.dumps(d, indent=4))+'\')')
+                curout.execute('INSERT INTO '+table+' VALUES ('+str(count+1)+', \''+_escape_sql(json.dumps(d, indent=4))+'\')')
                 count += 1
                 if not self._quiet:
                     if pbartotal + 1 > total:
@@ -249,7 +247,8 @@ class LDLite:
             pbar.close()
         newtables = [table]
         if json_depth > 0:
-            newtables += _transform_json(self.db, table, count, self._quiet, json_depth)
+            newtables += _transform_json(self.db, table, count, self._quiet, json_depth, curout)
+        self.db.commit()
         if not self._quiet:
             print('ldlite: created tables: '+', '.join(newtables), file=sys.stderr)
         _autocommit(self.db, self.dbtype, True)
