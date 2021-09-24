@@ -69,6 +69,7 @@ class LDLite:
         self._quiet = False
         self.dbtype = 0
         self.db = None
+        self.login_token = None
 
     def _set_page_size(self, page_size):
         self.page_size = page_size
@@ -117,7 +118,15 @@ class LDLite:
         data = { 'username': self.okapi_user,
                 'password': self.okapi_password }
         resp = requests.post(self.okapi_url+'/authn/login', headers=hdr, data=json.dumps(data))
-        return resp.headers['x-okapi-token']
+        self.login_token = resp.headers['x-okapi-token']
+
+    def _check_okapi(self):
+        if self.login_token is None:
+            raise RuntimeError('connection to okapi not configured: use connect_okapi()')
+
+    def _check_db(self):
+        if self.db is None:
+            raise RuntimeError('database connection not configured: use connect_db() or connect_db_postgresql()')
 
     def connect_okapi(self, url, tenant, user, password):
         """Connects to an Okapi instance.
@@ -137,8 +146,7 @@ class LDLite:
         self.okapi_tenant = tenant
         self.okapi_user = user
         self.okapi_password = password
-        # Test connection
-        _ = self._login()
+        self._login()
 
     def query(self, table, path, query, json_depth=3, transform=None):
         """Submits a CQL query to an Okapi module, and transforms and stores the result.
@@ -168,18 +176,25 @@ class LDLite:
             raise ValueError('transform is no longer supported: use json_depth=0 to disable JSON transformation')
         if json_depth is None or json_depth < 0 or json_depth > 4:
             raise ValueError('invalid value for json_depth: ' + str(json_depth))
+        self._check_okapi()
+        self._check_db()
         if not self._quiet:
             print('ldlite: querying: '+path, file=sys.stderr)
         _autocommit(self.db, self.dbtype, False)
-        token = self._login()
         cur = self.db.cursor()
         cur.execute('DROP TABLE IF EXISTS '+table)
         cur = self.db.cursor()
         cur.execute('CREATE TABLE '+table+'(__id integer, jsonb varchar)')
-        hdr = { 'X-Okapi-Tenant': self.okapi_tenant,
-                'X-Okapi-Token': token }
         # First get total number of records
+        hdr = { 'X-Okapi-Tenant': self.okapi_tenant,
+                'X-Okapi-Token': self.login_token }
         resp = requests.get(self.okapi_url+path+'?offset=0&limit=1&query='+query, headers=hdr)
+        if resp.status_code == 401:
+            # Retry
+            self._login()
+            hdr = { 'X-Okapi-Tenant': self.okapi_tenant,
+                    'X-Okapi-Token': self.login_token }
+            resp = requests.get(self.okapi_url+path+'?offset=0&limit=1&query='+query, headers=hdr)
         if resp.status_code != 200:
             resp.raise_for_status()
         try:
@@ -271,6 +286,7 @@ class LDLite:
             ld.select(table='loans', columns=['id', 'item_id', 'loan_date'])
 
         """
+        self._check_db()
         _autocommit(self.db, self.dbtype, True)
         # f = sys.stdout if file is None else file
         f = sys.stdout
@@ -288,6 +304,7 @@ class LDLite:
             ld.to_csv(table='g', filename='g.csv')
 
         """
+        self._check_db()
         _autocommit(self.db, self.dbtype, True)
         _to_csv(self.db, table, filename)
 
