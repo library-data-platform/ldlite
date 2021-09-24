@@ -7,15 +7,15 @@ from ._camelcase import _decode_camel_case
 from ._sqlx import _escape_sql
 from ._sqlx import _sqlid
 
-def _compile_array_attrs(table, jarray, newattrs, depth, arrayattr):
-    if depth > 3:
+def _compile_array_attrs(table, jarray, newattrs, depth, arrayattr, max_depth):
+    if depth > max_depth:
         return
     if table not in newattrs:
         newattrs[table] = {'id': ('id', 'varchar')}
     newattrs[table]['ord'] = ('ord', 'integer')
     for v in jarray:
         if isinstance(v, dict):
-            _compile_attrs(table, v, newattrs, depth)
+            _compile_attrs(table, v, newattrs, depth, max_depth)
         elif isinstance(v, list):
             continue
         elif isinstance(v, int):
@@ -29,16 +29,16 @@ def _compile_array_attrs(table, jarray, newattrs, depth, arrayattr):
             if arrayattr not in newattrs[table] or newattrs[table][arrayattr] != 'varchar':
                 newattrs[table][arrayattr] = (_decode_camel_case(arrayattr), 'varchar')
 
-def _compile_attrs(table, jdict, newattrs, depth):
-    if depth > 3:
+def _compile_attrs(table, jdict, newattrs, depth, max_depth):
+    if depth > max_depth:
         return
     for k, v in jdict.items():
         if k is None or v is None:
             continue
         if isinstance(v, dict):
-            _compile_attrs(table+'_'+_decode_camel_case(k), v, newattrs, depth+1)
+            _compile_attrs(table+'_'+_decode_camel_case(k), v, newattrs, depth+1, max_depth)
         elif isinstance(v, list):
-            _compile_array_attrs(table+'_'+_decode_camel_case(k), v, newattrs, depth+1, k)
+            _compile_array_attrs(table+'_'+_decode_camel_case(k), v, newattrs, depth+1, k, max_depth)
         elif isinstance(v, bool):
             if table not in newattrs:
                 newattrs[table] = {'id': ('id', 'varchar')}
@@ -55,17 +55,17 @@ def _compile_attrs(table, jdict, newattrs, depth):
             if k not in newattrs[table] or newattrs[table][k] != 'varchar':
                 newattrs[table][k] = (_decode_camel_case(k), 'varchar')
 
-def _transform_array_data(curout, table, jarray, newattrs, depth, record_id, row_ids, arrayattr):
+def _transform_array_data(curout, table, jarray, newattrs, depth, record_id, row_ids, arrayattr, max_depth):
     if table not in newattrs:
         return
-    if depth > 3:
+    if depth > max_depth:
         return
     value = None
     for i, v in enumerate(jarray):
         if v is None:
             continue
         if isinstance(v, dict):
-            _transform_data(curout, table, v, newattrs, depth, record_id, row_ids, i+1)
+            _transform_data(curout, table, v, newattrs, depth, record_id, row_ids, i+1, max_depth)
             continue
         elif isinstance(v, list):
             continue
@@ -90,10 +90,10 @@ def _transform_array_data(curout, table, jarray, newattrs, depth, record_id, row
         curout.execute(q)
         row_ids[table] += 1
 
-def _transform_data(curout, table, jdict, newattrs, depth, record_id, row_ids, ord_n):
+def _transform_data(curout, table, jdict, newattrs, depth, record_id, row_ids, ord_n, max_depth):
     if table not in newattrs:
         return
-    if depth > 3:
+    if depth > max_depth:
         return
     if record_id is None and 'id' in jdict:
         rec_id = jdict['id']
@@ -104,9 +104,9 @@ def _transform_data(curout, table, jdict, newattrs, depth, record_id, row_ids, o
         if k is None:
             continue
         if isinstance(v, dict):
-            _transform_data(curout, table+'_'+_decode_camel_case(k), v, newattrs, depth+1, rec_id, row_ids, None)
+            _transform_data(curout, table+'_'+_decode_camel_case(k), v, newattrs, depth+1, rec_id, row_ids, None, max_depth)
         elif isinstance(v, list):
-            _transform_array_data(curout, table+'_'+_decode_camel_case(k), v, newattrs, depth+1, rec_id, row_ids, k)
+            _transform_array_data(curout, table+'_'+_decode_camel_case(k), v, newattrs, depth+1, rec_id, row_ids, k, max_depth)
         if k not in newattrs[table]:
             continue
         decoded_attr, dtype = newattrs[table][k]
@@ -141,7 +141,7 @@ def _transform_data(curout, table, jdict, newattrs, depth, record_id, row_ids, o
         raise RuntimeError('error executing SQL: ' + q) from e
     row_ids[table] += 1
 
-def _transform_json(db, table, total, quiet):
+def _transform_json(db, table, total, quiet, max_depth):
     # Scan all fields for JSON data
     # First get a list of the string attributes
     cur = db.cursor()
@@ -176,7 +176,7 @@ def _transform_json(db, table, total, quiet):
             except ValueError as e:
                 continue
             json_attrs.add(str_attr_list[i])
-            _compile_attrs(table+'_j', jdict, newattrs, 1)
+            _compile_attrs(table+'_j', jdict, newattrs, 1, max_depth)
         if not quiet:
             pbartotal += 1
             pbar.update(1)
@@ -224,7 +224,7 @@ def _transform_json(db, table, total, quiet):
                 jdict = json.loads(d)
             except ValueError as e:
                 continue
-            _transform_data(curout, table+'_j', jdict, newattrs, 1, None, row_ids, None)
+            _transform_data(curout, table+'_j', jdict, newattrs, 1, None, row_ids, None, max_depth)
         if not quiet:
             pbartotal += 1
             pbar.update(1)

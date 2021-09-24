@@ -38,6 +38,7 @@ Example:
 
 import json
 import sys
+from warnings import warn
 
 import duckdb
 import pandas
@@ -139,22 +140,34 @@ class LDLite:
         # Test connection
         _ = self._login()
 
-    def query(self, table, path, query, transform=True):
+    def query(self, table, path, query, json_depth=3, transform=None):
         """Submits a CQL query to an Okapi module, and transforms and stores the result.
 
         The *path* parameter is the request path, and *query* is the CQL query.
-        The result is stored in *table* within the analytic database.  If
-        *transform* is True (the default), JSON data are transformed into one
-        or more tables that are created in addition to *table*.  New tables add
-        a suffix "_j" to *table* and overwrite any existing tables with the
-        same name.  A list of newly created tables is returned by this
-        function.
+        The result is stored in *table* within the analytic database.
+
+        By default JSON data are transformed into one or more tables that are
+        created in addition to *table*.  New tables overwrite any existing
+        tables having the same name.  If *json_depth* is specified within the
+        range 0 < *json_depth* < 5, this determines how far into nested JSON
+        data the transformation will descend.  (The default is 3.)  If
+        *json_depth* is specified as 0, JSON data are not transformed.
+
+        The *transform* parameter is no longer supported and will be removed in
+        the future.  Instead, specify *json_depth* as 0 to disable JSON
+        transformation.
+
+        A list of newly created tables is returned by this function.
 
         Example:
 
             ld.query(table='g', path='/groups', query='cql.allRecords=1 sortby id')
 
         """
+        if transform != None:
+            raise ValueError('transform is no longer supported: use json_depth=0 to disable JSON transformation')
+        if json_depth is None or json_depth < 0 or json_depth > 4:
+            raise ValueError('invalid value for json_depth: ' + str(json_depth))
         if not self._quiet:
             print('ldlite: querying: '+path, file=sys.stderr)
         _autocommit(self.db, self.dbtype, False)
@@ -220,8 +233,8 @@ class LDLite:
         if not self._quiet:
             pbar.close()
         newtables = [table]
-        if transform:
-            newtables += _transform_json(self.db, table, count, self._quiet)
+        if json_depth > 0:
+            newtables += _transform_json(self.db, table, count, self._quiet, json_depth)
         if not self._quiet:
             print('ldlite: created tables: '+', '.join(newtables), file=sys.stderr)
         _autocommit(self.db, self.dbtype, True)
