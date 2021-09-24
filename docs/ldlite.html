@@ -227,19 +227,27 @@ connection parameters.</p>
 
         
             <span class="def">def</span>
-            <span class="name">query</span><span class="signature">(self, table, path, query, transform=True)</span>:
+            <span class="name">query</span><span class="signature">(self, table, path, query, json_depth=3, transform=None)</span>:
     </div>
 
         
             <div class="docstring"><p>Submits a CQL query to an Okapi module, and transforms and stores the result.</p>
 
 <p>The <em>path</em> parameter is the request path, and <em>query</em> is the CQL query.
-The result is stored in <em>table</em> within the analytic database.  If
-<em>transform</em> is True (the default), JSON data are transformed into one
-or more tables that are created in addition to <em>table</em>.  New tables add
-a suffix "_j" to <em>table</em> and overwrite any existing tables with the
-same name.  A list of newly created tables is returned by this
-function.</p>
+The result is stored in <em>table</em> within the analytic database.</p>
+
+<p>By default JSON data are transformed into one or more tables that are
+created in addition to <em>table</em>.  New tables overwrite any existing
+tables having the same name.  If <em>json_depth</em> is specified within the
+range 0 &lt; <em>json_depth</em> &lt; 5, this determines how far into nested JSON
+data the transformation will descend.  (The default is 3.)  If
+<em>json_depth</em> is specified as 0, JSON data are not transformed.</p>
+
+<p>The <em>transform</em> parameter is no longer supported and will be removed in
+the future.  Instead, specify <em>json_depth</em> as 0 to disable JSON
+transformation.</p>
+
+<p>A list of newly created tables is returned by this function.</p>
 
 <p>Example:</p>
 
