@@ -10,6 +10,12 @@ def _sqlid(ident):
     else:
         return '.'.join(['"'+s+'"' for s in sp])
 
+def _varchar_type(dbtype):
+    if dbtype == 3:
+        return 'varchar(65535)'
+    else:
+        return 'varchar'
+
 def _encode_sql_str(dbtype, s):
     if dbtype == 2:
         b = 'E\''

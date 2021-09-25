@@ -6,6 +6,7 @@ from tqdm import tqdm
 from ._camelcase import _decode_camel_case
 from ._sqlx import _encode_sql_str
 from ._sqlx import _sqlid
+from ._sqlx import _varchar_type
 
 def _compile_array_attrs(table, jarray, newattrs, depth, arrayattr, max_depth):
     if depth > max_depth:
@@ -186,14 +187,16 @@ def _transform_json(db, dbtype, table, total, quiet, max_depth, curout):
     for t, attrs in newattrs.items():
         curout.execute('DROP TABLE IF EXISTS '+_sqlid(t))
         curout.execute('CREATE TABLE '+_sqlid(t)+'(__id bigint)')
-        curout.execute('ALTER TABLE '+_sqlid(t)+' ADD COLUMN id varchar')
+        curout.execute('ALTER TABLE '+_sqlid(t)+' ADD COLUMN id varchar(36)')
         if 'ord' in attrs:
             curout.execute('ALTER TABLE '+_sqlid(t)+' ADD COLUMN ord integer')
         for attr in sorted(list(attrs)):
             if attr == 'id' or attr == 'ord':
                 continue
             decoded_attr, dtype = attrs[attr]
-            curout.execute('ALTER TABLE '+_sqlid(t)+' ADD COLUMN '+_sqlid(decoded_attr)+' '+dtype)
+            if dtype == 'varchar':
+                dtype = _varchar_type(dbtype)
+            curout.execute('ALTER TABLE ' + _sqlid(t) + ' ADD COLUMN ' + _sqlid(decoded_attr) + ' ' + dtype)
     # Set all row IDs to 1
     row_ids = {}
     for t in newattrs.keys():

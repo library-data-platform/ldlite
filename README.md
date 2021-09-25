@@ -46,7 +46,8 @@ ldlite: created tables: g, g_j, g_j_metadata
 >>> _ = ld.query(table='u', path='/users', query='cql.allRecords=1 sortby id')
 ldlite: querying: /users
 ldlite: created tables: u, u_j, u_j_departments, u_j_metadata, u_j_personal, u_j_proxy_for
->>> _ = db.execute("""
+>>> cur = db.cursor()
+>>> _ = cur.execute("""
 ...     CREATE TABLE user_groups AS
 ...     SELECT u_j.id, u_j.username, g_j.group
 ...         FROM u_j
