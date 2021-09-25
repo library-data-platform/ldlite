@@ -49,7 +49,7 @@ from tqdm import tqdm
 from ._csv import _to_csv
 from ._jsonx import _transform_json
 from ._select import _select
-from ._sqlx import _escape_sql
+from ._sqlx import _encode_sql_str
 from ._sqlx import _autocommit
 from ._sqlx import _sqlid
 
@@ -76,7 +76,7 @@ class LDLite:
         self.page_size = page_size
 
     def connect_db(self, filename):
-        """Connects to an embedded analytic database.
+        """Connects to an embedded database for storing data.
 
         The *filename* specifies a local file containing the database or where
         the database will be created if it does not exist.  By default LDLite
@@ -94,12 +94,11 @@ class LDLite:
         return self.db
 
     def connect_db_postgresql(self, dsn):
-        """Connects to an analytic PostgreSQL database.
+        """Connects to a PostgreSQL database for storing data.
 
-        PostgreSQL can be used as an alternative to the default embedded
-        database.  The data source name is specified by *dsn*.  This function
-        returns a connection to the database which can be used to submit SQL
-        queries.  The returned connection defaults to autocommit mode.
+        The data source name is specified by *dsn*.  This function returns a
+        connection to the database which can be used to submit SQL queries.
+        The returned connection defaults to autocommit mode.
 
         Example:
 
@@ -107,6 +106,23 @@ class LDLite:
 
         """
         self.dbtype = 2
+        self.db = psycopg2.connect(dsn)
+        _autocommit(self.db, self.dbtype, True)
+        return self.db
+
+    def connect_db_redshift(self, dsn):
+        """Connects to a Redshift database for storing data.
+
+        The data source name is specified by *dsn*.  This function returns a
+        connection to the database which can be used to submit SQL queries.
+        The returned connection defaults to autocommit mode.
+
+        Example:
+
+            db = ld.connect_db_redshift(dsn='dbname=ldlite host=localhost user=ldlite')
+
+        """
+        self.dbtype = 3
         self.db = psycopg2.connect(dsn)
         _autocommit(self.db, self.dbtype, True)
         return self.db
@@ -143,6 +159,8 @@ class LDLite:
                              password='admin')
 
         """
+        if not url.startswith('https://'):
+            raise ValueError('url must begin with "https://"')
         self.okapi_url = url.rstrip('/')
         self.okapi_tenant = tenant
         self.okapi_user = user
@@ -238,7 +256,7 @@ class LDLite:
             if lendata == 0:
                 break
             for d in data:
-                curout.execute('INSERT INTO ' + _sqlid(table) + ' VALUES(' + str(count+1) + ',\'' + _escape_sql(json.dumps(d, indent=4)) + '\')')
+                curout.execute('INSERT INTO ' + _sqlid(table) + ' VALUES(' + str(count+1) + ',' + _encode_sql_str(self.dbtype, json.dumps(d, indent=4)) + ')')
                 count += 1
                 if not self._quiet:
                     if pbartotal + 1 > total:
@@ -253,7 +271,7 @@ class LDLite:
             pbar.close()
         newtables = [table]
         if json_depth > 0:
-            newtables += _transform_json(self.db, table, count, self._quiet, json_depth, curout)
+            newtables += _transform_json(self.db, self.dbtype, table, count, self._quiet, json_depth, curout)
         self.db.commit()
         if not self._quiet:
             print('ldlite: created tables: '+', '.join(newtables), file=sys.stderr)

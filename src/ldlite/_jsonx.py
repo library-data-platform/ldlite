@@ -4,7 +4,7 @@ import sys
 from tqdm import tqdm
 
 from ._camelcase import _decode_camel_case
-from ._sqlx import _escape_sql
+from ._sqlx import _encode_sql_str
 from ._sqlx import _sqlid
 
 def _compile_array_attrs(table, jarray, newattrs, depth, arrayattr, max_depth):
@@ -55,7 +55,7 @@ def _compile_attrs(table, jdict, newattrs, depth, max_depth):
             if k not in newattrs[table] or newattrs[table][k] != 'varchar':
                 newattrs[table][k] = (_decode_camel_case(k), 'varchar')
 
-def _transform_array_data(curout, table, jarray, newattrs, depth, record_id, row_ids, arrayattr, max_depth):
+def _transform_array_data(dbtype, curout, table, jarray, newattrs, depth, record_id, row_ids, arrayattr, max_depth):
     if table not in newattrs:
         return
     if depth > max_depth:
@@ -65,7 +65,7 @@ def _transform_array_data(curout, table, jarray, newattrs, depth, record_id, row
         if v is None:
             continue
         if isinstance(v, dict):
-            _transform_data(curout, table, v, newattrs, depth, record_id, row_ids, i+1, max_depth)
+            _transform_data(dbtype, curout, table, v, newattrs, depth, record_id, row_ids, i+1, max_depth)
             continue
         elif isinstance(v, list):
             continue
@@ -84,13 +84,13 @@ def _transform_array_data(curout, table, jarray, newattrs, depth, record_id, row
             if v is None:
                 value = 'NULL'
             else:
-                value = '\''+_escape_sql(str(v))+'\''
+                value = _encode_sql_str(dbtype, str(v))
         q = 'INSERT INTO '+_sqlid(table)+'(__id,id,ord,'+_sqlid(decoded_attr)
         q += ')VALUES(' + str(row_ids[table]) + ',\'' + record_id + '\',' + str(i+1) + ',' + value + ')'
         curout.execute(q)
         row_ids[table] += 1
 
-def _transform_data(curout, table, jdict, newattrs, depth, record_id, row_ids, ord_n, max_depth):
+def _transform_data(dbtype, curout, table, jdict, newattrs, depth, record_id, row_ids, ord_n, max_depth):
     if table not in newattrs:
         return
     if depth > max_depth:
@@ -104,9 +104,9 @@ def _transform_data(curout, table, jdict, newattrs, depth, record_id, row_ids, o
         if k is None:
             continue
         if isinstance(v, dict):
-            _transform_data(curout, table+'_'+_decode_camel_case(k), v, newattrs, depth+1, rec_id, row_ids, None, max_depth)
+            _transform_data(dbtype, curout, table+'_'+_decode_camel_case(k), v, newattrs, depth+1, rec_id, row_ids, None, max_depth)
         elif isinstance(v, list):
-            _transform_array_data(curout, table+'_'+_decode_camel_case(k), v, newattrs, depth+1, rec_id, row_ids, k, max_depth)
+            _transform_array_data(dbtype, curout, table+'_'+_decode_camel_case(k), v, newattrs, depth+1, rec_id, row_ids, k, max_depth)
         if k not in newattrs[table]:
             continue
         decoded_attr, dtype = newattrs[table][k]
@@ -124,7 +124,7 @@ def _transform_data(curout, table, jdict, newattrs, depth, record_id, row_ids, o
             if v is None:
                 rowdict[decoded_attr] = 'NULL'
             else:
-                rowdict[decoded_attr] = '\''+_escape_sql(str(v))+'\''
+                rowdict[decoded_attr] = _encode_sql_str(dbtype, str(v))
     row = list(rowdict.items())
     if 'id' not in jdict and record_id is not None:
         row.append( ('id', '\''+record_id+'\'') )
@@ -141,7 +141,7 @@ def _transform_data(curout, table, jdict, newattrs, depth, record_id, row_ids, o
         raise RuntimeError('error executing SQL: ' + q) from e
     row_ids[table] += 1
 
-def _transform_json(db, table, total, quiet, max_depth, curout):
+def _transform_json(db, dbtype, table, total, quiet, max_depth, curout):
     # Scan all fields for JSON data
     # First get a list of the string attributes
     cur = db.cursor()
@@ -222,7 +222,7 @@ def _transform_json(db, table, total, quiet, max_depth, curout):
                 jdict = json.loads(d)
             except ValueError as e:
                 continue
-            _transform_data(curout, table+'_j', jdict, newattrs, 1, None, row_ids, None, max_depth)
+            _transform_data(dbtype, curout, table+'_j', jdict, newattrs, 1, None, row_ids, None, max_depth)
         if not quiet:
             pbartotal += 1
             pbar.update(1)
