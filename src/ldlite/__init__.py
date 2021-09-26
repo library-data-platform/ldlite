@@ -48,9 +48,12 @@ from tqdm import tqdm
 
 from ._csv import _to_csv
 from ._jsonx import _transform_json
+from ._jsonx import _drop_json_tables
 from ._select import _select
-from ._sqlx import _escape_sql
+from ._sqlx import _encode_sql_str
 from ._sqlx import _autocommit
+from ._sqlx import _sqlid
+from ._sqlx import _varchar_type
 
 class LDLite:
 
@@ -75,7 +78,7 @@ class LDLite:
         self.page_size = page_size
 
     def connect_db(self, filename):
-        """Connects to an embedded analytic database.
+        """Connects to an embedded database for storing data.
 
         The *filename* specifies a local file containing the database or where
         the database will be created if it does not exist.  By default LDLite
@@ -93,12 +96,11 @@ class LDLite:
         return self.db
 
     def connect_db_postgresql(self, dsn):
-        """Connects to an analytic PostgreSQL database.
+        """Connects to a PostgreSQL database for storing data.
 
-        PostgreSQL can be used as an alternative to the default embedded
-        database.  The data source name is specified by *dsn*.  This function
-        returns a connection to the database which can be used to submit SQL
-        queries.  The returned connection defaults to autocommit mode.
+        The data source name is specified by *dsn*.  This function returns a
+        connection to the database which can be used to submit SQL queries.
+        The returned connection defaults to autocommit mode.
 
         Example:
 
@@ -106,6 +108,23 @@ class LDLite:
 
         """
         self.dbtype = 2
+        self.db = psycopg2.connect(dsn)
+        _autocommit(self.db, self.dbtype, True)
+        return self.db
+
+    def connect_db_redshift(self, dsn):
+        """Connects to a Redshift database for storing data.
+
+        The data source name is specified by *dsn*.  This function returns a
+        connection to the database which can be used to submit SQL queries.
+        The returned connection defaults to autocommit mode.
+
+        Example:
+
+            db = ld.connect_db_redshift(dsn='dbname=ldlite host=localhost user=ldlite')
+
+        """
+        self.dbtype = 3
         self.db = psycopg2.connect(dsn)
         _autocommit(self.db, self.dbtype, True)
         return self.db
@@ -142,11 +161,42 @@ class LDLite:
                              password='admin')
 
         """
+        if not url.startswith('https://'):
+            raise ValueError('url must begin with "https://"')
         self.okapi_url = url.rstrip('/')
         self.okapi_tenant = tenant
         self.okapi_user = user
         self.okapi_password = password
         self._login()
+
+    def drop_all_tables(self, table):
+        """Drops a specified table and any accompanying tables that were output from JSON transformation.
+
+        A table called *table*_jtable is used to retrieve the names of the
+        tables created by JSON transformation.
+
+        This function returns a list of all of the dropped tables.
+
+        Example:
+
+            ld.drop_all_tables('g')
+
+        """
+        schema_table = table.strip().split('.')
+        if len(schema_table) < 1 or len(schema_table) > 2:
+            raise ValueError('invalid table name: ' + table)
+        self._check_db()
+        _autocommit(self.db, self.dbtype, False)
+        cur = self.db.cursor()
+        try:
+            cur.execute('DROP TABLE IF EXISTS ' + _sqlid(table))
+        finally:
+            cur.close()
+        tables = [table]
+        tables += _drop_json_tables(self.db, self.dbtype, table)
+        self.db.commit()
+        _autocommit(self.db, self.dbtype, True)
+        return tables
 
     def query(self, table, path, query, json_depth=3, transform=None):
         """Submits a CQL query to an Okapi module, and transforms and stores the result.
@@ -174,6 +224,9 @@ class LDLite:
         """
         if transform != None:
             raise ValueError('transform is no longer supported: use json_depth=0 to disable JSON transformation')
+        schema_table = table.strip().split('.')
+        if len(schema_table) < 1 or len(schema_table) > 2:
+            raise ValueError('invalid table name: ' + table)
         if json_depth is None or json_depth < 0 or json_depth > 4:
             raise ValueError('invalid value for json_depth: ' + str(json_depth))
         self._check_okapi()
@@ -182,9 +235,13 @@ class LDLite:
             print('ldlite: querying: '+path, file=sys.stderr)
         _autocommit(self.db, self.dbtype, False)
         cur = self.db.cursor()
-        cur.execute('DROP TABLE IF EXISTS '+table)
-        cur = self.db.cursor()
-        cur.execute('CREATE TABLE '+table+'(__id integer, jsonb varchar)')
+        try:
+            if len(schema_table) == 2:
+                cur.execute('CREATE SCHEMA IF NOT EXISTS ' + _sqlid(schema_table[0]))
+            cur.execute('DROP TABLE IF EXISTS ' + _sqlid(table))
+            cur.execute('CREATE TABLE ' + _sqlid(table) + '(__id integer, jsonb ' + _varchar_type(self.dbtype) + ')')
+        finally:
+            cur.close()
         # First get total number of records
         hdr = { 'X-Okapi-Tenant': self.okapi_tenant,
                 'X-Okapi-Token': self.login_token }
@@ -218,38 +275,42 @@ class LDLite:
                 pbar = tqdm(desc='reading', total=total, leave=False, mininterval=1, smoothing=0, colour='#A9A9A9', bar_format='{desc} {bar}{postfix}')
             pbartotal = 0
         cur = self.db.cursor()
-        while True:
-            offset = page * self.page_size
-            limit = self.page_size
-            resp = requests.get(self.okapi_url+path+'?offset='+str(offset)+'&limit='+str(limit)+'&query='+query, headers=hdr)
-            try:
-                j = resp.json()
-            except Exception as e:
-                raise RuntimeError('received server response: ' + resp.text) from e
-            if isinstance(j, dict):
-                data = list(j.values())[0]
-            else:
-                data = j
-            lendata = len(data)
-            if lendata == 0:
-                break
-            for d in data:
-                cur.execute('INSERT INTO '+table+' VALUES ('+str(count+1)+', \''+_escape_sql(json.dumps(d, indent=4))+'\')')
-                count += 1
-                if not self._quiet:
-                    if pbartotal + 1 > total:
-                        pbartotal = total
-                        pbar.update(total - pbartotal)
-                    else:
-                        pbartotal += 1
-                        pbar.update(1)
-            page += 1
-        self.db.commit()
+        try:
+            while True:
+                offset = page * self.page_size
+                limit = self.page_size
+                resp = requests.get(self.okapi_url+path+'?offset='+str(offset)+'&limit='+str(limit)+'&query='+query, headers=hdr)
+                try:
+                    j = resp.json()
+                except Exception as e:
+                    raise RuntimeError('received server response: ' + resp.text) from e
+                if isinstance(j, dict):
+                    data = list(j.values())[0]
+                else:
+                    data = j
+                lendata = len(data)
+                if lendata == 0:
+                    break
+                for d in data:
+                    cur.execute('INSERT INTO ' + _sqlid(table) + ' VALUES(' + str(count+1) + ',' + _encode_sql_str(self.dbtype, json.dumps(d, indent=4)) + ')')
+                    count += 1
+                    if not self._quiet:
+                        if pbartotal + 1 > total:
+                            pbartotal = total
+                            pbar.update(total - pbartotal)
+                        else:
+                            pbartotal += 1
+                            pbar.update(1)
+                page += 1
+        finally:
+            cur.close()
         if not self._quiet:
             pbar.close()
+        deleted_tables = set(_drop_json_tables(self.db, self.dbtype, table))
         newtables = [table]
         if json_depth > 0:
-            newtables += _transform_json(self.db, table, count, self._quiet, json_depth)
+            newtables += _transform_json(self.db, self.dbtype, table, count, self._quiet, json_depth, deleted_tables)
+        self.db.commit()
         if not self._quiet:
             print('ldlite: created tables: '+', '.join(newtables), file=sys.stderr)
         _autocommit(self.db, self.dbtype, True)
@@ -287,12 +348,15 @@ class LDLite:
 
         """
         self._check_db()
-        _autocommit(self.db, self.dbtype, True)
         # f = sys.stdout if file is None else file
         f = sys.stdout
         if self._verbose:
             print('ldlite: reading from table: '+table, file=sys.stderr)
-        _select(self.db, table, columns, limit, f)
+        _autocommit(self.db, self.dbtype, False)
+        _select(self.db, self.dbtype, table, columns, limit, f)
+        if self.dbtype == 2 or self.dbtype == 3:
+            self.db.rollback()
+        _autocommit(self.db, self.dbtype, True)
 
     def to_csv(self, filename, table):
         """Export a table in the analytic database to a CSV file.
@@ -305,8 +369,11 @@ class LDLite:
 
         """
         self._check_db()
+        _autocommit(self.db, self.dbtype, False)
+        _to_csv(self.db, self.dbtype, table, filename)
+        if self.dbtype == 2 or self.dbtype == 3:
+            self.db.rollback()
         _autocommit(self.db, self.dbtype, True)
-        _to_csv(self.db, table, filename)
 
     def _verbose(self, enable):
         """Configures verbose output.

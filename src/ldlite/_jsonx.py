@@ -4,8 +4,41 @@ import sys
 from tqdm import tqdm
 
 from ._camelcase import _decode_camel_case
-from ._sqlx import _escape_sql
+from ._sqlx import _server_cursor
+from ._sqlx import _encode_sql_str
 from ._sqlx import _sqlid
+from ._sqlx import _varchar_type
+
+def _jtable(table):
+    return table + '_jtable'
+
+def _drop_json_tables(db, dbtype, table):
+    jtable_sql = _sqlid(_jtable(table))
+    tables = []
+    cur = db.cursor()
+    try:
+        cur.execute('CREATE TABLE IF NOT EXISTS ' + jtable_sql + '(table_name ' + _varchar_type(dbtype) + ' NOT NULL)')
+    finally:
+        cur.close()
+    cur = db.cursor()
+    try:
+        cur.execute('SELECT table_name FROM ' + jtable_sql)
+        while True:
+            row = cur.fetchone()
+            if row == None:
+                break
+            t = row[0]
+            tables.append(t)
+            cur2 = db.cursor()
+            cur2.execute('DROP TABLE IF EXISTS ' + _sqlid(t))
+    finally:
+        cur.close()
+    cur = db.cursor()
+    try:
+        cur.execute('DROP TABLE IF EXISTS ' + jtable_sql)
+    finally:
+        cur.close()
+    return tables
 
 def _compile_array_attrs(table, jarray, newattrs, depth, arrayattr, max_depth):
     if depth > max_depth:
@@ -55,7 +88,7 @@ def _compile_attrs(table, jdict, newattrs, depth, max_depth):
             if k not in newattrs[table] or newattrs[table][k] != 'varchar':
                 newattrs[table][k] = (_decode_camel_case(k), 'varchar')
 
-def _transform_array_data(curout, table, jarray, newattrs, depth, record_id, row_ids, arrayattr, max_depth):
+def _transform_array_data(dbtype, cur, table, jarray, newattrs, depth, record_id, row_ids, arrayattr, max_depth):
     if table not in newattrs:
         return
     if depth > max_depth:
@@ -65,7 +98,7 @@ def _transform_array_data(curout, table, jarray, newattrs, depth, record_id, row
         if v is None:
             continue
         if isinstance(v, dict):
-            _transform_data(curout, table, v, newattrs, depth, record_id, row_ids, i+1, max_depth)
+            _transform_data(dbtype, cur, table, v, newattrs, depth, record_id, row_ids, i+1, max_depth)
             continue
         elif isinstance(v, list):
             continue
@@ -84,13 +117,16 @@ def _transform_array_data(curout, table, jarray, newattrs, depth, record_id, row
             if v is None:
                 value = 'NULL'
             else:
-                value = '\''+_escape_sql(str(v))+'\''
+                value = _encode_sql_str(dbtype, str(v))
         q = 'INSERT INTO '+_sqlid(table)+'(__id,id,ord,'+_sqlid(decoded_attr)
         q += ')VALUES(' + str(row_ids[table]) + ',\'' + record_id + '\',' + str(i+1) + ',' + value + ')'
-        curout.execute(q)
+        try:
+            cur.execute(q)
+        except Exception as e:
+            raise RuntimeError('error executing SQL: ' + q) from e
         row_ids[table] += 1
 
-def _transform_data(curout, table, jdict, newattrs, depth, record_id, row_ids, ord_n, max_depth):
+def _transform_data(dbtype, cur, table, jdict, newattrs, depth, record_id, row_ids, ord_n, max_depth):
     if table not in newattrs:
         return
     if depth > max_depth:
@@ -104,9 +140,9 @@ def _transform_data(curout, table, jdict, newattrs, depth, record_id, row_ids, o
         if k is None:
             continue
         if isinstance(v, dict):
-            _transform_data(curout, table+'_'+_decode_camel_case(k), v, newattrs, depth+1, rec_id, row_ids, None, max_depth)
+            _transform_data(dbtype, cur, table+'_'+_decode_camel_case(k), v, newattrs, depth+1, rec_id, row_ids, None, max_depth)
         elif isinstance(v, list):
-            _transform_array_data(curout, table+'_'+_decode_camel_case(k), v, newattrs, depth+1, rec_id, row_ids, k, max_depth)
+            _transform_array_data(dbtype, cur, table+'_'+_decode_camel_case(k), v, newattrs, depth+1, rec_id, row_ids, k, max_depth)
         if k not in newattrs[table]:
             continue
         decoded_attr, dtype = newattrs[table][k]
@@ -124,7 +160,7 @@ def _transform_data(curout, table, jdict, newattrs, depth, record_id, row_ids, o
             if v is None:
                 rowdict[decoded_attr] = 'NULL'
             else:
-                rowdict[decoded_attr] = '\''+_escape_sql(str(v))+'\''
+                rowdict[decoded_attr] = _encode_sql_str(dbtype, str(v))
     row = list(rowdict.items())
     if 'id' not in jdict and record_id is not None:
         row.append( ('id', '\''+record_id+'\'') )
@@ -136,65 +172,77 @@ def _transform_data(curout, table, jdict, newattrs, depth, record_id, row_ids, o
     q += ','.join([kv[1] for kv in row])
     q += ')'
     try:
-        curout.execute(q)
+        cur.execute(q)
     except Exception as e:
         raise RuntimeError('error executing SQL: ' + q) from e
     row_ids[table] += 1
 
-def _transform_json(db, table, total, quiet, max_depth):
+def _transform_json(db, dbtype, table, total, quiet, max_depth, deleted_tables):
     # Scan all fields for JSON data
     # First get a list of the string attributes
     cur = db.cursor()
-    cur.execute('SELECT * FROM '+_sqlid(table)+' LIMIT 1')
-    str_attrs = set()
-    for a in cur.description:
-        if a[1] == 'STRING' or a[1] == 1043:
-            str_attrs.add(a[0])
+    try:
+        cur.execute('SELECT * FROM ' + _sqlid(table) + ' LIMIT 1')
+        str_attrs = set()
+        for a in cur.description:
+            if a[1] == 'STRING' or a[1] == 1043:
+                str_attrs.add(a[0])
+    finally:
+        cur.close()
     # Scan data for JSON objects
     str_attr_list = list(str_attrs)
     if len(str_attr_list) == 0:
         return []
-    cur = db.cursor()
-    cur.execute('SELECT '+','.join([_sqlid(a) for a in str_attr_list])+' FROM '+_sqlid(table))
-    if not quiet:
-        pbar = tqdm(desc='scanning', total=total, leave=False, mininterval=1, smoothing=0, colour='#A9A9A9', bar_format='{desc} {bar}{postfix}')
-        pbartotal = 0
-    json_attrs = set()
-    newattrs = {}
-    while True:
-        row = cur.fetchone()
-        if row == None:
-            break
-        for i, data in enumerate(row):
-            if data is None:
-                continue
-            d = data.strip()
-            if len(d) == 0 or d[0] != '{':
-                continue
-            try:
-                jdict = json.loads(d)
-            except ValueError as e:
-                continue
-            json_attrs.add(str_attr_list[i])
-            _compile_attrs(table+'_j', jdict, newattrs, 1, max_depth)
+    cur = _server_cursor(db, dbtype)
+    try:
+        cur.execute('SELECT '+','.join([_sqlid(a) for a in str_attr_list])+' FROM '+_sqlid(table))
         if not quiet:
-            pbartotal += 1
-            pbar.update(1)
-    if not quiet:
-        pbar.close()
+            pbar = tqdm(desc='scanning', total=total, leave=False, mininterval=1, smoothing=0, colour='#A9A9A9', bar_format='{desc} {bar}{postfix}')
+            pbartotal = 0
+        json_attrs = set()
+        newattrs = {}
+        while True:
+            row = cur.fetchone()
+            if row == None:
+                break
+            for i, data in enumerate(row):
+                if data is None:
+                    continue
+                d = data.strip()
+                if len(d) == 0 or d[0] != '{':
+                    continue
+                try:
+                    jdict = json.loads(d)
+                except ValueError as e:
+                    continue
+                json_attrs.add(str_attr_list[i])
+                _compile_attrs(table+'_j', jdict, newattrs, 1, max_depth)
+            if not quiet:
+                pbartotal += 1
+                pbar.update(1)
+        if not quiet:
+            pbar.close()
+    finally:
+        cur.close()
     # Create table schemas
     cur = db.cursor()
-    for t, attrs in newattrs.items():
-        cur.execute('DROP TABLE IF EXISTS '+_sqlid(t))
-        cur.execute('CREATE TABLE '+_sqlid(t)+'(__id bigint)')
-        cur.execute('ALTER TABLE '+_sqlid(t)+' ADD COLUMN id varchar')
-        if 'ord' in attrs:
-            cur.execute('ALTER TABLE '+_sqlid(t)+' ADD COLUMN ord integer')
-        for attr in sorted(list(attrs)):
-            if attr == 'id' or attr == 'ord':
-                continue
-            decoded_attr, dtype = attrs[attr]
-            cur.execute('ALTER TABLE '+_sqlid(t)+' ADD COLUMN '+_sqlid(decoded_attr)+' '+dtype)
+    try:
+        for t, attrs in newattrs.items():
+            if t not in deleted_tables:
+                cur.execute('DROP TABLE IF EXISTS ' + _sqlid(t))
+            cur.execute('CREATE TABLE ' + _sqlid(t) + '(__id bigint)')
+            cur.execute('ALTER TABLE ' + _sqlid(t) + ' ADD COLUMN id varchar(36)')
+            if 'ord' in attrs:
+                cur.execute('ALTER TABLE ' + _sqlid(t) + ' ADD COLUMN ord integer')
+            for attr in sorted(list(attrs)):
+                if attr == 'id' or attr == 'ord':
+                    continue
+                decoded_attr, dtype = attrs[attr]
+                if dtype == 'varchar':
+                    dtype = _varchar_type(dbtype)
+                cur.execute('ALTER TABLE ' + _sqlid(t) + ' ADD COLUMN ' + _sqlid(decoded_attr) + ' ' + dtype)
+    finally:
+        cur.close()
     # Set all row IDs to 1
     row_ids = {}
     for t in newattrs.keys():
@@ -204,32 +252,42 @@ def _transform_json(db, table, total, quiet, max_depth):
     json_attr_list = list(json_attrs)
     if len(json_attr_list) == 0:
         return []
-    cur = db.cursor()
-    cur.execute('SELECT '+','.join([_sqlid(a) for a in json_attr_list])+' FROM '+_sqlid(table)+'')
-    if not quiet:
-        pbar = tqdm(desc='transforming', total=total, leave=False, mininterval=1, smoothing=0, colour='#A9A9A9', bar_format='{desc} {bar}{postfix}')
-        pbartotal = 0
-    curout = db.cursor()
-    while True:
-        row = cur.fetchone()
-        if row == None:
-            break
-        for i, data in enumerate(row):
-            if data is None:
-                continue
-            d = data.strip()
-            if len(d) == 0 or d[0] != '{':
-                continue
-            try:
-                jdict = json.loads(d)
-            except ValueError as e:
-                continue
-            _transform_data(curout, table+'_j', jdict, newattrs, 1, None, row_ids, None, max_depth)
+    cur = _server_cursor(db, dbtype)
+    try:
+        cur.execute('SELECT '+','.join([_sqlid(a) for a in json_attr_list]) + ' FROM ' + _sqlid(table))
         if not quiet:
-            pbartotal += 1
-            pbar.update(1)
-    db.commit()
-    if not quiet:
-        pbar.close()
+            pbar = tqdm(desc='transforming', total=total, leave=False, mininterval=1, smoothing=0, colour='#A9A9A9', bar_format='{desc} {bar}{postfix}')
+            pbartotal = 0
+        cur2 = db.cursor()
+        while True:
+            row = cur.fetchone()
+            if row == None:
+                break
+            for i, data in enumerate(row):
+                if data is None:
+                    continue
+                d = data.strip()
+                if len(d) == 0 or d[0] != '{':
+                    continue
+                try:
+                    jdict = json.loads(d)
+                except ValueError as e:
+                    continue
+                _transform_data(dbtype, cur2, table+'_j', jdict, newattrs, 1, None, row_ids, None, max_depth)
+            if not quiet:
+                pbartotal += 1
+                pbar.update(1)
+        if not quiet:
+            pbar.close()
+    finally:
+        cur.close()
+    jtable_sql = _sqlid(_jtable(table))
+    cur = db.cursor()
+    try:
+        cur.execute('CREATE TABLE ' + jtable_sql + '(table_name ' + _varchar_type(dbtype) + ' NOT NULL)')
+        for t in newattrs.keys():
+            cur.execute('INSERT INTO ' + jtable_sql + ' VALUES(' + _encode_sql_str(dbtype, t) + ')')
+    finally:
+        cur.close()
     return sorted(newattrs.keys())
 

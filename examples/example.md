@@ -150,7 +150,9 @@ _ = ld.query(table='u', path='/users', query='cql.allRecords=1 sortby id')
 # their associated group.  The result will be stored in a new table
 # "user_groups".
 
-db.execute("""
+cur = db.cursor()
+
+cur.execute("""
     CREATE TABLE user_groups AS
     SELECT u_j.id, u_j.username, g_j.group
         FROM u_j
@@ -187,7 +189,7 @@ ld.to_csv(table='user_groups', filename='user_groups.csv')
 ```python
 # We can look at the distribution of groups.
 
-df = db.execute("""
+df = cur.execute("""
     SELECT coalesce("group", 'unknown') AS user_group,
        count(*) AS count
     FROM user_groups
