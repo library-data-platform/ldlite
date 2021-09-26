@@ -188,7 +188,10 @@ class LDLite:
         self._check_db()
         _autocommit(self.db, self.dbtype, False)
         cur = self.db.cursor()
-        cur.execute('DROP TABLE IF EXISTS ' + _sqlid(table))
+        try:
+            cur.execute('DROP TABLE IF EXISTS ' + _sqlid(table))
+        finally:
+            cur.close()
         tables = [table]
         tables += _drop_json_tables(self.db, self.dbtype, table)
         self.db.commit()
@@ -232,10 +235,13 @@ class LDLite:
             print('ldlite: querying: '+path, file=sys.stderr)
         _autocommit(self.db, self.dbtype, False)
         cur = self.db.cursor()
-        if len(schema_table) == 2:
-            cur.execute('CREATE SCHEMA IF NOT EXISTS ' + _sqlid(schema_table[0]))
-        cur.execute('DROP TABLE IF EXISTS ' + _sqlid(table))
-        cur.execute('CREATE TABLE ' + _sqlid(table) + '(__id integer, jsonb ' + _varchar_type(self.dbtype) + ')')
+        try:
+            if len(schema_table) == 2:
+                cur.execute('CREATE SCHEMA IF NOT EXISTS ' + _sqlid(schema_table[0]))
+            cur.execute('DROP TABLE IF EXISTS ' + _sqlid(table))
+            cur.execute('CREATE TABLE ' + _sqlid(table) + '(__id integer, jsonb ' + _varchar_type(self.dbtype) + ')')
+        finally:
+            cur.close()
         # First get total number of records
         hdr = { 'X-Okapi-Tenant': self.okapi_tenant,
                 'X-Okapi-Token': self.login_token }
@@ -269,32 +275,35 @@ class LDLite:
                 pbar = tqdm(desc='reading', total=total, leave=False, mininterval=1, smoothing=0, colour='#A9A9A9', bar_format='{desc} {bar}{postfix}')
             pbartotal = 0
         cur = self.db.cursor()
-        while True:
-            offset = page * self.page_size
-            limit = self.page_size
-            resp = requests.get(self.okapi_url+path+'?offset='+str(offset)+'&limit='+str(limit)+'&query='+query, headers=hdr)
-            try:
-                j = resp.json()
-            except Exception as e:
-                raise RuntimeError('received server response: ' + resp.text) from e
-            if isinstance(j, dict):
-                data = list(j.values())[0]
-            else:
-                data = j
-            lendata = len(data)
-            if lendata == 0:
-                break
-            for d in data:
-                cur.execute('INSERT INTO ' + _sqlid(table) + ' VALUES(' + str(count+1) + ',' + _encode_sql_str(self.dbtype, json.dumps(d, indent=4)) + ')')
-                count += 1
-                if not self._quiet:
-                    if pbartotal + 1 > total:
-                        pbartotal = total
-                        pbar.update(total - pbartotal)
-                    else:
-                        pbartotal += 1
-                        pbar.update(1)
-            page += 1
+        try:
+            while True:
+                offset = page * self.page_size
+                limit = self.page_size
+                resp = requests.get(self.okapi_url+path+'?offset='+str(offset)+'&limit='+str(limit)+'&query='+query, headers=hdr)
+                try:
+                    j = resp.json()
+                except Exception as e:
+                    raise RuntimeError('received server response: ' + resp.text) from e
+                if isinstance(j, dict):
+                    data = list(j.values())[0]
+                else:
+                    data = j
+                lendata = len(data)
+                if lendata == 0:
+                    break
+                for d in data:
+                    cur.execute('INSERT INTO ' + _sqlid(table) + ' VALUES(' + str(count+1) + ',' + _encode_sql_str(self.dbtype, json.dumps(d, indent=4)) + ')')
+                    count += 1
+                    if not self._quiet:
+                        if pbartotal + 1 > total:
+                            pbartotal = total
+                            pbar.update(total - pbartotal)
+                        else:
+                            pbartotal += 1
+                            pbar.update(1)
+                page += 1
+        finally:
+            cur.close()
         self.db.commit()
         if not self._quiet:
             pbar.close()
@@ -339,12 +348,15 @@ class LDLite:
 
         """
         self._check_db()
-        _autocommit(self.db, self.dbtype, True)
         # f = sys.stdout if file is None else file
         f = sys.stdout
         if self._verbose:
             print('ldlite: reading from table: '+table, file=sys.stderr)
-        _select(self.db, table, columns, limit, f)
+        _autocommit(self.db, self.dbtype, False)
+        _select(self.db, self.dbtype, table, columns, limit, f)
+        if self.dbtype == 2 or self.dbtype == 3:
+            self.db.rollback()
+        _autocommit(self.db, self.dbtype, True)
 
     def to_csv(self, filename, table):
         """Export a table in the analytic database to a CSV file.
@@ -357,8 +369,11 @@ class LDLite:
 
         """
         self._check_db()
+        _autocommit(self.db, self.dbtype, False)
+        _to_csv(self.db, self.dbtype, table, filename)
+        if self.dbtype == 2 or self.dbtype == 3:
+            self.db.rollback()
         _autocommit(self.db, self.dbtype, True)
-        _to_csv(self.db, table, filename)
 
     def _verbose(self, enable):
         """Configures verbose output.

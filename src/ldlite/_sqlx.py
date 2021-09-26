@@ -3,6 +3,12 @@ def _autocommit(db, dbtype, enable):
         db.rollback()
         db.set_session(autocommit=enable)
 
+def _server_cursor(db, dbtype):
+    if dbtype == 2 or dbtype == 3:
+        return db.cursor(name='ldlite')
+    else:
+        return db.cursor()
+
 def _sqlid(ident):
     sp = ident.split('.')
     if len(sp) == 1:

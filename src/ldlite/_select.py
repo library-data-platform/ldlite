@@ -1,5 +1,6 @@
 import sys
 
+from ._sqlx import _server_cursor
 from ._sqlx import _sqlid
 
 def _format_attr(attr, width):
@@ -70,61 +71,74 @@ def _format_row(row, attrs, width):
         s += '\n'
     return s
 
-def _select(db, table, columns, limit, file=sys.stdout):
+def _select(db, dbtype, table, columns, limit, file=sys.stdout):
     if columns is None or columns == []:
         cols = '*'
     else:
         cols = ','.join([_sqlid(c) for c in columns])
     query = 'SELECT ' + cols + ' FROM ' + _sqlid(table)
+    # Get attributes
+    cur = db.cursor()
+    try:
+        cur.execute(query + ' LIMIT 1')
+        attrs = []
+        width = []
+        for a in cur.description:
+            attrs.append( (a[0], a[1]) )
+            width.append(len(a[0]))
+        ncols = len(attrs)
+    finally:
+        cur.close()
+    # Scan
     if limit is not None:
         query += ' LIMIT '+str(limit)
-    cur = db.cursor()
-    cur.execute(query)
-    attrs = []
-    width = []
-    for a in cur.description:
-        attrs.append( (a[0], a[1]) )
-        width.append(len(a[0]))
-    ncols = len(attrs)
-    while True:
-        row = cur.fetchone()
-        if row is None:
-            break
-        for i, v in enumerate(row):
-            lines = ['']
-            if v is not None:
-                lines = str(v).splitlines()
-            for j, l in enumerate(lines):
-                len_l = len(l.rstrip())
-                if len_l > width[i]:
-                    width[i] = len_l
-    cur = db.cursor()
-    cur.execute(query)
-    # Attribute names
-    s = ''
-    for i, v in enumerate(attrs):
-        s += ' ' if i == 0 else '| '
-        s += _format_attr(attrs[i], width[i])
-        s += ' '
-    print(s, file=file)
-    # Header bar
-    s = ''
-    for i in range(0, ncols):
-        s += '' if i == 0 else '+'
-        s += '-'
-        for j in range(0, width[i]):
+    cur = _server_cursor(db, dbtype)
+    try:
+        cur.execute(query)
+        while True:
+            row = cur.fetchone()
+            if row is None:
+                break
+            for i, v in enumerate(row):
+                lines = ['']
+                if v is not None:
+                    lines = str(v).splitlines()
+                for j, l in enumerate(lines):
+                    len_l = len(l.rstrip())
+                    if len_l > width[i]:
+                        width[i] = len_l
+    finally:
+        cur.close()
+    cur = _server_cursor(db, dbtype)
+    try:
+        cur.execute(query)
+        # Attribute names
+        s = ''
+        for i, v in enumerate(attrs):
+            s += ' ' if i == 0 else '| '
+            s += _format_attr(attrs[i], width[i])
+            s += ' '
+        print(s, file=file)
+        # Header bar
+        s = ''
+        for i in range(0, ncols):
+            s += '' if i == 0 else '+'
             s += '-'
-        s += '-'
-    print(s, file=file)
-    # Data rows
-    row_i = 0
-    while True:
-        row = cur.fetchone()
-        if row is None:
-            break
-        s = _format_row(row, attrs, width)
-        print(s, end ='', file=file)
-        row_i += 1
-    print('('+str(row_i)+' '+('row' if row_i == 1 else 'rows')+')', file=file)
-    print('', file=file)
+            for j in range(0, width[i]):
+                s += '-'
+            s += '-'
+        print(s, file=file)
+        # Data rows
+        row_i = 0
+        while True:
+            row = cur.fetchone()
+            if row is None:
+                break
+            s = _format_row(row, attrs, width)
+            print(s, end ='', file=file)
+            row_i += 1
+        print('('+str(row_i)+' '+('row' if row_i == 1 else 'rows')+')', file=file)
+        print('', file=file)
+    finally:
+        cur.close()
 
