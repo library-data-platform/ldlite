@@ -1,3 +1,21 @@
+def _strip_schema(table):
+    st = table.split('.')
+    if len(st) == 1:
+        return table
+    elif len(st) == 2:
+        return st[1]
+    else:
+        raise ValueError('invalid table name: ' + table)
+
+def _stage_table(table):
+    st = table.split('.')
+    if len(st) == 1:
+        return 'staging_' + table
+    elif len(st) == 2:
+        return st[0] + '.staging_' + st[1]
+    else:
+        raise ValueError('invalid table name: ' + table)
+
 def _autocommit(db, dbtype, enable):
     if dbtype == 2 or dbtype == 3:
         db.rollback()

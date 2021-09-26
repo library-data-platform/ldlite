@@ -53,7 +53,18 @@ from ._select import _select
 from ._sqlx import _encode_sql_str
 from ._sqlx import _autocommit
 from ._sqlx import _sqlid
+from ._sqlx import _stage_table
+from ._sqlx import _strip_schema
 from ._sqlx import _varchar_type
+
+def _rename_tables(db, tables):
+    cur = db.cursor()
+    try:
+        for t in tables:
+            cur.execute('DROP TABLE IF EXISTS ' + _sqlid(t))
+            cur.execute('ALTER TABLE ' + _sqlid(_stage_table(t)) + ' RENAME TO ' + _sqlid(_strip_schema(t)))
+    finally:
+        cur.close()
 
 class LDLite:
 
@@ -224,8 +235,8 @@ class LDLite:
         """
         if transform != None:
             raise ValueError('transform is no longer supported: use json_depth=0 to disable JSON transformation')
-        schema_table = table.strip().split('.')
-        if len(schema_table) < 1 or len(schema_table) > 2:
+        schema_table = table.split('.')
+        if len(schema_table) != 1 and len(schema_table) != 2:
             raise ValueError('invalid table name: ' + table)
         if json_depth is None or json_depth < 0 or json_depth > 4:
             raise ValueError('invalid value for json_depth: ' + str(json_depth))
@@ -234,12 +245,13 @@ class LDLite:
         if not self._quiet:
             print('ldlite: querying: '+path, file=sys.stderr)
         _autocommit(self.db, self.dbtype, False)
+        stage_table = _stage_table(table)
         cur = self.db.cursor()
         try:
             if len(schema_table) == 2:
                 cur.execute('CREATE SCHEMA IF NOT EXISTS ' + _sqlid(schema_table[0]))
-            cur.execute('DROP TABLE IF EXISTS ' + _sqlid(table))
-            cur.execute('CREATE TABLE ' + _sqlid(table) + '(__id integer, jsonb ' + _varchar_type(self.dbtype) + ')')
+            cur.execute('DROP TABLE IF EXISTS ' + _sqlid(stage_table))
+            cur.execute('CREATE TABLE ' + _sqlid(stage_table) + '(__id integer, jsonb ' + _varchar_type(self.dbtype) + ')')
         finally:
             cur.close()
         # First get total number of records
@@ -292,7 +304,7 @@ class LDLite:
                 if lendata == 0:
                     break
                 for d in data:
-                    cur.execute('INSERT INTO ' + _sqlid(table) + ' VALUES(' + str(count+1) + ',' + _encode_sql_str(self.dbtype, json.dumps(d, indent=4)) + ')')
+                    cur.execute('INSERT INTO ' + _sqlid(stage_table) + ' VALUES(' + str(count+1) + ',' + _encode_sql_str(self.dbtype, json.dumps(d, indent=4)) + ')')
                     count += 1
                     if not self._quiet:
                         if pbartotal + 1 > total:
@@ -306,10 +318,11 @@ class LDLite:
             cur.close()
         if not self._quiet:
             pbar.close()
-        deleted_tables = set(_drop_json_tables(self.db, self.dbtype, table))
+        _ = set(_drop_json_tables(self.db, self.dbtype, table))
         newtables = [table]
         if json_depth > 0:
-            newtables += _transform_json(self.db, self.dbtype, table, count, self._quiet, json_depth, deleted_tables)
+            newtables += _transform_json(self.db, self.dbtype, table, count, self._quiet, json_depth)
+        _rename_tables(self.db, newtables)
         self.db.commit()
         if not self._quiet:
             print('ldlite: created tables: '+', '.join(newtables), file=sys.stderr)
