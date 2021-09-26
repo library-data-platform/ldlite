@@ -194,7 +194,7 @@ def _transform_json(db, dbtype, table, total, quiet, max_depth):
     # Scan data for JSON objects
     str_attr_list = list(str_attrs)
     if len(str_attr_list) == 0:
-        return []
+        return [], {}
     cur = _server_cursor(db, dbtype)
     try:
         cur.execute('SELECT '+','.join([_sqlid(a) for a in str_attr_list])+' FROM '+_sqlid(stage_table))
@@ -253,7 +253,7 @@ def _transform_json(db, dbtype, table, total, quiet, max_depth):
     # Select only JSON columns
     json_attr_list = list(json_attrs)
     if len(json_attr_list) == 0:
-        return []
+        return [], {}
     cur = _server_cursor(db, dbtype)
     try:
         cur.execute('SELECT '+','.join([_sqlid(a) for a in json_attr_list]) + ' FROM ' + _sqlid(stage_table))
@@ -291,5 +291,5 @@ def _transform_json(db, dbtype, table, total, quiet, max_depth):
             cur.execute('INSERT INTO ' + _sqlid(_stage_table(jtable)) + ' VALUES(' + _encode_sql_str(dbtype, t) + ')')
     finally:
         cur.close()
-    return sorted(list(newattrs.keys()) + [jtable])
+    return sorted(list(newattrs.keys()) + [jtable]), newattrs
 

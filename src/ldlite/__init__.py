@@ -46,6 +46,7 @@ import psycopg2
 import requests
 from tqdm import tqdm
 
+from ._camelcase import _decode_camel_case
 from ._csv import _to_csv
 from ._jsonx import _transform_json
 from ._jsonx import _drop_json_tables
@@ -320,13 +321,42 @@ class LDLite:
             pbar.close()
         _ = set(_drop_json_tables(self.db, self.dbtype, table))
         newtables = [table]
+        newattrs = {}
         if json_depth > 0:
-            newtables += _transform_json(self.db, self.dbtype, table, count, self._quiet, json_depth)
+            jsontables, jsonattrs = _transform_json(self.db, self.dbtype, table, count, self._quiet, json_depth)
+            newtables += jsontables
+            newattrs = jsonattrs
+            for t, attrs in newattrs.items():
+                newattrs[t]['__id'] = ('__id', 'bigint')
+            newattrs[table] = {'__id': ('__id', 'bigint')}
+        # Rename tables and commit
         _rename_tables(self.db, newtables)
         self.db.commit()
+        _autocommit(self.db, self.dbtype, True)
+        # Create indexes
+        if self.dbtype == 2:
+            index_total = sum(map(len, newattrs.values()))
+            if not self._quiet:
+                pbar = tqdm(desc='indexing', total=index_total, leave=False, mininterval=1, smoothing=0, colour='#A9A9A9', bar_format='{desc} {bar}{postfix}')
+                pbartotal = 0
+            for t, attrs in newattrs.items():
+                for attr in sorted(list(attrs)):
+                    decoded_attr, _ = attrs[attr]
+                    cur = self.db.cursor()
+                    try:
+                        cur.execute('CREATE INDEX ON ' + _sqlid(t) + ' (' + _sqlid(decoded_attr) + ')')
+                    except Exception as e:
+                        pass
+                    finally:
+                        cur.close()
+                if not self._quiet:
+                    pbartotal += 1
+                    pbar.update(1)
+            if not self._quiet:
+                pbar.close()
+        # Return table names
         if not self._quiet:
             print('ldlite: created tables: '+', '.join(newtables), file=sys.stderr)
-        _autocommit(self.db, self.dbtype, True)
         return newtables
 
     def quiet(self, enable):
