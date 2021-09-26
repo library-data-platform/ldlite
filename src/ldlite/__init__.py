@@ -170,6 +170,18 @@ class LDLite:
         self._login()
 
     def drop_all_tables(self, table):
+        """Drops a specified table and any accompanying tables that were output from JSON transformation.
+
+        A table called *table*_jtable is used to retrieve the names of the
+        tables created by JSON transformation.
+
+        This function returns a list of all of the dropped tables.
+
+        Example:
+
+            ld.drop_all_tables('g')
+
+        """
         schema_table = table.strip().split('.')
         if len(schema_table) < 1 or len(schema_table) > 2:
             raise ValueError('invalid table name: ' + table)
