@@ -43,7 +43,13 @@
                                 <a class="function" href="#LDLite.connect_db_postgresql">connect_db_postgresql</a>
                         </li>
                         <li>
+                                <a class="function" href="#LDLite.connect_db_redshift">connect_db_redshift</a>
+                        </li>
+                        <li>
                                 <a class="function" href="#LDLite.connect_okapi">connect_okapi</a>
+                        </li>
+                        <li>
+                                <a class="function" href="#LDLite.drop_all_tables">drop_all_tables</a>
                         </li>
                         <li>
                                 <a class="function" href="#LDLite.query">query</a>
@@ -157,7 +163,7 @@ ld = <a href="#LDLite">ldlite.LDLite()</a>
     </div>
 
         
-            <div class="docstring"><p>Connects to an embedded analytic database.</p>
+            <div class="docstring"><p>Connects to an embedded database for storing data.</p>
 
 <p>The <em>filename</em> specifies a local file containing the database or where
 the database will be created if it does not exist.  By default LDLite
@@ -182,16 +188,38 @@ submit SQL queries.</p>
     </div>
 
         
-            <div class="docstring"><p>Connects to an analytic PostgreSQL database.</p>
+            <div class="docstring"><p>Connects to a PostgreSQL database for storing data.</p>
 
-<p>PostgreSQL can be used as an alternative to the default embedded
-database.  The data source name is specified by <em>dsn</em>.  This function
-returns a connection to the database which can be used to submit SQL
-queries.  The returned connection defaults to autocommit mode.</p>
+<p>The data source name is specified by <em>dsn</em>.  This function returns a
+connection to the database which can be used to submit SQL queries.
+The returned connection defaults to autocommit mode.</p>
 
 <p>Example:</p>
 
 <pre><code>db = ld.connect_db_postgresql(dsn='dbname=ldlite host=localhost user=ldlite')
+</code></pre>
+</div>
+
+
+                            </div>
+                            <div id="LDLite.connect_db_redshift" class="classattr">
+                                        <div class="attr function"><a class="headerlink" href="#LDLite.connect_db_redshift">#&nbsp;&nbsp</a>
+
+        
+            <span class="def">def</span>
+            <span class="name">connect_db_redshift</span><span class="signature">(self, dsn)</span>:
+    </div>
+
+        
+            <div class="docstring"><p>Connects to a Redshift database for storing data.</p>
+
+<p>The data source name is specified by <em>dsn</em>.  This function returns a
+connection to the database which can be used to submit SQL queries.
+The returned connection defaults to autocommit mode.</p>
+
+<p>Example:</p>
+
+<pre><code>db = ld.connect_db_redshift(dsn='dbname=ldlite host=localhost user=ldlite')
 </code></pre>
 </div>
 
@@ -217,6 +245,30 @@ connection parameters.</p>
                  tenant='diku',
                  user='diku_admin',
                  password='admin')
+</code></pre>
+</div>
+
+
+                            </div>
+                            <div id="LDLite.drop_all_tables" class="classattr">
+                                        <div class="attr function"><a class="headerlink" href="#LDLite.drop_all_tables">#&nbsp;&nbsp</a>
+
+        
+            <span class="def">def</span>
+            <span class="name">drop_all_tables</span><span class="signature">(self, table)</span>:
+    </div>
+
+        
+            <div class="docstring"><p>Drops a specified table and any accompanying tables that were output from JSON transformation.</p>
+
+<p>A table called <em>table</em>_jtable is used to retrieve the names of the
+tables created by JSON transformation.</p>
+
+<p>This function returns a list of all of the dropped tables.</p>
+
+<p>Example:</p>
+
+<pre><code>ld.drop_all_tables('g')
 </code></pre>
 </div>
 
