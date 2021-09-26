@@ -142,11 +142,34 @@ def _transform_data(dbtype, curout, table, jdict, newattrs, depth, record_id, ro
         raise RuntimeError('error executing SQL: ' + q) from e
     row_ids[table] += 1
 
+def _jtable(table):
+    return table + '_jtable'
+
+def _drop_json_tables(db, dbtype, table):
+    jtable_sql = _sqlid(_jtable(table))
+    tables = []
+    cur = db.cursor()
+    cur.execute('CREATE TABLE IF NOT EXISTS ' + jtable_sql + '(table_name ' + _varchar_type(dbtype) + ' NOT NULL)')
+    cur = db.cursor()
+    cur.execute('SELECT table_name FROM ' + jtable_sql)
+    while True:
+        row = cur.fetchone()
+        if row == None:
+            break
+        t = row[0]
+        tables.append(t)
+        curout = db.cursor()
+        curout.execute('DROP TABLE IF EXISTS ' + _sqlid(t))
+    cur = db.cursor()
+    cur.execute('DROP TABLE IF EXISTS ' + jtable_sql)
+    return tables
+
 def _transform_json(db, dbtype, table, total, quiet, max_depth, curout):
+    deleted_tables = set(_drop_json_tables(db, dbtype, table))
     # Scan all fields for JSON data
     # First get a list of the string attributes
     cur = db.cursor()
-    cur.execute('SELECT * FROM '+_sqlid(table)+' LIMIT 1')
+    cur.execute('SELECT * FROM ' + _sqlid(table) + ' LIMIT 1')
     str_attrs = set()
     for a in cur.description:
         if a[1] == 'STRING' or a[1] == 1043:
@@ -185,11 +208,12 @@ def _transform_json(db, dbtype, table, total, quiet, max_depth, curout):
         pbar.close()
     # Create table schemas
     for t, attrs in newattrs.items():
-        curout.execute('DROP TABLE IF EXISTS '+_sqlid(t))
-        curout.execute('CREATE TABLE '+_sqlid(t)+'(__id bigint)')
-        curout.execute('ALTER TABLE '+_sqlid(t)+' ADD COLUMN id varchar(36)')
+        if t not in deleted_tables:
+            curout.execute('DROP TABLE IF EXISTS ' + _sqlid(t))
+        curout.execute('CREATE TABLE ' + _sqlid(t) + '(__id bigint)')
+        curout.execute('ALTER TABLE ' + _sqlid(t) + ' ADD COLUMN id varchar(36)')
         if 'ord' in attrs:
-            curout.execute('ALTER TABLE '+_sqlid(t)+' ADD COLUMN ord integer')
+            curout.execute('ALTER TABLE ' + _sqlid(t) + ' ADD COLUMN ord integer')
         for attr in sorted(list(attrs)):
             if attr == 'id' or attr == 'ord':
                 continue
@@ -207,7 +231,7 @@ def _transform_json(db, dbtype, table, total, quiet, max_depth, curout):
     if len(json_attr_list) == 0:
         return []
     cur = db.cursor()
-    cur.execute('SELECT '+','.join([_sqlid(a) for a in json_attr_list])+' FROM '+_sqlid(table)+'')
+    cur.execute('SELECT '+','.join([_sqlid(a) for a in json_attr_list]) + ' FROM ' + _sqlid(table))
     if not quiet:
         pbar = tqdm(desc='transforming', total=total, leave=False, mininterval=1, smoothing=0, colour='#A9A9A9', bar_format='{desc} {bar}{postfix}')
         pbartotal = 0
@@ -231,5 +255,9 @@ def _transform_json(db, dbtype, table, total, quiet, max_depth, curout):
             pbar.update(1)
     if not quiet:
         pbar.close()
+    jtable_sql = _sqlid(_jtable(table))
+    curout.execute('CREATE TABLE ' + jtable_sql + '(table_name ' + _varchar_type(dbtype) + ' NOT NULL)')
+    for t in newattrs.keys():
+        curout.execute('INSERT INTO ' + jtable_sql + ' VALUES(' + _encode_sql_str(dbtype, t) + ')')
     return sorted(newattrs.keys())
 
