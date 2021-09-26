@@ -149,7 +149,12 @@ class LDLite:
         data = { 'username': self.okapi_user,
                 'password': self.okapi_password }
         resp = requests.post(self.okapi_url+'/authn/login', headers=hdr, data=json.dumps(data))
-        self.login_token = resp.headers['x-okapi-token']
+        if resp.status_code != 201:
+            resp.raise_for_status()
+        if 'x-okapi-token' in resp.headers:
+            self.login_token = resp.headers['x-okapi-token']
+        else:
+            raise RuntimeError('authentication service did not return a login token')
 
     def _check_okapi(self):
         if self.login_token is None:
@@ -296,6 +301,8 @@ class LDLite:
                     offset = page * self.page_size
                     limit = self.page_size
                     resp = requests.get(self.okapi_url+path+'?offset='+str(offset)+'&limit='+str(limit)+'&query='+query, headers=hdr)
+                    if resp.status_code != 200:
+                        resp.raise_for_status()
                     try:
                         j = resp.json()
                     except Exception as e:
