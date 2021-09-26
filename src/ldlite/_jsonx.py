@@ -177,8 +177,7 @@ def _transform_data(dbtype, cur, table, jdict, newattrs, depth, record_id, row_i
         raise RuntimeError('error executing SQL: ' + q) from e
     row_ids[table] += 1
 
-def _transform_json(db, dbtype, table, total, quiet, max_depth):
-    deleted_tables = set(_drop_json_tables(db, dbtype, table))
+def _transform_json(db, dbtype, table, total, quiet, max_depth, deleted_tables):
     # Scan all fields for JSON data
     # First get a list of the string attributes
     cur = db.cursor()

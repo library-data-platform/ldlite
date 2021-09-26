@@ -304,12 +304,12 @@ class LDLite:
                 page += 1
         finally:
             cur.close()
-        self.db.commit()
         if not self._quiet:
             pbar.close()
+        deleted_tables = set(_drop_json_tables(self.db, self.dbtype, table))
         newtables = [table]
         if json_depth > 0:
-            newtables += _transform_json(self.db, self.dbtype, table, count, self._quiet, json_depth)
+            newtables += _transform_json(self.db, self.dbtype, table, count, self._quiet, json_depth, deleted_tables)
         self.db.commit()
         if not self._quiet:
             print('ldlite: created tables: '+', '.join(newtables), file=sys.stderr)
