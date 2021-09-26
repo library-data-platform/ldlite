@@ -180,7 +180,7 @@ class LDLite:
         self.okapi_password = password
         self._login()
 
-    def drop_all_tables(self, table):
+    def drop_tables(self, table):
         """Drops a specified table and any accompanying tables that were output from JSON transformation.
 
         A table called *table*_jtable is used to retrieve the names of the
@@ -190,7 +190,7 @@ class LDLite:
 
         Example:
 
-            ld.drop_all_tables('g')
+            ld.drop_tables('g')
 
         """
         schema_table = table.strip().split('.')
