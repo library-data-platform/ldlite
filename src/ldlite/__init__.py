@@ -199,15 +199,17 @@ class LDLite:
             raise ValueError('invalid table name: ' + table)
         self._check_db()
         _autocommit(self.db, self.dbtype, False)
-        cur = self.db.cursor()
         try:
-            cur.execute('DROP TABLE IF EXISTS ' + _sqlid(table))
+            cur = self.db.cursor()
+            try:
+                cur.execute('DROP TABLE IF EXISTS ' + _sqlid(table))
+            finally:
+                cur.close()
+            tables = [table]
+            tables += _drop_json_tables(self.db, self.dbtype, table)
+            self.db.commit()
         finally:
-            cur.close()
-        tables = [table]
-        tables += _drop_json_tables(self.db, self.dbtype, table)
-        self.db.commit()
-        _autocommit(self.db, self.dbtype, True)
+            _autocommit(self.db, self.dbtype, True)
         return tables
 
     def query(self, table, path, query, json_depth=3, transform=None):
@@ -246,93 +248,95 @@ class LDLite:
         if not self._quiet:
             print('ldlite: querying: '+path, file=sys.stderr)
         _autocommit(self.db, self.dbtype, False)
-        stage_table = _stage_table(table)
-        cur = self.db.cursor()
         try:
-            if len(schema_table) == 2:
-                cur.execute('CREATE SCHEMA IF NOT EXISTS ' + _sqlid(schema_table[0]))
-            cur.execute('DROP TABLE IF EXISTS ' + _sqlid(stage_table))
-            cur.execute('CREATE TABLE ' + _sqlid(stage_table) + '(__id integer, jsonb ' + _varchar_type(self.dbtype) + ')')
-        finally:
-            cur.close()
-        # First get total number of records
-        hdr = { 'X-Okapi-Tenant': self.okapi_tenant,
-                'X-Okapi-Token': self.login_token }
-        resp = requests.get(self.okapi_url+path+'?offset=0&limit=1&query='+query, headers=hdr)
-        if resp.status_code == 401:
-            # Retry
-            self._login()
+            stage_table = _stage_table(table)
+            cur = self.db.cursor()
+            try:
+                if len(schema_table) == 2:
+                    cur.execute('CREATE SCHEMA IF NOT EXISTS ' + _sqlid(schema_table[0]))
+                cur.execute('DROP TABLE IF EXISTS ' + _sqlid(stage_table))
+                cur.execute('CREATE TABLE ' + _sqlid(stage_table) + '(__id integer, jsonb ' + _varchar_type(self.dbtype) + ')')
+            finally:
+                cur.close()
+            # First get total number of records
             hdr = { 'X-Okapi-Tenant': self.okapi_tenant,
                     'X-Okapi-Token': self.login_token }
             resp = requests.get(self.okapi_url+path+'?offset=0&limit=1&query='+query, headers=hdr)
-        if resp.status_code != 200:
-            resp.raise_for_status()
-        try:
-            j = resp.json()
-        except Exception as e:
-            raise RuntimeError('received server response: ' + resp.text) from e
-        if 'totalRecords' in j:
-            total_records = j['totalRecords']
-        else:
-            total_records = -1
-        total = total_records if total_records is not None else 0
-        if self._verbose:
-            print('ldlite: estimated row count: '+str(total), file=sys.stderr)
-        # Read result pages
-        count = 0
-        page = 0
-        if not self._quiet:
-            if total == -1:
-                pbar = tqdm(desc='reading', leave=False, mininterval=1, smoothing=0, colour='#A9A9A9', bar_format='{desc} {elapsed} {bar}{postfix}')
+            if resp.status_code == 401:
+                # Retry
+                self._login()
+                hdr = { 'X-Okapi-Tenant': self.okapi_tenant,
+                        'X-Okapi-Token': self.login_token }
+                resp = requests.get(self.okapi_url+path+'?offset=0&limit=1&query='+query, headers=hdr)
+            if resp.status_code != 200:
+                resp.raise_for_status()
+            try:
+                j = resp.json()
+            except Exception as e:
+                raise RuntimeError('received server response: ' + resp.text) from e
+            if 'totalRecords' in j:
+                total_records = j['totalRecords']
             else:
-                pbar = tqdm(desc='reading', total=total, leave=False, mininterval=1, smoothing=0, colour='#A9A9A9', bar_format='{desc} {bar}{postfix}')
-            pbartotal = 0
-        cur = self.db.cursor()
-        try:
-            while True:
-                offset = page * self.page_size
-                limit = self.page_size
-                resp = requests.get(self.okapi_url+path+'?offset='+str(offset)+'&limit='+str(limit)+'&query='+query, headers=hdr)
-                try:
-                    j = resp.json()
-                except Exception as e:
-                    raise RuntimeError('received server response: ' + resp.text) from e
-                if isinstance(j, dict):
-                    data = list(j.values())[0]
+                total_records = -1
+            total = total_records if total_records is not None else 0
+            if self._verbose:
+                print('ldlite: estimated row count: '+str(total), file=sys.stderr)
+            # Read result pages
+            count = 0
+            page = 0
+            if not self._quiet:
+                if total == -1:
+                    pbar = tqdm(desc='reading', leave=False, mininterval=1, smoothing=0, colour='#A9A9A9', bar_format='{desc} {elapsed} {bar}{postfix}')
                 else:
-                    data = j
-                lendata = len(data)
-                if lendata == 0:
-                    break
-                for d in data:
-                    cur.execute('INSERT INTO ' + _sqlid(stage_table) + ' VALUES(' + str(count+1) + ',' + _encode_sql_str(self.dbtype, json.dumps(d, indent=4)) + ')')
-                    count += 1
-                    if not self._quiet:
-                        if pbartotal + 1 > total:
-                            pbartotal = total
-                            pbar.update(total - pbartotal)
-                        else:
-                            pbartotal += 1
-                            pbar.update(1)
-                page += 1
+                    pbar = tqdm(desc='reading', total=total, leave=False, mininterval=1, smoothing=0, colour='#A9A9A9', bar_format='{desc} {bar}{postfix}')
+                pbartotal = 0
+            cur = self.db.cursor()
+            try:
+                while True:
+                    offset = page * self.page_size
+                    limit = self.page_size
+                    resp = requests.get(self.okapi_url+path+'?offset='+str(offset)+'&limit='+str(limit)+'&query='+query, headers=hdr)
+                    try:
+                        j = resp.json()
+                    except Exception as e:
+                        raise RuntimeError('received server response: ' + resp.text) from e
+                    if isinstance(j, dict):
+                        data = list(j.values())[0]
+                    else:
+                        data = j
+                    lendata = len(data)
+                    if lendata == 0:
+                        break
+                    for d in data:
+                        cur.execute('INSERT INTO ' + _sqlid(stage_table) + ' VALUES(' + str(count+1) + ',' + _encode_sql_str(self.dbtype, json.dumps(d, indent=4)) + ')')
+                        count += 1
+                        if not self._quiet:
+                            if pbartotal + 1 > total:
+                                pbartotal = total
+                                pbar.update(total - pbartotal)
+                            else:
+                                pbartotal += 1
+                                pbar.update(1)
+                    page += 1
+            finally:
+                cur.close()
+            if not self._quiet:
+                pbar.close()
+            _ = set(_drop_json_tables(self.db, self.dbtype, table))
+            newtables = [table]
+            newattrs = {}
+            if json_depth > 0:
+                jsontables, jsonattrs = _transform_json(self.db, self.dbtype, table, count, self._quiet, json_depth)
+                newtables += jsontables
+                newattrs = jsonattrs
+                for t, attrs in newattrs.items():
+                    newattrs[t]['__id'] = ('__id', 'bigint')
+                newattrs[table] = {'__id': ('__id', 'bigint')}
+            # Rename tables and commit
+            _rename_tables(self.db, newtables)
+            self.db.commit()
         finally:
-            cur.close()
-        if not self._quiet:
-            pbar.close()
-        _ = set(_drop_json_tables(self.db, self.dbtype, table))
-        newtables = [table]
-        newattrs = {}
-        if json_depth > 0:
-            jsontables, jsonattrs = _transform_json(self.db, self.dbtype, table, count, self._quiet, json_depth)
-            newtables += jsontables
-            newattrs = jsonattrs
-            for t, attrs in newattrs.items():
-                newattrs[t]['__id'] = ('__id', 'bigint')
-            newattrs[table] = {'__id': ('__id', 'bigint')}
-        # Rename tables and commit
-        _rename_tables(self.db, newtables)
-        self.db.commit()
-        _autocommit(self.db, self.dbtype, True)
+            _autocommit(self.db, self.dbtype, True)
         # Create indexes
         if self.dbtype == 2:
             index_total = sum(map(len, newattrs.values()))
@@ -396,10 +400,12 @@ class LDLite:
         if self._verbose:
             print('ldlite: reading from table: '+table, file=sys.stderr)
         _autocommit(self.db, self.dbtype, False)
-        _select(self.db, self.dbtype, table, columns, limit, f)
-        if self.dbtype == 2 or self.dbtype == 3:
-            self.db.rollback()
-        _autocommit(self.db, self.dbtype, True)
+        try:
+            _select(self.db, self.dbtype, table, columns, limit, f)
+            if self.dbtype == 2 or self.dbtype == 3:
+                self.db.rollback()
+        finally:
+            _autocommit(self.db, self.dbtype, True)
 
     def to_csv(self, filename, table):
         """Export a table in the analytic database to a CSV file.
@@ -413,10 +419,12 @@ class LDLite:
         """
         self._check_db()
         _autocommit(self.db, self.dbtype, False)
-        _to_csv(self.db, self.dbtype, table, filename)
-        if self.dbtype == 2 or self.dbtype == 3:
-            self.db.rollback()
-        _autocommit(self.db, self.dbtype, True)
+        try:
+            _to_csv(self.db, self.dbtype, table, filename)
+            if self.dbtype == 2 or self.dbtype == 3:
+                self.db.rollback()
+        finally:
+            _autocommit(self.db, self.dbtype, True)
 
     def _verbose(self, enable):
         """Configures verbose output.
