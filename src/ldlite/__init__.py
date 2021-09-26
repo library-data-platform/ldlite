@@ -349,9 +349,9 @@ class LDLite:
                         pass
                     finally:
                         cur.close()
-                if not self._quiet:
-                    pbartotal += 1
-                    pbar.update(1)
+                    if not self._quiet:
+                        pbartotal += 1
+                        pbar.update(1)
             if not self._quiet:
                 pbar.close()
         # Return table names
