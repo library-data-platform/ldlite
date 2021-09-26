@@ -231,11 +231,11 @@ class LDLite:
         if not self._quiet:
             print('ldlite: querying: '+path, file=sys.stderr)
         _autocommit(self.db, self.dbtype, False)
-        curout = self.db.cursor()
+        cur = self.db.cursor()
         if len(schema_table) == 2:
-            curout.execute('CREATE SCHEMA IF NOT EXISTS ' + _sqlid(schema_table[0]))
-        curout.execute('DROP TABLE IF EXISTS ' + _sqlid(table))
-        curout.execute('CREATE TABLE ' + _sqlid(table) + '(__id integer, jsonb ' + _varchar_type(self.dbtype) + ')')
+            cur.execute('CREATE SCHEMA IF NOT EXISTS ' + _sqlid(schema_table[0]))
+        cur.execute('DROP TABLE IF EXISTS ' + _sqlid(table))
+        cur.execute('CREATE TABLE ' + _sqlid(table) + '(__id integer, jsonb ' + _varchar_type(self.dbtype) + ')')
         # First get total number of records
         hdr = { 'X-Okapi-Tenant': self.okapi_tenant,
                 'X-Okapi-Token': self.login_token }
@@ -268,6 +268,7 @@ class LDLite:
             else:
                 pbar = tqdm(desc='reading', total=total, leave=False, mininterval=1, smoothing=0, colour='#A9A9A9', bar_format='{desc} {bar}{postfix}')
             pbartotal = 0
+        cur = self.db.cursor()
         while True:
             offset = page * self.page_size
             limit = self.page_size
@@ -284,7 +285,7 @@ class LDLite:
             if lendata == 0:
                 break
             for d in data:
-                curout.execute('INSERT INTO ' + _sqlid(table) + ' VALUES(' + str(count+1) + ',' + _encode_sql_str(self.dbtype, json.dumps(d, indent=4)) + ')')
+                cur.execute('INSERT INTO ' + _sqlid(table) + ' VALUES(' + str(count+1) + ',' + _encode_sql_str(self.dbtype, json.dumps(d, indent=4)) + ')')
                 count += 1
                 if not self._quiet:
                     if pbartotal + 1 > total:
@@ -299,7 +300,7 @@ class LDLite:
             pbar.close()
         newtables = [table]
         if json_depth > 0:
-            newtables += _transform_json(self.db, self.dbtype, table, count, self._quiet, json_depth, curout)
+            newtables += _transform_json(self.db, self.dbtype, table, count, self._quiet, json_depth)
         self.db.commit()
         if not self._quiet:
             print('ldlite: created tables: '+', '.join(newtables), file=sys.stderr)
