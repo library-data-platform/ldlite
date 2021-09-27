@@ -1,10 +1,22 @@
-# This script uses LDLite to extract sample data from the FOLIO demo instances.
+# This script uses LDLite to extract sample data from the FOLIO demo sites.
 
+# Demo sites
 current_release = 'https://folio-juniper-okapi.dev.folio.org/'
 latest_snapshot = 'https://folio-snapshot-okapi.dev.folio.org/'
 
-# Select demo site here:
+###############################################################################
+# Select a demo site here:
 selected_site = current_release
+###############################################################################
+# Note that these demo sites are unavailable at certain times in the evening
+# (Eastern time) or if a bug is introduced and makes one of them unresponsive.
+# At the time of this writing, the "current release" demo site appears to be
+# more stable than the "latest snapshot" site.  For information about the
+# status of the demo sites, please see the #hosted-reference-envs channel in
+# the FOLIO Slack organization.  For general information about FOLIO demo
+# sites, see the "Demo Sites" section of the FOLIO Wiki at:
+# https://wiki.folio.org
+###############################################################################
 
 import traceback
 import ldlite
