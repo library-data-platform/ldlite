@@ -86,19 +86,20 @@ Notebook](https://github.com/library-data-platform/ldlite/blob/main/examples/exa
 sites](https://github.com/library-data-platform/ldlite/blob/main/examples/folio_demo.py)
 
 
-Documentation
--------------
+LDLite resources
+----------------
 
 * [LDLite API documentation](https://library-data-platform.github.io/ldlite/ldlite.html)
+
+* Report bugs at [Issues](https://github.com/library-data-platform/ldlite/issues)
+
+* Ask questions at [Discussions](https://github.com/library-data-platform/ldlite/discussions)
+
+
+Other resources
+---------------
 
 * [FOLIO API documentation](https://dev.folio.org/reference/api/)
 
 * [Python learning resources](https://www.python.org/about/gettingstarted/)
-
-
-Issues
-------
-
-Report bugs at [Issues](https://github.com/library-data-platform/ldlite/issues)
-
 
