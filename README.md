@@ -73,6 +73,7 @@ Features
   * Access to the data using more database tools
   * Querying the data from within the LDP query builder app
   * Storing the data in an existing LDP database if available
+* Runs on Windows, macOS, and Linux.
 
 
 More examples
@@ -81,18 +82,16 @@ More examples
 * [An example running in Jupyter
 Notebook](https://github.com/library-data-platform/ldlite/blob/main/examples/example.md)
 
-* [Loading sample data from
-folio-snapshot](https://github.com/library-data-platform/ldlite/blob/main/examples/snapshot.py)
+* [Loading sample data from FOLIO demo
+sites](https://github.com/library-data-platform/ldlite/blob/main/examples/folio_demo.py)
 
 
 Documentation
 -------------
 
-LDLite runs on Windows, macOS, and Linux.
-
 [API documentation](https://library-data-platform.github.io/ldlite/ldlite.html)
 
-New to Python?  [Try these learning resources.](https://www.python.org/about/gettingstarted/)
+[Python learning resources](https://www.python.org/about/gettingstarted/)
 
 
 Issues
