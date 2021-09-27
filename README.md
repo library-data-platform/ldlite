@@ -89,9 +89,11 @@ sites](https://github.com/library-data-platform/ldlite/blob/main/examples/folio_
 Documentation
 -------------
 
-[API documentation](https://library-data-platform.github.io/ldlite/ldlite.html)
+* [LDLite API documentation](https://library-data-platform.github.io/ldlite/ldlite.html)
 
-[Python learning resources](https://www.python.org/about/gettingstarted/)
+* [FOLIO API documentation](https://dev.folio.org/reference/api/)
+
+* [Python learning resources](https://www.python.org/about/gettingstarted/)
 
 
 Issues
