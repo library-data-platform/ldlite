@@ -58,7 +58,7 @@ def _format_row(row, attrs, width):
         for j, lines in enumerate(rowlines):
             lines_i = lines[i] if i < len(lines) else ''
             s += ' ' if j == 0 else '| '
-            if attrs[j][1] == 'NUMBER' or attrs[j][1] == 23:
+            if attrs[j][1] == 'NUMBER' or attrs[j][1] == 20 or attrs[j][1] == 23:
                 start = width[j] - len(lines_i)
             else:
                 start = 0
@@ -73,28 +73,24 @@ def _format_row(row, attrs, width):
 
 def _select(db, dbtype, table, columns, limit, file=sys.stdout):
     if columns is None or columns == []:
-        cols = '*'
+        colspec = '*'
     else:
-        cols = ','.join([_sqlid(c) for c in columns])
-    query = 'SELECT ' + cols + ' FROM ' + _sqlid(table)
+        colspec = ','.join([_sqlid(c) for c in columns])
     # Get attributes
+    attrs = []
+    width = []
     cur = db.cursor()
     try:
-        cur.execute(query + ' LIMIT 1')
-        attrs = []
-        width = []
+        cur.execute('SELECT ' + colspec + ' FROM ' + _sqlid(table) + ' LIMIT 1')
         for a in cur.description:
             attrs.append( (a[0], a[1]) )
             width.append(len(a[0]))
-        ncols = len(attrs)
     finally:
         cur.close()
     # Scan
-    if limit is not None:
-        query += ' LIMIT '+str(limit)
     cur = _server_cursor(db, dbtype)
     try:
-        cur.execute(query)
+        cur.execute('SELECT ' + ','.join([_sqlid(a[0]) for a in attrs]) + ' FROM ' + _sqlid(table))
         while True:
             row = cur.fetchone()
             if row is None:
@@ -111,7 +107,10 @@ def _select(db, dbtype, table, columns, limit, file=sys.stdout):
         cur.close()
     cur = _server_cursor(db, dbtype)
     try:
-        cur.execute(query)
+        q = 'SELECT ' + ','.join([_sqlid(a[0]) for a in attrs]) + ' FROM ' + _sqlid(table)
+        if limit is not None:
+            q += ' LIMIT ' + str(limit)
+        cur.execute(q)
         # Attribute names
         s = ''
         for i, v in enumerate(attrs):
@@ -121,7 +120,7 @@ def _select(db, dbtype, table, columns, limit, file=sys.stdout):
         print(s, file=file)
         # Header bar
         s = ''
-        for i in range(0, ncols):
+        for i in range(0, len(attrs)):
             s += '' if i == 0 else '+'
             s += '-'
             for j in range(0, width[i]):
@@ -135,7 +134,7 @@ def _select(db, dbtype, table, columns, limit, file=sys.stdout):
             if row is None:
                 break
             s = _format_row(row, attrs, width)
-            print(s, end ='', file=file)
+            print(s, end='', file=file)
             row_i += 1
         print('('+str(row_i)+' '+('row' if row_i == 1 else 'rows')+')', file=file)
         print('', file=file)
