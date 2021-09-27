@@ -1,12 +1,15 @@
-# This script uses LDLite to extract sample data from folio-snapshot.
+# This script uses LDLite to extract sample data from the FOLIO demo instances.
+
+current_release = 'https://folio-juniper-okapi.dev.folio.org/'
+latest_snapshot = 'https://folio-snapshot-okapi.dev.folio.org/'
+
+# Select demo site here:
+selected_site = current_release
 
 import traceback
 import ldlite
 ld = ldlite.LDLite()
-ld.connect_okapi(url='https://folio-snapshot-okapi.dev.folio.org',
-                 tenant='diku',
-                 user='diku_admin',
-                 password='admin')
+ld.connect_okapi(url=selected_site, tenant='diku', user='diku_admin', password='admin')
 
 db = ld.connect_db(filename='ldlite.db')
 # For PostgreSQL, use connect_db_postgresql() instead of connect_db():
