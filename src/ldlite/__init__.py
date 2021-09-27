@@ -414,10 +414,12 @@ class LDLite:
         finally:
             _autocommit(self.db, self.dbtype, True)
 
-    def to_csv(self, filename, table):
+    def to_csv(self, filename, table, header=True):
         """Export a table in the analytic database to a CSV file.
 
-        All rows of *table* are exported to *filename*.
+        All rows of *table* are exported to *filename*.  If *header* is True
+        (the default), the CSV file will begin with a header line containing
+        the column names.
 
         Example:
 
@@ -427,7 +429,7 @@ class LDLite:
         self._check_db()
         _autocommit(self.db, self.dbtype, False)
         try:
-            _to_csv(self.db, self.dbtype, table, filename)
+            _to_csv(self.db, self.dbtype, table, filename, header)
             if self.dbtype == 2 or self.dbtype == 3:
                 self.db.rollback()
         finally:
