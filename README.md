@@ -23,7 +23,7 @@ To extract and transform data:
 $ python
 >>> import ldlite
 >>> ld = ldlite.LDLite()
->>> ld.connect_okapi(url='https://folio-snapshot-okapi.dev.folio.org',
+>>> ld.connect_okapi(url='https://folio-juniper-okapi.dev.folio.org/',
 ...                  tenant='diku',
 ...                  user='diku_admin',
 ...                  password='admin')
