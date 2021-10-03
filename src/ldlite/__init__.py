@@ -3,7 +3,7 @@ LDLite is a lightweight reporting tool for Okapi-based services.  It is part of
 the Library Data Platform project and provides basic LDP functions without
 requiring the platform to be installed.
 
-LDLite functions include extracting data from an Okapi instance, transforming
+LDLite functions include retrieving data from an Okapi instance, transforming
 the data, and storing the data in a reporting database for further querying.
 
 To install LDLite or upgrade to the latest version:
@@ -217,7 +217,7 @@ class LDLite:
             _autocommit(self.db, self.dbtype, True)
         return tables
 
-    def query(self, table, path, query, json_depth=3, transform=None):
+    def query(self, table, path, query, json_depth=3, limit=None, transform=None):
         """Submits a CQL query to an Okapi module, and transforms and stores the result.
 
         The *path* parameter is the request path, and *query* is the CQL query.
@@ -229,6 +229,8 @@ class LDLite:
         range 0 < *json_depth* < 5, this determines how far into nested JSON
         data the transformation will descend.  (The default is 3.)  If
         *json_depth* is specified as 0, JSON data are not transformed.
+
+        If *limit* is specified, then only up to *limit* records are retrieved.
 
         The *transform* parameter is no longer supported and will be removed in
         the future.  Instead, specify *json_depth* as 0 to disable JSON
@@ -299,8 +301,8 @@ class LDLite:
             try:
                 while True:
                     offset = page * self.page_size
-                    limit = self.page_size
-                    resp = requests.get(self.okapi_url+path+'?offset='+str(offset)+'&limit='+str(limit)+'&query='+query, headers=hdr)
+                    lim = self.page_size
+                    resp = requests.get(self.okapi_url+path+'?offset='+str(offset)+'&limit='+str(lim)+'&query='+query, headers=hdr)
                     if resp.status_code != 200:
                         resp.raise_for_status()
                     try:
@@ -324,6 +326,10 @@ class LDLite:
                             else:
                                 pbartotal += 1
                                 pbar.update(1)
+                        if limit is not None and count == limit:
+                            break
+                    if limit is not None and count == limit:
+                        break
                     page += 1
             finally:
                 cur.close()
