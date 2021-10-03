@@ -1,12 +1,27 @@
-# This script uses LDLite to extract sample data from folio-snapshot.
+# This script uses LDLite to extract sample data from the FOLIO demo sites.
+
+# Demo sites
+current_release = 'https://folio-juniper-okapi.dev.folio.org/'
+latest_snapshot = 'https://folio-snapshot-okapi.dev.folio.org/'
+
+###############################################################################
+# Select a demo site here:
+selected_site = current_release
+###############################################################################
+# Note that these demo sites are unavailable at certain times in the evening
+# (Eastern time) or if a bug is introduced and makes one of them unresponsive.
+# At the time of this writing, the "current release" demo site appears to be
+# more stable than the "latest snapshot" site.  For information about the
+# status of the demo sites, please see the #hosted-reference-envs channel in
+# the FOLIO Slack organization.  For general information about FOLIO demo
+# sites, see the "Demo Sites" section of the FOLIO Wiki at:
+# https://wiki.folio.org
+###############################################################################
 
 import traceback
 import ldlite
 ld = ldlite.LDLite()
-ld.connect_okapi(url='https://folio-snapshot-okapi.dev.folio.org',
-                 tenant='diku',
-                 user='diku_admin',
-                 password='admin')
+ld.connect_okapi(url=selected_site, tenant='diku', user='diku_admin', password='admin')
 
 db = ld.connect_db(filename='ldlite.db')
 # For PostgreSQL, use connect_db_postgresql() instead of connect_db():

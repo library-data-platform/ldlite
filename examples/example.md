@@ -18,7 +18,7 @@ ld = ldlite.LDLite()
 # that will be used for reporting.  To configure the Okapi connection, we use
 # the function "ld.connect_okapi()".
 
-ld.connect_okapi(url='https://folio-snapshot-okapi.dev.folio.org',
+ld.connect_okapi(url='https://folio-juniper-okapi.dev.folio.org/',
                  tenant='diku',
                  user='diku_admin',
                  password='admin')

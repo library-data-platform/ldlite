@@ -23,7 +23,7 @@ To extract and transform data:
 $ python
 >>> import ldlite
 >>> ld = ldlite.LDLite()
->>> ld.connect_okapi(url='https://folio-snapshot-okapi.dev.folio.org',
+>>> ld.connect_okapi(url='https://folio-juniper-okapi.dev.folio.org/',
 ...                  tenant='diku',
 ...                  user='diku_admin',
 ...                  password='admin')
@@ -66,12 +66,14 @@ Features
   database
 * No LDP server needed; only Python, and Okapi access to send CQL
   queries
+* Compatible with DBeaver database tool
 * Supports DuckDB, PostgreSQL, and Redshift database systems
 * PostgreSQL/Redshift support enables:
-  * Access to the data using database tools such as DBeaver
   * Sharing the data in a multiuser database
+  * Access to the data using more database tools
   * Querying the data from within the LDP query builder app
   * Storing the data in an existing LDP database if available
+* Runs on Windows, macOS, and Linux.
 
 
 More examples
@@ -80,23 +82,24 @@ More examples
 * [An example running in Jupyter
 Notebook](https://github.com/library-data-platform/ldlite/blob/main/examples/example.md)
 
-* [Loading sample data from
-folio-snapshot](https://github.com/library-data-platform/ldlite/blob/main/examples/snapshot.py)
+* [Loading sample data from FOLIO demo
+sites](https://github.com/library-data-platform/ldlite/blob/main/examples/folio_demo.py)
 
 
-Documentation
--------------
+LDLite resources
+----------------
 
-LDLite runs on Windows, macOS, and Linux.
+* [LDLite API documentation](https://library-data-platform.github.io/ldlite/ldlite.html)
 
-[API documentation](https://library-data-platform.github.io/ldlite/ldlite.html)
+* Report bugs at [Issues](https://github.com/library-data-platform/ldlite/issues)
 
-New to Python?  [Try these learning resources.](https://www.python.org/about/gettingstarted/)
+* Ask questions at [Discussions](https://github.com/library-data-platform/ldlite/discussions)
 
 
-Issues
-------
+Other resources
+---------------
 
-Report bugs at [Issues](https://github.com/library-data-platform/ldlite/issues)
+* [FOLIO API documentation](https://dev.folio.org/reference/api/)
 
+* [Python learning resources](https://www.python.org/about/gettingstarted/)
 
