@@ -1,16 +1,9 @@
+import xlsxwriter
+
 from ._sqlx import _server_cursor
 from ._sqlx import _sqlid
 
-def _escape_csv(field):
-    b = ''
-    for f in field:
-        if f == '"':
-            b += '""'
-        else:
-            b += f
-    return b
-
-def _to_csv(db, dbtype, table, filename, header):
+def _to_xlsx(db, dbtype, table, filename, header):
     # Read attributes
     attrs = []
     cur = db.cursor()
@@ -25,23 +18,27 @@ def _to_csv(db, dbtype, table, filename, header):
     try:
         cols = ','.join([_sqlid(a[0]) for a in attrs])
         cur.execute('SELECT ' + cols + ' FROM ' + _sqlid(table) + ' ORDER BY ' + ','.join([str(i + 1) for i in range(len(attrs))]))
-        with open(filename, 'w') as f:
+        workbook = xlsxwriter.Workbook(filename, {'constant_memory': True})
+        try:
+            worksheet = workbook.add_worksheet()
+            worksheet.set_column(0, len(attrs) - 1, 40)
             if header:
-                print(','.join(['"'+a[0]+'"' for a in attrs]), file=f)
+                worksheet.freeze_panes(1, 0)
+                for i, a in enumerate(attrs):
+                    fmt = workbook.add_format()
+                    fmt.set_align('center')
+                    fmt.set_bold()
+                    worksheet.write(0, i, a[0], fmt)
+            row_i = 1 if header else 0
             while True:
                 row = cur.fetchone()
                 if row == None:
                     break
-                s = ''
                 for i, data in enumerate(row):
-                    d = '' if data is None else data
-                    if i != 0:
-                        s += ','
-                    if attrs[i][1] == 'NUMBER' or attrs[i][1] == 20 or attrs[i][1] == 23:
-                        s += str(d)
-                    else:
-                        s += '"'+_escape_csv(str(d))+'"'
-                print(s, file=f)
+                    worksheet.write(row_i, i, data)
+                row_i += 1
+        finally:
+            workbook.close()
     finally:
         cur.close()
 

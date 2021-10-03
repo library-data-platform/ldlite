@@ -4,8 +4,7 @@ the Library Data Platform project and provides basic LDP functions without
 requiring the platform to be installed.
 
 LDLite functions include extracting data from an Okapi instance, transforming
-the data for reporting purposes, and storing the data in an analytic database
-for further querying.
+the data, and storing the data in a reporting database for further querying.
 
 To install LDLite or upgrade to the latest version:
 
@@ -48,6 +47,7 @@ from tqdm import tqdm
 
 from ._camelcase import _decode_camel_case
 from ._csv import _to_csv
+from ._xlsx import _to_xlsx
 from ._jsonx import _transform_json
 from ._jsonx import _drop_json_tables
 from ._select import _select
@@ -94,7 +94,7 @@ class LDLite:
 
         The *filename* specifies a local file containing the database or where
         the database will be created if it does not exist.  By default LDLite
-        uses DuckDB to provide embedded analytic database features.  This
+        uses DuckDB to provide embedded reporting database features.  This
         function returns a connection to the database which can be used to
         submit SQL queries.
 
@@ -221,7 +221,7 @@ class LDLite:
         """Submits a CQL query to an Okapi module, and transforms and stores the result.
 
         The *path* parameter is the request path, and *query* is the CQL query.
-        The result is stored in *table* within the analytic database.
+        The result is stored in *table* within the reporting database.
 
         By default JSON data are transformed into one or more tables that are
         created in addition to *table*.  New tables overwrite any existing
@@ -388,7 +388,7 @@ class LDLite:
         self._quiet = enable
 
     def select(self, table, columns=None, limit=None):
-        """Prints rows of a table in the analytic database.
+        """Prints rows of a table in the reporting database.
 
         By default all rows and columns of *table* are printed to standard
         output.  If *columns* is specified, then only the named columns are
@@ -415,7 +415,7 @@ class LDLite:
             _autocommit(self.db, self.dbtype, True)
 
     def to_csv(self, filename, table, header=True):
-        """Export a table in the analytic database to a CSV file.
+        """Export a table in the reporting database to a CSV file.
 
         All rows of *table* are exported to *filename*.  If *header* is True
         (the default), the CSV file will begin with a header line containing
@@ -430,6 +430,27 @@ class LDLite:
         _autocommit(self.db, self.dbtype, False)
         try:
             _to_csv(self.db, self.dbtype, table, filename, header)
+            if self.dbtype == 2 or self.dbtype == 3:
+                self.db.rollback()
+        finally:
+            _autocommit(self.db, self.dbtype, True)
+
+    def to_xlsx(self, filename, table, header=True):
+        """Export a table in the reporting database to an xlsx (Excel) file.
+
+        All rows of *table* are exported to *filename*.  If *header* is True
+        (the default), the xlsx worksheet will begin with a row containing the
+        column names.
+
+        Example:
+
+            ld.to_xlsx(table='g', filename='g.xlsx')
+
+        """
+        self._check_db()
+        _autocommit(self.db, self.dbtype, False)
+        try:
+            _to_xlsx(self.db, self.dbtype, table, filename, header)
             if self.dbtype == 2 or self.dbtype == 3:
                 self.db.rollback()
         finally:
