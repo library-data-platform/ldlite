@@ -8,7 +8,8 @@ below covers querying SRS data and using
 transform the data to tabular format for easier querying via SQL.  The
 suggested process assumes PostgreSQL is being used for the reporting
 database.  Also, although ldpmarc is designed to work with LDP, the
-process below does not require LDP but only LDLite.
+process below does not require LDP but only LDLite.  The following
+requires LDLite v0.0.22 or later.
 
 
 Querying and retrieving SRS data
@@ -36,8 +37,7 @@ argument; but this could be prohibitively slow.
 
 The *json_depth* parameter must be set to 2.  This is important
 because it will cause the transformation to stop when it reaches the
-MARC JSON record and to write the JSON object as a whole.  (Note: this
-requires LDLite v0.0.22 or later.)
+MARC JSON record and to write the JSON object as a whole.
 
 After this query has completed,
 `folio_source_record.records_j_parsed_record` should contain the MARC
