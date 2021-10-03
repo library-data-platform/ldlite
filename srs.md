@@ -1,13 +1,14 @@
 Using LDLite with Source Record Storage (SRS)
 =============================================
 
-This page summarizes experiments with using LDLite to report on data
+This page summarizes experimental use of LDLite to report on data
 retrieved from Source Record Storage (SRS).  The sequence of steps
 below covers querying SRS data and using
 [ldpmarc](https://github.com/library-data-platform/ldpmarc) to
-transform the data to tabular format for further SQL querying.  The
+transform the data to tabular format for easier querying via SQL.  The
 suggested process assumes PostgreSQL is being used for the reporting
-database.
+database.  Also, although ldpmarc is designed to work with LDP, the
+process below does not require LDP but only LDLite.
 
 
 Querying and retrieving SRS data
@@ -52,13 +53,13 @@ to be available.  We can at least create empty columns for them using
 SQL:
 
 ```sql
-ALTER TABLE folio_source_record.records_j ADD COLUMN instance_hrid varchar;
+ALTER TABLE folio_source_record.records_j ADD COLUMN instance_hrid varchar(32);
 
-ALTER TABLE folio_source_record.records_j ADD COLUMN instance_id varchar;
+ALTER TABLE folio_source_record.records_j ADD COLUMN instance_id varchar(36);
 ```
 
 The `instance_id` data are required by ldpmarc, and we can fill them
-by copying them from another column:
+in by copying them from another table:
 
 ```sql
 UPDATE folio_source_record.records_j AS r
@@ -79,17 +80,18 @@ Running ldpmarc
 The data now should be compatible with ldpmarc.  Before continuing,
 see the [ldpmarc readme
 file](https://github.com/library-data-platform/ldpmarc/blob/main/README.md)
-for installation and usage documentation, but note that LDP is not
-required for this process.  However, the `main` branch of ldpmarc
+for installation and usage documentation, but again note that LDP is
+not required for this process.  However, the `main` branch of ldpmarc
 should be used because v1.2.0 does not include the changes made for
 compatibility with LDLite.
 
 Since ldpmarc is designed to work with LDP, it looks for database
 connection parameters in a JSON configuration file called
 `ldpconf.json` located within an LDP "data directory."  If the data
-directory is `ldpdata`, then `ldpdata/ldpconf.json` should contain
-something like:
+directory is called, for example, `ldpdata/`, then
+`ldpdata/ldpconf.json` should contain something like:
 
+```json
 {
     "ldp_database": {
         "database_name": "<ldlite_database_name>",
@@ -100,6 +102,7 @@ something like:
         "database_sslmode": "<disable_or_require>"
     }
 }
+```
 
 Then to run ldpmarc:
 
@@ -138,14 +141,14 @@ MARC records in a form such as:
  14ea8ed4-672b-11eb-8681-aed9fae510e9 |   23 | 14ea8ed4-672b-11eb-8681-aed9fae510e9 |               | fef9f415-1b35-3e30-89cc-17857a611338 | 999   | f    | f    |   1 | s  | 14ea8ed4-672b-11eb-8681-aed9fae510e9
 ```
 
-These data can be queried effectively using SQL (see the Reporting SIG
-for tips on this), or can be exported to an Excel spreadsheet using
-LDLite, e.g.:
+These data can be queried effectively using SQL (contact a member of
+the Reporting SIG for tips and examples on this), or they can be
+exported to an Excel spreadsheet using LDLite, e.g.:
 
 ```python
 ld.to_xlsx(table='public.srs_marctab', filename='marctab.xlsx')
 ```
 
-Note that in this form the table can be very large, since it contains
+Note that the `srs_marctab` table can be very large, since it contains
 many rows for every MARC record.
 
