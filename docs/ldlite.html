@@ -63,6 +63,9 @@
                         <li>
                                 <a class="function" href="#LDLite.to_csv">to_csv</a>
                         </li>
+                        <li>
+                                <a class="function" href="#LDLite.to_xlsx">to_xlsx</a>
+                        </li>
                 </ul>
 
             </li>
@@ -87,8 +90,7 @@ the Library Data Platform project and provides basic LDP functions without
 requiring the platform to be installed.</p>
 
 <p>LDLite functions include extracting data from an Okapi instance, transforming
-the data for reporting purposes, and storing the data in an analytic database
-for further querying.</p>
+the data, and storing the data in a reporting database for further querying.</p>
 
 <p>To install LDLite or upgrade to the latest version:</p>
 
@@ -167,7 +169,7 @@ ld = <a href="#LDLite">ldlite.LDLite()</a>
 
 <p>The <em>filename</em> specifies a local file containing the database or where
 the database will be created if it does not exist.  By default LDLite
-uses DuckDB to provide embedded analytic database features.  This
+uses DuckDB to provide embedded reporting database features.  This
 function returns a connection to the database which can be used to
 submit SQL queries.</p>
 
@@ -286,7 +288,7 @@ tables created by JSON transformation.</p>
             <div class="docstring"><p>Submits a CQL query to an Okapi module, and transforms and stores the result.</p>
 
 <p>The <em>path</em> parameter is the request path, and <em>query</em> is the CQL query.
-The result is stored in <em>table</em> within the analytic database.</p>
+The result is stored in <em>table</em> within the reporting database.</p>
 
 <p>By default JSON data are transformed into one or more tables that are
 created in addition to <em>table</em>.  New tables overwrite any existing
@@ -340,7 +342,7 @@ are not suppressed.</p>
     </div>
 
         
-            <div class="docstring"><p>Prints rows of a table in the analytic database.</p>
+            <div class="docstring"><p>Prints rows of a table in the reporting database.</p>
 
 <p>By default all rows and columns of <em>table</em> are printed to standard
 output.  If <em>columns</em> is specified, then only the named columns are
@@ -365,7 +367,7 @@ ld.select(table='loans', columns=['id', 'item_id', 'loan_date'])
     </div>
 
         
-            <div class="docstring"><p>Export a table in the analytic database to a CSV file.</p>
+            <div class="docstring"><p>Export a table in the reporting database to a CSV file.</p>
 
 <p>All rows of <em>table</em> are exported to <em>filename</em>.  If <em>header</em> is True
 (the default), the CSV file will begin with a header line containing
@@ -374,6 +376,29 @@ the column names.</p>
 <p>Example:</p>
 
 <pre><code>ld.to_csv(table='g', filename='g.csv')
+</code></pre>
+</div>
+
+
+                            </div>
+                            <div id="LDLite.to_xlsx" class="classattr">
+                                        <div class="attr function"><a class="headerlink" href="#LDLite.to_xlsx">#&nbsp;&nbsp</a>
+
+        
+            <span class="def">def</span>
+            <span class="name">to_xlsx</span><span class="signature">(self, filename, table, header=True)</span>:
+    </div>
+
+        
+            <div class="docstring"><p>Export a table in the reporting database to an xlsx (Excel) file.</p>
+
+<p>All rows of <em>table</em> are exported to <em>filename</em>.  If <em>header</em> is True
+(the default), the xlsx worksheet will begin with a row containing the
+column names.</p>
+
+<p>Example:</p>
+
+<pre><code>ld.to_xlsx(table='g', filename='g.xlsx')
 </code></pre>
 </div>
 
