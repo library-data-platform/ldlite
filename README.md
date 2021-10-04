@@ -54,6 +54,7 @@ ldlite: created tables: u, u_j, u_j_departments, u_j_metadata, u_j_personal, u_j
 ...             JOIN g_j ON u_j.patron_group = g_j.id;
 ...     """)
 >>> ld.to_csv(table='user_groups', filename='user_groups.csv')
+>>> ld.to_xlsx(table='user_groups', filename='user_groups.xlsx')
 ```
 
 
@@ -84,6 +85,8 @@ Notebook](https://github.com/library-data-platform/ldlite/blob/main/examples/exa
 
 * [Loading sample data from FOLIO demo
 sites](https://github.com/library-data-platform/ldlite/blob/main/examples/folio_demo.py)
+
+* [Using LDLite with SRS MARC data](https://github.com/library-data-platform/ldlite/blob/main/srs.md)
 
 
 LDLite resources

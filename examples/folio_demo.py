@@ -137,6 +137,7 @@ queries = [
         ('folio_organizations.organizations', '/organizations-storage/organizations', 'cql.allRecords=1 sortby id'),
         ('folio_organizations.phone_numbers', '/organizations-storage/phone-numbers', 'cql.allRecords=1 sortby id'),
         ('folio_organizations.urls', '/organizations-storage/urls', 'cql.allRecords=1 sortby id'),
+        ('folio_source_record.records', '/source-storage/records', 'cql.allRecords=1 sortby id', 2)
         ('folio_users.addresstype', '/addresstypes', 'cql.allRecords=1 sortby id'),
         ('folio_users.departments', '/departments', 'cql.allRecords=1 sortby id'),
         ('folio_users.groups', '/groups', 'cql.allRecords=1 sortby id'),
@@ -147,7 +148,10 @@ queries = [
 tables = []
 for q in queries:
     try:
-        t = ld.query(table=q[0], path=q[1], query=q[2])
+        if len(q) == 4:
+            t = ld.query(table=q[0], path=q[1], query=q[2], json_depth=[3])
+        else:
+            t = ld.query(table=q[0], path=q[1], query=q[2])
     except Exception as e:
         traceback.print_exception(type(e), e, e.__traceback__)
     tables += t

@@ -3,7 +3,7 @@ LDLite is a lightweight reporting tool for Okapi-based services.  It is part of
 the Library Data Platform project and provides basic LDP functions without
 requiring the platform to be installed.
 
-LDLite functions include extracting data from an Okapi instance, transforming
+LDLite functions include retrieving data from an Okapi instance, transforming
 the data, and storing the data in a reporting database for further querying.
 
 To install LDLite or upgrade to the latest version:
@@ -57,6 +57,27 @@ from ._sqlx import _sqlid
 from ._sqlx import _stage_table
 from ._sqlx import _strip_schema
 from ._sqlx import _varchar_type
+
+def _encode_query(query):
+    if query is None or query == '':
+        return ''
+    if isinstance(query, str):
+        return '&query=' + query
+    elif isinstance(query, dict):
+        q = ''
+        for k, v in query.items():
+            if isinstance(v, str):
+                q += '&' + k + '=' + v
+            elif isinstance(v, list):
+                for vv in v:
+                    if not isinstance(vv, str):
+                        raise ValueError('invalid query element "' + vv + '" in query "' + query + '"')
+                    q += '&' + k + '=' + vv
+            else:
+                raise ValueError('invalid query element "' + v + '" in query "' + query + '"')
+        return q
+    else:
+        raise ValueError('invalid query "' + query + '"')
 
 def _rename_tables(db, tables):
     cur = db.cursor()
@@ -217,11 +238,20 @@ class LDLite:
             _autocommit(self.db, self.dbtype, True)
         return tables
 
-    def query(self, table, path, query, json_depth=3, transform=None):
-        """Submits a CQL query to an Okapi module, and transforms and stores the result.
+    def query(self, table, path, query=None, json_depth=3, limit=None, transform=None):
+        """Submits a query to an Okapi module, and transforms and stores the result.
 
-        The *path* parameter is the request path, and *query* is the CQL query.
-        The result is stored in *table* within the reporting database.
+        The retrieved result is stored in *table* within the reporting
+        database.
+
+        The *path* parameter is the request path.
+
+        If *query* is a string, it is assumed to be a CQL or similar query and
+        is encoded as query=*query*.  If *query* is a dictionary, it is
+        interpreted as a set of query parameters.  Each value of the dictionary
+        must be either a string or a list of strings.  If a string, it is
+        encoded as key=value.  If a list of strings, it is encoded as
+        key=value1&key=value2&...
 
         By default JSON data are transformed into one or more tables that are
         created in addition to *table*.  New tables overwrite any existing
@@ -229,6 +259,8 @@ class LDLite:
         range 0 < *json_depth* < 5, this determines how far into nested JSON
         data the transformation will descend.  (The default is 3.)  If
         *json_depth* is specified as 0, JSON data are not transformed.
+
+        If *limit* is specified, then only up to *limit* records are retrieved.
 
         The *transform* parameter is no longer supported and will be removed in
         the future.  Instead, specify *json_depth* as 0 to disable JSON
@@ -266,13 +298,13 @@ class LDLite:
             # First get total number of records
             hdr = { 'X-Okapi-Tenant': self.okapi_tenant,
                     'X-Okapi-Token': self.login_token }
-            resp = requests.get(self.okapi_url+path+'?offset=0&limit=1&query='+query, headers=hdr)
+            resp = requests.get(self.okapi_url+path+'?offset=0&limit=1' + _encode_query(query), headers=hdr)
             if resp.status_code == 401:
                 # Retry
                 self._login()
                 hdr = { 'X-Okapi-Tenant': self.okapi_tenant,
                         'X-Okapi-Token': self.login_token }
-                resp = requests.get(self.okapi_url+path+'?offset=0&limit=1&query='+query, headers=hdr)
+                resp = requests.get(self.okapi_url+path+'?offset=0&limit=1' + _encode_query(query), headers=hdr)
             if resp.status_code != 200:
                 resp.raise_for_status()
             try:
@@ -299,8 +331,8 @@ class LDLite:
             try:
                 while True:
                     offset = page * self.page_size
-                    limit = self.page_size
-                    resp = requests.get(self.okapi_url+path+'?offset='+str(offset)+'&limit='+str(limit)+'&query='+query, headers=hdr)
+                    lim = self.page_size
+                    resp = requests.get(self.okapi_url + path + '?offset=' + str(offset) + '&limit=' + str(lim) + _encode_query(query), headers=hdr)
                     if resp.status_code != 200:
                         resp.raise_for_status()
                     try:
@@ -324,6 +356,10 @@ class LDLite:
                             else:
                                 pbartotal += 1
                                 pbar.update(1)
+                        if limit is not None and count == limit:
+                            break
+                    if limit is not None and count == limit:
+                        break
                     page += 1
             finally:
                 cur.close()

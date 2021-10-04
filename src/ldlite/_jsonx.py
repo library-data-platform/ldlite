@@ -70,7 +70,13 @@ def _compile_attrs(table, jdict, newattrs, depth, max_depth):
         if k is None or v is None:
             continue
         if isinstance(v, dict):
-            _compile_attrs(table+'_'+_decode_camel_case(k), v, newattrs, depth+1, max_depth)
+            if depth == max_depth:
+                if table not in newattrs:
+                    newattrs[table] = {'id': ('id', 'varchar')}
+                if k not in newattrs[table] or newattrs[table][k] != 'varchar':
+                    newattrs[table][k] = (_decode_camel_case(k), 'varchar')
+            else:
+                _compile_attrs(table+'_'+_decode_camel_case(k), v, newattrs, depth+1, max_depth)
         elif isinstance(v, list):
             _compile_array_attrs(table+'_'+_decode_camel_case(k), v, newattrs, depth+1, k, max_depth)
         elif isinstance(v, bool):
@@ -140,7 +146,7 @@ def _transform_data(dbtype, cur, table, jdict, newattrs, depth, record_id, row_i
     for k, v in jdict.items():
         if k is None:
             continue
-        if isinstance(v, dict):
+        if isinstance(v, dict) and depth < max_depth:
             _transform_data(dbtype, cur, table+'_'+_decode_camel_case(k), v, newattrs, depth+1, rec_id, row_ids, None, max_depth)
         elif isinstance(v, list):
             _transform_array_data(dbtype, cur, table+'_'+_decode_camel_case(k), v, newattrs, depth+1, rec_id, row_ids, k, max_depth)
@@ -161,7 +167,10 @@ def _transform_data(dbtype, cur, table, jdict, newattrs, depth, record_id, row_i
             if v is None:
                 rowdict[decoded_attr] = 'NULL'
             else:
-                rowdict[decoded_attr] = _encode_sql_str(dbtype, str(v))
+                if isinstance(v, dict):
+                    rowdict[decoded_attr] = _encode_sql_str(dbtype, json.dumps(v, indent=4))
+                else:
+                    rowdict[decoded_attr] = _encode_sql_str(dbtype, str(v))
     row = list(rowdict.items())
     if 'id' not in jdict and record_id is not None:
         row.append( ('id', '\''+record_id+'\'') )
