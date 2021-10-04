@@ -1,15 +1,16 @@
-Using LDLite with Source Record Storage (SRS)
-=============================================
+Using LDLite with SRS MARC data
+===============================
 
-This page summarizes experimental use of LDLite to report on data
+This page summarizes experimental use of LDLite to report on MARC data
 retrieved from Source Record Storage (SRS).  The sequence of steps
 below covers querying SRS data and using
 [ldpmarc](https://github.com/library-data-platform/ldpmarc) to
 transform the data to tabular format for easier querying via SQL.  The
 suggested process assumes PostgreSQL is being used for the reporting
 database.  Also, although ldpmarc is designed to work with LDP, the
-process below does not require LDP but only LDLite.  The following
-requires LDLite v0.0.22 or later.
+process below does not require LDP but only LDLite.
+
+The following requires LDLite v0.0.22 or later.
 
 
 Querying and retrieving SRS data
@@ -25,15 +26,19 @@ ld = ldlite.LDLite()
 A basic query that will retrieve SRS data is:
 
 ```python
-ld.query(table='folio_source_record.records', path='/source-storage/records', query='cql.allRecords=1 sortby id', json_depth=2, limit=1000)
+ld.query(table='folio_source_record.records', path='/source-storage/records', json_depth=2, limit=1000)
 ```
 
-In this example, the *limit* parameter is used to reduce the number of
-records retrieved.  However, these data include some record metadata
-which might make them amenable to filtering using the CQL query.
-Alternatively, if the total number of records is small, it may be
-possible to retrieve all of the records by removing the *limit*
-argument; but this could be prohibitively slow.
+In this example, the *limit* parameter has been used to reduce the
+number of records retrieved.  Alternatively, SRS allows filtering by
+`snapshotId`, `recordType`, or `state`, for example:
+
+```python
+ld.query(table='folio_source_record.records', path='/source-storage/records', query={'state': 'OLD'}, json_depth=2)
+```
+
+If the total number of SRS records is small, it may be possible to
+retrieve all of the records; but this could be prohibitively slow.
 
 The *json_depth* parameter must be set to 2.  This is important
 because it will cause the transformation to stop when it reaches the
@@ -81,9 +86,10 @@ The data now should be compatible with ldpmarc.  Before continuing,
 see the [ldpmarc readme
 file](https://github.com/library-data-platform/ldpmarc/blob/main/README.md)
 for installation and usage documentation, but again note that LDP is
-not required for this process.  However, the `main` branch of ldpmarc
-should be used because v1.2.0 does not include the changes made for
-compatibility with LDLite.
+not required for this process.
+
+The `main` branch of ldpmarc should be used because v1.2.0 does not
+include the changes made for compatibility with LDLite.
 
 Since ldpmarc is designed to work with LDP, it looks for database
 connection parameters in a JSON configuration file called

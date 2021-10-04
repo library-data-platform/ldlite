@@ -86,8 +86,7 @@ Notebook](https://github.com/library-data-platform/ldlite/blob/main/examples/exa
 * [Loading sample data from FOLIO demo
 sites](https://github.com/library-data-platform/ldlite/blob/main/examples/folio_demo.py)
 
-* [Using LDLite with Source Record Storage
-(SRS)](https://github.com/library-data-platform/ldlite/blob/main/srs.md)
+* [Using LDLite with SRS MARC data](https://github.com/library-data-platform/ldlite/blob/main/srs.md)
 
 
 LDLite resources
