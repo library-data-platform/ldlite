@@ -10,7 +10,7 @@ suggested process assumes PostgreSQL is being used for the reporting
 database.  Also, although ldpmarc is designed to work with LDP, the
 process below does not require LDP but only LDLite.
 
-The following requires LDLite v0.0.22 or later.
+The following requires LDLite v0.0.23 or later.
 
 
 Querying and retrieving SRS data
