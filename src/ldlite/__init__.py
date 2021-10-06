@@ -50,6 +50,7 @@ from ._csv import _to_csv
 from ._xlsx import _to_xlsx
 from ._jsonx import _transform_json
 from ._jsonx import _drop_json_tables
+from ._query import _query_dict
 from ._select import _select
 from ._sqlx import _encode_sql_str
 from ._sqlx import _autocommit
@@ -57,27 +58,6 @@ from ._sqlx import _sqlid
 from ._sqlx import _stage_table
 from ._sqlx import _strip_schema
 from ._sqlx import _varchar_type
-
-def _encode_query(query):
-    if query is None or query == '':
-        return ''
-    if isinstance(query, str):
-        return '&query=' + query
-    elif isinstance(query, dict):
-        q = ''
-        for k, v in query.items():
-            if isinstance(v, str):
-                q += '&' + k + '=' + v
-            elif isinstance(v, list):
-                for vv in v:
-                    if not isinstance(vv, str):
-                        raise ValueError('invalid query element "' + vv + '" in query "' + query + '"')
-                    q += '&' + k + '=' + vv
-            else:
-                raise ValueError('invalid query element "' + v + '" in query "' + query + '"')
-        return q
-    else:
-        raise ValueError('invalid query "' + query + '"')
 
 def _rename_tables(db, tables):
     cur = db.cursor()
@@ -284,6 +264,7 @@ class LDLite:
         self._check_db()
         if not self._quiet:
             print('ldlite: querying: '+path, file=sys.stderr)
+        querycopy = _query_dict(query)
         _autocommit(self.db, self.dbtype, False)
         try:
             stage_table = _stage_table(table)
@@ -298,13 +279,15 @@ class LDLite:
             # First get total number of records
             hdr = { 'X-Okapi-Tenant': self.okapi_tenant,
                     'X-Okapi-Token': self.login_token }
-            resp = requests.get(self.okapi_url+path+'?offset=0&limit=1' + _encode_query(query), headers=hdr)
+            querycopy['offset'] = '0'
+            querycopy['limit'] = '1'
+            resp = requests.get(self.okapi_url+path, params=querycopy, headers=hdr)
             if resp.status_code == 401:
                 # Retry
                 self._login()
                 hdr = { 'X-Okapi-Tenant': self.okapi_tenant,
                         'X-Okapi-Token': self.login_token }
-                resp = requests.get(self.okapi_url+path+'?offset=0&limit=1' + _encode_query(query), headers=hdr)
+                resp = requests.get(self.okapi_url+path, params=querycopy, headers=hdr)
             if resp.status_code != 200:
                 resp.raise_for_status()
             try:
@@ -332,7 +315,9 @@ class LDLite:
                 while True:
                     offset = page * self.page_size
                     lim = self.page_size
-                    resp = requests.get(self.okapi_url + path + '?offset=' + str(offset) + '&limit=' + str(lim) + _encode_query(query), headers=hdr)
+                    querycopy['offset'] = str(offset)
+                    querycopy['limit'] = str(lim)
+                    resp = requests.get(self.okapi_url + path, params=querycopy, headers=hdr)
                     if resp.status_code != 200:
                         resp.raise_for_status()
                     try:
