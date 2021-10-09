@@ -61,7 +61,13 @@
                                 <a class="function" href="#LDLite.select">select</a>
                         </li>
                         <li>
+                                <a class="function" href="#LDLite.export_csv">export_csv</a>
+                        </li>
+                        <li>
                                 <a class="function" href="#LDLite.to_csv">to_csv</a>
+                        </li>
+                        <li>
+                                <a class="function" href="#LDLite.export_excel">export_excel</a>
                         </li>
                         <li>
                                 <a class="function" href="#LDLite.to_xlsx">to_xlsx</a>
@@ -377,6 +383,31 @@ ld.select(table='loans', columns=['id', 'item_id', 'loan_date'])
 
 
                             </div>
+                            <div id="LDLite.export_csv" class="classattr">
+                                        <div class="attr function"><a class="headerlink" href="#LDLite.export_csv">#&nbsp;&nbsp</a>
+
+        
+            <span class="def">def</span>
+            <span class="name">export_csv</span><span class="signature">(self, filename, table, header=True)</span>:
+    </div>
+
+        
+            <div class="docstring"><p>Export a table in the reporting database to a CSV file.</p>
+
+<p>All rows of <em>table</em> are exported to <em>filename</em>, or <em>filename</em>.csv if
+<em>filename</em> does not have an extension.</p>
+
+<p>If <em>header</em> is True (the default), the CSV file will begin with a
+header line containing the column names.</p>
+
+<p>Example:</p>
+
+<pre><code>ld.to_csv(table='g', filename='g.csv')
+</code></pre>
+</div>
+
+
+                            </div>
                             <div id="LDLite.to_csv" class="classattr">
                                         <div class="attr function"><a class="headerlink" href="#LDLite.to_csv">#&nbsp;&nbsp</a>
 
@@ -386,15 +417,31 @@ ld.select(table='loans', columns=['id', 'item_id', 'loan_date'])
     </div>
 
         
-            <div class="docstring"><p>Export a table in the reporting database to a CSV file.</p>
+            <div class="docstring"><p>Deprecated; use export_csv().</p>
+</div>
 
-<p>All rows of <em>table</em> are exported to <em>filename</em>.  If <em>header</em> is True
-(the default), the CSV file will begin with a header line containing
-the column names.</p>
+
+                            </div>
+                            <div id="LDLite.export_excel" class="classattr">
+                                        <div class="attr function"><a class="headerlink" href="#LDLite.export_excel">#&nbsp;&nbsp</a>
+
+        
+            <span class="def">def</span>
+            <span class="name">export_excel</span><span class="signature">(self, filename, table, header=True)</span>:
+    </div>
+
+        
+            <div class="docstring"><p>Export a table in the reporting database to an Excel file.</p>
+
+<p>All rows of <em>table</em> are exported to <em>filename</em>, or <em>filename</em>.xlsx if
+<em>filename</em> does not have an extension.</p>
+
+<p>If <em>header</em> is True (the default), the worksheet will begin with a row
+containing the column names.</p>
 
 <p>Example:</p>
 
-<pre><code>ld.to_csv(table='g', filename='g.csv')
+<pre><code>ld.export_excel(table='g', filename='g')
 </code></pre>
 </div>
 
@@ -409,16 +456,7 @@ the column names.</p>
     </div>
 
         
-            <div class="docstring"><p>Export a table in the reporting database to an xlsx (Excel) file.</p>
-
-<p>All rows of <em>table</em> are exported to <em>filename</em>.  If <em>header</em> is True
-(the default), the xlsx worksheet will begin with a row containing the
-column names.</p>
-
-<p>Example:</p>
-
-<pre><code>ld.to_xlsx(table='g', filename='g.xlsx')
-</code></pre>
+            <div class="docstring"><p>Deprecated; use export_excel().</p>
 </div>
 
 
