@@ -184,7 +184,7 @@ ld.select(table='user_groups', limit=10)
 
 ld.export_csv(table='user_groups', filename='user_groups.csv')
 
-ld.export_xlsx(table='user_groups', filename='user_groups.xlsx')
+ld.export_excel(table='user_groups', filename='user_groups.xlsx')
 ```
 
 
