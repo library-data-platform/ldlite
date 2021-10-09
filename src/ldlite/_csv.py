@@ -25,7 +25,8 @@ def _to_csv(db, dbtype, table, filename, header):
     try:
         cols = ','.join([_sqlid(a[0]) for a in attrs])
         cur.execute('SELECT ' + cols + ' FROM ' + _sqlid(table) + ' ORDER BY ' + ','.join([str(i + 1) for i in range(len(attrs))]))
-        with open(filename, 'w') as f:
+        fn = filename if '.' in filename else filename + '.csv'
+        with open(fn, 'w') as f:
             if header:
                 print(','.join(['"'+a[0]+'"' for a in attrs]), file=f)
             while True:

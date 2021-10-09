@@ -7,7 +7,6 @@ from ._camelcase import _decode_camel_case
 from ._sqlx import _server_cursor
 from ._sqlx import _encode_sql_str
 from ._sqlx import _sqlid
-from ._sqlx import _stage_table
 from ._sqlx import _varchar_type
 
 def _jtable(table):
@@ -125,7 +124,7 @@ def _transform_array_data(dbtype, cur, table, jarray, newattrs, depth, record_id
                 value = 'NULL'
             else:
                 value = _encode_sql_str(dbtype, str(v))
-        q = 'INSERT INTO '+_sqlid(_stage_table(table))+'(__id,id,ord,'+_sqlid(decoded_attr)
+        q = 'INSERT INTO ' + _sqlid(table) + '(__id,id,ord,' + _sqlid(decoded_attr)
         q += ')VALUES(' + str(row_ids[table]) + ',\'' + record_id + '\',' + str(i+1) + ',' + value + ')'
         try:
             cur.execute(q)
@@ -176,7 +175,7 @@ def _transform_data(dbtype, cur, table, jdict, newattrs, depth, record_id, row_i
         row.append( ('id', '\''+record_id+'\'') )
     ord_attr = 'ord,' if ord_n is not None else ''
     ord_val = str(ord_n)+',' if ord_n is not None else ''
-    q = 'INSERT INTO ' + _sqlid(_stage_table(table)) + '(__id,' + ord_attr
+    q = 'INSERT INTO ' + _sqlid(table) + '(__id,' + ord_attr
     q += ','.join([_sqlid(kv[0]) for kv in row])
     q += ')VALUES(' + str(row_ids[table]) + ',' + ord_val
     q += ','.join([kv[1] for kv in row])
@@ -188,12 +187,11 @@ def _transform_data(dbtype, cur, table, jdict, newattrs, depth, record_id, row_i
     row_ids[table] += 1
 
 def _transform_json(db, dbtype, table, total, quiet, max_depth):
-    stage_table = _stage_table(table)
     # Scan all fields for JSON data
     # First get a list of the string attributes
     cur = db.cursor()
     try:
-        cur.execute('SELECT * FROM ' + _sqlid(stage_table) + ' LIMIT 1')
+        cur.execute('SELECT * FROM ' + _sqlid(table) + ' LIMIT 1')
         str_attrs = set()
         for a in cur.description:
             if a[1] == 'STRING' or a[1] == 1043:
@@ -206,7 +204,7 @@ def _transform_json(db, dbtype, table, total, quiet, max_depth):
         return [], {}
     cur = _server_cursor(db, dbtype)
     try:
-        cur.execute('SELECT '+','.join([_sqlid(a) for a in str_attr_list])+' FROM '+_sqlid(stage_table))
+        cur.execute('SELECT '+','.join([_sqlid(a) for a in str_attr_list])+' FROM '+_sqlid(table))
         if not quiet:
             pbar = tqdm(desc='scanning', total=total, leave=False, mininterval=1, smoothing=0, colour='#A9A9A9', bar_format='{desc} {bar}{postfix}')
             pbartotal = 0
@@ -239,21 +237,21 @@ def _transform_json(db, dbtype, table, total, quiet, max_depth):
     cur = db.cursor()
     try:
         for t, attrs in newattrs.items():
-            stage_t = _stage_table(t)
-            cur.execute('DROP TABLE IF EXISTS ' + _sqlid(stage_t))
-            cur.execute('CREATE TABLE ' + _sqlid(stage_t) + '(__id bigint)')
-            cur.execute('ALTER TABLE ' + _sqlid(stage_t) + ' ADD COLUMN id varchar(36)')
+            cur.execute('DROP TABLE IF EXISTS ' + _sqlid(t))
+            cur.execute('CREATE TABLE ' + _sqlid(t) + '(__id bigint)')
+            cur.execute('ALTER TABLE ' + _sqlid(t) + ' ADD COLUMN id varchar(36)')
             if 'ord' in attrs:
-                cur.execute('ALTER TABLE ' + _sqlid(stage_t) + ' ADD COLUMN ord integer')
+                cur.execute('ALTER TABLE ' + _sqlid(t) + ' ADD COLUMN ord integer')
             for attr in sorted(list(attrs)):
                 if attr == 'id' or attr == 'ord':
                     continue
                 decoded_attr, dtype = attrs[attr]
                 if dtype == 'varchar':
                     dtype = _varchar_type(dbtype)
-                cur.execute('ALTER TABLE ' + _sqlid(stage_t) + ' ADD COLUMN ' + _sqlid(decoded_attr) + ' ' + dtype)
+                cur.execute('ALTER TABLE ' + _sqlid(t) + ' ADD COLUMN ' + _sqlid(decoded_attr) + ' ' + dtype)
     finally:
         cur.close()
+    db.commit()
     # Set all row IDs to 1
     row_ids = {}
     for t in newattrs.keys():
@@ -265,7 +263,7 @@ def _transform_json(db, dbtype, table, total, quiet, max_depth):
         return [], {}
     cur = _server_cursor(db, dbtype)
     try:
-        cur.execute('SELECT '+','.join([_sqlid(a) for a in json_attr_list]) + ' FROM ' + _sqlid(stage_table))
+        cur.execute('SELECT ' + ','.join([_sqlid(a) for a in json_attr_list]) + ' FROM ' + _sqlid(table))
         if not quiet:
             pbar = tqdm(desc='transforming', total=total, leave=False, mininterval=1, smoothing=0, colour='#A9A9A9', bar_format='{desc} {bar}{postfix}')
             pbartotal = 0
@@ -292,13 +290,15 @@ def _transform_json(db, dbtype, table, total, quiet, max_depth):
             pbar.close()
     finally:
         cur.close()
+    db.commit()
     jtable = _jtable(table)
     cur = db.cursor()
     try:
-        cur.execute('CREATE TABLE ' + _sqlid(_stage_table(jtable)) + '(table_name ' + _varchar_type(dbtype) + ' NOT NULL)')
+        cur.execute('CREATE TABLE ' + _sqlid(jtable) + '(table_name ' + _varchar_type(dbtype) + ' NOT NULL)')
         for t in newattrs.keys():
-            cur.execute('INSERT INTO ' + _sqlid(_stage_table(jtable)) + ' VALUES(' + _encode_sql_str(dbtype, t) + ')')
+            cur.execute('INSERT INTO ' + _sqlid(jtable) + ' VALUES(' + _encode_sql_str(dbtype, t) + ')')
     finally:
         cur.close()
+    db.commit()
     return sorted(list(newattrs.keys()) + [jtable]), newattrs
 

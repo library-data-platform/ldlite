@@ -50,43 +50,22 @@ from ._csv import _to_csv
 from ._xlsx import _to_xlsx
 from ._jsonx import _transform_json
 from ._jsonx import _drop_json_tables
+from ._query import _query_dict
 from ._select import _select
 from ._sqlx import _encode_sql_str
 from ._sqlx import _autocommit
 from ._sqlx import _sqlid
-from ._sqlx import _stage_table
 from ._sqlx import _strip_schema
 from ._sqlx import _varchar_type
 
-def _encode_query(query):
-    if query is None or query == '':
-        return ''
-    if isinstance(query, str):
-        return '&query=' + query
-    elif isinstance(query, dict):
-        q = ''
-        for k, v in query.items():
-            if isinstance(v, str):
-                q += '&' + k + '=' + v
-            elif isinstance(v, list):
-                for vv in v:
-                    if not isinstance(vv, str):
-                        raise ValueError('invalid query element "' + vv + '" in query "' + query + '"')
-                    q += '&' + k + '=' + vv
-            else:
-                raise ValueError('invalid query element "' + v + '" in query "' + query + '"')
-        return q
-    else:
-        raise ValueError('invalid query "' + query + '"')
-
-def _rename_tables(db, tables):
-    cur = db.cursor()
-    try:
-        for t in tables:
-            cur.execute('DROP TABLE IF EXISTS ' + _sqlid(t))
-            cur.execute('ALTER TABLE ' + _sqlid(_stage_table(t)) + ' RENAME TO ' + _sqlid(_strip_schema(t)))
-    finally:
-        cur.close()
+# def _rename_tables(db, tables):
+#     cur = db.cursor()
+#     try:
+#         for t in tables:
+#             cur.execute('DROP TABLE IF EXISTS ' + _sqlid(t))
+#             cur.execute('ALTER TABLE ' + _sqlid(_stage_table(t)) + ' RENAME TO ' + _sqlid(_strip_schema(t)))
+#     finally:
+#         cur.close()
 
 class LDLite:
 
@@ -284,27 +263,29 @@ class LDLite:
         self._check_db()
         if not self._quiet:
             print('ldlite: querying: '+path, file=sys.stderr)
+        querycopy = _query_dict(query)
         _autocommit(self.db, self.dbtype, False)
         try:
-            stage_table = _stage_table(table)
+            _ = _drop_json_tables(self.db, self.dbtype, table)
             cur = self.db.cursor()
             try:
                 if len(schema_table) == 2:
                     cur.execute('CREATE SCHEMA IF NOT EXISTS ' + _sqlid(schema_table[0]))
-                cur.execute('DROP TABLE IF EXISTS ' + _sqlid(stage_table))
-                cur.execute('CREATE TABLE ' + _sqlid(stage_table) + '(__id integer, jsonb ' + _varchar_type(self.dbtype) + ')')
+                cur.execute('DROP TABLE IF EXISTS ' + _sqlid(table))
+                cur.execute('CREATE TABLE ' + _sqlid(table) + '(__id integer, jsonb ' + _varchar_type(self.dbtype) + ')')
             finally:
                 cur.close()
+            self.db.commit()
             # First get total number of records
-            hdr = { 'X-Okapi-Tenant': self.okapi_tenant,
-                    'X-Okapi-Token': self.login_token }
-            resp = requests.get(self.okapi_url+path+'?offset=0&limit=1' + _encode_query(query), headers=hdr)
+            hdr = { 'X-Okapi-Tenant': self.okapi_tenant, 'X-Okapi-Token': self.login_token }
+            querycopy['offset'] = '0'
+            querycopy['limit'] = '1'
+            resp = requests.get(self.okapi_url+path, params=querycopy, headers=hdr)
             if resp.status_code == 401:
                 # Retry
                 self._login()
-                hdr = { 'X-Okapi-Tenant': self.okapi_tenant,
-                        'X-Okapi-Token': self.login_token }
-                resp = requests.get(self.okapi_url+path+'?offset=0&limit=1' + _encode_query(query), headers=hdr)
+                hdr = { 'X-Okapi-Tenant': self.okapi_tenant, 'X-Okapi-Token': self.login_token }
+                resp = requests.get(self.okapi_url+path, params=querycopy, headers=hdr)
             if resp.status_code != 200:
                 resp.raise_for_status()
             try:
@@ -332,7 +313,9 @@ class LDLite:
                 while True:
                     offset = page * self.page_size
                     lim = self.page_size
-                    resp = requests.get(self.okapi_url + path + '?offset=' + str(offset) + '&limit=' + str(lim) + _encode_query(query), headers=hdr)
+                    querycopy['offset'] = str(offset)
+                    querycopy['limit'] = str(lim)
+                    resp = requests.get(self.okapi_url + path, params=querycopy, headers=hdr)
                     if resp.status_code != 200:
                         resp.raise_for_status()
                     try:
@@ -347,7 +330,7 @@ class LDLite:
                     if lendata == 0:
                         break
                     for d in data:
-                        cur.execute('INSERT INTO ' + _sqlid(stage_table) + ' VALUES(' + str(count+1) + ',' + _encode_sql_str(self.dbtype, json.dumps(d, indent=4)) + ')')
+                        cur.execute('INSERT INTO ' + _sqlid(table) + ' VALUES(' + str(count+1) + ',' + _encode_sql_str(self.dbtype, json.dumps(d, indent=4)) + ')')
                         count += 1
                         if not self._quiet:
                             if pbartotal + 1 > total:
@@ -365,7 +348,7 @@ class LDLite:
                 cur.close()
             if not self._quiet:
                 pbar.close()
-            _ = set(_drop_json_tables(self.db, self.dbtype, table))
+            self.db.commit()
             newtables = [table]
             newattrs = {}
             if json_depth > 0:
@@ -375,9 +358,6 @@ class LDLite:
                 for t, attrs in newattrs.items():
                     newattrs[t]['__id'] = ('__id', 'bigint')
                 newattrs[table] = {'__id': ('__id', 'bigint')}
-            # Rename tables and commit
-            _rename_tables(self.db, newtables)
-            self.db.commit()
         finally:
             _autocommit(self.db, self.dbtype, True)
         # Create indexes
@@ -450,12 +430,14 @@ class LDLite:
         finally:
             _autocommit(self.db, self.dbtype, True)
 
-    def to_csv(self, filename, table, header=True):
+    def export_csv(self, filename, table, header=True):
         """Export a table in the reporting database to a CSV file.
 
-        All rows of *table* are exported to *filename*.  If *header* is True
-        (the default), the CSV file will begin with a header line containing
-        the column names.
+        All rows of *table* are exported to *filename*, or *filename*.csv if
+        *filename* does not have an extension.
+
+        If *header* is True (the default), the CSV file will begin with a
+        header line containing the column names.
 
         Example:
 
@@ -471,16 +453,22 @@ class LDLite:
         finally:
             _autocommit(self.db, self.dbtype, True)
 
-    def to_xlsx(self, filename, table, header=True):
-        """Export a table in the reporting database to an xlsx (Excel) file.
+    def to_csv(self, filename, table, header=True):
+        """Deprecated; use export_csv()."""
+        raise ValueError('to_csv() is no longer supported: use export_csv()')
 
-        All rows of *table* are exported to *filename*.  If *header* is True
-        (the default), the xlsx worksheet will begin with a row containing the
-        column names.
+    def export_excel(self, filename, table, header=True):
+        """Export a table in the reporting database to an Excel file.
+
+        All rows of *table* are exported to *filename*, or *filename*.xlsx if
+        *filename* does not have an extension.
+
+        If *header* is True (the default), the worksheet will begin with a row
+        containing the column names.
 
         Example:
 
-            ld.to_xlsx(table='g', filename='g.xlsx')
+            ld.export_excel(table='g', filename='g')
 
         """
         self._check_db()
@@ -491,6 +479,10 @@ class LDLite:
                 self.db.rollback()
         finally:
             _autocommit(self.db, self.dbtype, True)
+
+    def to_xlsx(self, filename, table, header=True):
+        """Deprecated; use export_excel()."""
+        raise ValueError('to_xlsx() is no longer supported: use export_excel()')
 
     def _verbose(self, enable):
         """Configures verbose output.
