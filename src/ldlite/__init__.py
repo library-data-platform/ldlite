@@ -430,12 +430,14 @@ class LDLite:
         finally:
             _autocommit(self.db, self.dbtype, True)
 
-    def to_csv(self, filename, table, header=True):
+    def export_csv(self, filename, table, header=True):
         """Export a table in the reporting database to a CSV file.
 
-        All rows of *table* are exported to *filename*.  If *header* is True
-        (the default), the CSV file will begin with a header line containing
-        the column names.
+        All rows of *table* are exported to *filename*, or *filename*.csv if
+        *filename* does not have an extension.
+
+        If *header* is True (the default), the CSV file will begin with a
+        header line containing the column names.
 
         Example:
 
@@ -451,16 +453,22 @@ class LDLite:
         finally:
             _autocommit(self.db, self.dbtype, True)
 
-    def to_xlsx(self, filename, table, header=True):
-        """Export a table in the reporting database to an xlsx (Excel) file.
+    def to_csv(self, filename, table, header=True):
+        """Deprecated; use export_csv()."""
+        raise ValueError('to_csv() is no longer supported: use export_csv()')
 
-        All rows of *table* are exported to *filename*.  If *header* is True
-        (the default), the xlsx worksheet will begin with a row containing the
-        column names.
+    def export_excel(self, filename, table, header=True):
+        """Export a table in the reporting database to an Excel file.
+
+        All rows of *table* are exported to *filename*, or *filename*.xlsx if
+        *filename* does not have an extension.
+
+        If *header* is True (the default), the worksheet will begin with a row
+        containing the column names.
 
         Example:
 
-            ld.to_xlsx(table='g', filename='g.xlsx')
+            ld.export_excel(table='g', filename='g')
 
         """
         self._check_db()
@@ -471,6 +479,10 @@ class LDLite:
                 self.db.rollback()
         finally:
             _autocommit(self.db, self.dbtype, True)
+
+    def to_xlsx(self, filename, table, header=True):
+        """Deprecated; use export_excel()."""
+        raise ValueError('to_xlsx() is no longer supported: use export_excel()')
 
     def _verbose(self, enable):
         """Configures verbose output.

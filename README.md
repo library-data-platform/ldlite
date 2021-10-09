@@ -53,8 +53,7 @@ ldlite: created tables: u, u_j, u_j_departments, u_j_metadata, u_j_personal, u_j
 ...         FROM u_j
 ...             JOIN g_j ON u_j.patron_group = g_j.id;
 ...     """)
->>> ld.to_csv(table='user_groups', filename='user_groups.csv')
->>> ld.to_xlsx(table='user_groups', filename='user_groups.xlsx')
+>>> ld.export_excel(table='user_groups', filename='groups')
 ```
 
 
@@ -63,8 +62,8 @@ Features
 
 * Queries Okapi-based modules and transforms JSON data for easier
   reporting
-* Full SQL query support on transformed data, using an embedded
-  database
+* Full SQL query support on transformed data using an embedded
+  database, and export to CSV or Excel
 * No LDP server needed; only Python, and Okapi access to send CQL
   queries
 * Compatible with DBeaver database tool

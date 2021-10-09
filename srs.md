@@ -147,14 +147,7 @@ MARC records in a form such as:
  14ea8ed4-672b-11eb-8681-aed9fae510e9 |   23 | 14ea8ed4-672b-11eb-8681-aed9fae510e9 |               | fef9f415-1b35-3e30-89cc-17857a611338 | 999   | f    | f    |   1 | s  | 14ea8ed4-672b-11eb-8681-aed9fae510e9
 ```
 
-These data can be queried effectively using SQL (contact a member of
-the Reporting SIG for tips and examples on this), or they can be
-exported to an Excel spreadsheet using LDLite, e.g.:
-
-```python
-ld.to_xlsx(table='public.srs_marctab', filename='marctab.xlsx')
-```
-
-Note that the `srs_marctab` table can be very large, since it contains
-many rows for every MARC record.
+These data can be queried effectively using SQL; contact the Reporting
+SIG for tips and examples.  Note that the `srs_marctab` table can be
+very large, since it contains many rows for every MARC record.
 
