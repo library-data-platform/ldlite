@@ -137,7 +137,7 @@ queries = [
         ('folio_organizations.organizations', '/organizations-storage/organizations', 'cql.allRecords=1 sortby id'),
         ('folio_organizations.phone_numbers', '/organizations-storage/phone-numbers', 'cql.allRecords=1 sortby id'),
         ('folio_organizations.urls', '/organizations-storage/urls', 'cql.allRecords=1 sortby id'),
-        ('folio_source_record.records', '/source-storage/records', 'cql.allRecords=1 sortby id', 2),
+        ('folio_source_record.records', '/source-storage/records', {}, 2),
         ('folio_users.addresstype', '/addresstypes', 'cql.allRecords=1 sortby id'),
         ('folio_users.departments', '/departments', 'cql.allRecords=1 sortby id'),
         ('folio_users.groups', '/groups', 'cql.allRecords=1 sortby id'),
