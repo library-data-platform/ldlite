@@ -30,8 +30,8 @@ $ python
 >>> db = ld.connect_db(filename='ldlite.db')
 >>> _ = ld.query(table='g', path='/groups', query='cql.allRecords=1 sortby id')
 ldlite: querying: /groups
-ldlite: created tables: g, g_j, g_j_metadata
->>> ld.select(table='g_j')
+ldlite: created tables: g, g__t, g__tcatalog
+>>> ld.select(table='g__t')
 ```
 ```
  __id |                  id                  |         desc          | expiration_offset_in_days |   group   
@@ -45,33 +45,29 @@ ldlite: created tables: g, g_j, g_j_metadata
 ```python
 >>> _ = ld.query(table='u', path='/users', query='cql.allRecords=1 sortby id')
 ldlite: querying: /users
-ldlite: created tables: u, u_j, u_j_departments, u_j_metadata, u_j_personal, u_j_proxy_for
+ldlite: created tables: u, u__t, u__t__departments, u__t__personal__addresses, u__t__proxy_for, u__tcatalog
 >>> cur = db.cursor()
 >>> _ = cur.execute("""
 ...     CREATE TABLE user_groups AS
-...     SELECT u_j.id, u_j.username, g_j.group
-...         FROM u_j
-...             JOIN g_j ON u_j.patron_group = g_j.id;
+...     SELECT u__t.id, u__t.username, g__t.group
+...         FROM u__t
+...             JOIN g__t ON u__t.patron_group = g__t.id;
 ...     """)
->>> ld.export_excel(table='user_groups', filename='groups')
+>>> ld.export_excel(table='user_groups', filename='groups.xlsx')
 ```
 
 
 Features
 --------
 
-* Queries Okapi-based modules and transforms JSON data for easier
-  reporting
-* Full SQL query support on transformed data using an embedded
-  database, and export to CSV or Excel
-* No LDP server needed; only Python, and Okapi access to send CQL
-  queries
+* Queries Okapi-based modules and transforms JSON data into tables for
+  easier reporting
+* Full SQL query support and export to CSV or Excel
 * Compatible with DBeaver database tool
-* Supports DuckDB, PostgreSQL, and Redshift database systems
+* Compatible with DuckDB, PostgreSQL, and Redshift database systems
 * PostgreSQL/Redshift support enables:
   * Sharing the data in a multiuser database
   * Access to the data using more database tools
-  * Querying the data from within the LDP query builder app
   * Storing the data in an existing LDP database if available
 * Runs on Windows, macOS, and Linux.
 
@@ -96,6 +92,10 @@ LDLite resources
 * Report bugs at [Issues](https://github.com/library-data-platform/ldlite/issues)
 
 * Ask questions at [Discussions](https://github.com/library-data-platform/ldlite/discussions)
+
+* For notification of new releases:  On the [LDLite page in
+  GitHub](https://github.com/library-data-platform/ldlite) select
+  Watch > Custom > Releases.
 
 
 Other resources

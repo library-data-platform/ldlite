@@ -37,13 +37,13 @@ db = ld.connect_db(filename='ldlite.db')
 # The function "ld.query()" is used to send CQL queries to Okapi.  In this case
 # we will query patron groups and store the result in a new table named "g".
 # In addition to "g", this will create other tables having names beginning with
-# "g_j" where JSON data will be transformed to tables.
+# "g__t" where JSON data will be transformed to tables.
 
 _ = ld.query(table='g', path='/groups', query='cql.allRecords=1 sortby id')
 ```
 
     ldlite: querying: /groups
-    ldlite: created tables: g, g_j, g_j_metadata
+    ldlite: created tables: g, g__t, g__tcatalog
 
 
 
@@ -100,10 +100,10 @@ ld.select(table='g', limit=10)
 
 
 ```python
-# When ld.query() created table "g", it also created another table "g_j" with
-# JSON fields extracted into columns.
+# When ld.query() created table "g", it also created another table
+# "g__t" with JSON fields extracted into columns.
 
-ld.select(table='g_j', limit=10)
+ld.select(table='g__t', limit=10)
 ```
 
      __id |                  id                  |         desc          | expiration_offset_in_days |   group   
@@ -118,30 +118,13 @@ ld.select(table='g_j', limit=10)
 
 
 ```python
-# And "g_j_metadata".
-
-ld.select(table='g_j_metadata', limit=10)
-```
-
-     __id |                  id                  |         created_date          |         updated_date          
-    ------+--------------------------------------+-------------------------------+-------------------------------
-        1 | 3684a786-6671-4268-8ed0-9db82ebca60b | 2021-09-20T01:53:31.055+00:00 | 2021-09-20T01:53:31.055+00:00 
-        2 | 503a81cd-6c26-400f-b620-14c08943697c | 2021-09-20T01:53:31.084+00:00 | 2021-09-20T01:53:31.084+00:00 
-        3 | ad0bc554-d5bc-463c-85d1-5562127ae91b | 2021-09-20T01:53:31.108+00:00 | 2021-09-20T01:53:31.108+00:00 
-        4 | bdc2b6d4-5ceb-4a12-ab46-249b9a68473e | 2021-09-20T01:53:31.123+00:00 | 2021-09-20T01:53:31.123+00:00 
-    (4 rows)
-    
-
-
-
-```python
 # We will also query user data and store the result in table "u" etc.
 
 _ = ld.query(table='u', path='/users', query='cql.allRecords=1 sortby id')
 ```
 
     ldlite: querying: /users
-    ldlite: created tables: u, u_j, u_j_metadata, u_j_personal
+    ldlite: created tables: u, u__t, u__t__departments, u__t__personal__addresses, u__t__proxy_for, u__tcatalog
 
 
 
@@ -154,9 +137,9 @@ cur = db.cursor()
 
 cur.execute("""
     CREATE TABLE user_groups AS
-    SELECT u_j.id, u_j.username, g_j.group
-        FROM u_j
-            JOIN g_j ON u_j.patron_group = g_j.id;
+    SELECT u__t.id, u__t.username, g__t.group
+        FROM u__t
+            JOIN g__t ON u__t.patron_group = g__t.id;
     """)
 
 ld.select(table='user_groups', limit=10)
@@ -184,7 +167,7 @@ ld.select(table='user_groups', limit=10)
 
 ld.export_csv(table='user_groups', filename='user_groups.csv')
 
-ld.export_xlsx(table='user_groups', filename='user_groups.xlsx')
+ld.export_excel(table='user_groups', filename='user_groups.xlsx')
 ```
 
 
