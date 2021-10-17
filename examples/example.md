@@ -124,7 +124,7 @@ _ = ld.query(table='u', path='/users', query='cql.allRecords=1 sortby id')
 ```
 
     ldlite: querying: /users
-    ldlite: created tables: u, u_j, u_j_departments, u_j_personal_j_addresses, u_j_proxy_for, u_jtable
+    ldlite: created tables: u, u_j, u_j_departments_j, u_j_personal_j_addresses_j, u_j_proxy_for_j, u_jtable
 
 
 
