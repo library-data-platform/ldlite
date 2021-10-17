@@ -30,7 +30,7 @@ $ python
 >>> db = ld.connect_db(filename='ldlite.db')
 >>> _ = ld.query(table='g', path='/groups', query='cql.allRecords=1 sortby id')
 ldlite: querying: /groups
-ldlite: created tables: g, g_j, g_j_metadata
+ldlite: created tables: g, g_j, g_jtable
 >>> ld.select(table='g_j')
 ```
 ```
@@ -45,7 +45,7 @@ ldlite: created tables: g, g_j, g_j_metadata
 ```python
 >>> _ = ld.query(table='u', path='/users', query='cql.allRecords=1 sortby id')
 ldlite: querying: /users
-ldlite: created tables: u, u_j, u_j_departments, u_j_metadata, u_j_personal, u_j_proxy_for
+ldlite: created tables: u, u_j, u_j_departments, u_j_personal_j_addresses, u_j_proxy_for, u_jtable
 >>> cur = db.cursor()
 >>> _ = cur.execute("""
 ...     CREATE TABLE user_groups AS
@@ -53,7 +53,7 @@ ldlite: created tables: u, u_j, u_j_departments, u_j_metadata, u_j_personal, u_j
 ...         FROM u_j
 ...             JOIN g_j ON u_j.patron_group = g_j.id;
 ...     """)
->>> ld.export_excel(table='user_groups', filename='groups')
+>>> ld.export_excel(table='user_groups', filename='groups.xlsx')
 ```
 
 

@@ -48,6 +48,7 @@ from tqdm import tqdm
 from ._camelcase import _decode_camel_case
 from ._csv import _to_csv
 from ._xlsx import _to_xlsx
+from ._jsonx import Attr
 from ._jsonx import _transform_json
 from ._jsonx import _drop_json_tables
 from ._query import _query_dict
@@ -199,22 +200,20 @@ class LDLite:
             ld.drop_tables('g')
 
         """
+        _autocommit(self.db, self.dbtype, True)
         schema_table = table.strip().split('.')
         if len(schema_table) < 1 or len(schema_table) > 2:
             raise ValueError('invalid table name: ' + table)
         self._check_db()
-        _autocommit(self.db, self.dbtype, False)
+        cur = self.db.cursor()
         try:
-            cur = self.db.cursor()
-            try:
-                cur.execute('DROP TABLE IF EXISTS ' + _sqlid(table))
-            finally:
-                cur.close()
-            tables = [table]
-            tables += _drop_json_tables(self.db, self.dbtype, table)
-            self.db.commit()
+            cur.execute('DROP TABLE IF EXISTS ' + _sqlid(table))
+        except Exception as e:
+            pass
         finally:
-            _autocommit(self.db, self.dbtype, True)
+            cur.close()
+        tables = [table]
+        tables += _drop_json_tables(self.db, self.dbtype, table)
         return tables
 
     def query(self, table, path, query=None, json_depth=3, limit=None, transform=None):
@@ -264,9 +263,9 @@ class LDLite:
         if not self._quiet:
             print('ldlite: querying: '+path, file=sys.stderr)
         querycopy = _query_dict(query)
+        _ = _drop_json_tables(self.db, self.dbtype, table)
         _autocommit(self.db, self.dbtype, False)
         try:
-            _ = _drop_json_tables(self.db, self.dbtype, table)
             cur = self.db.cursor()
             try:
                 if len(schema_table) == 2:
@@ -356,8 +355,8 @@ class LDLite:
                 newtables += jsontables
                 newattrs = jsonattrs
                 for t, attrs in newattrs.items():
-                    newattrs[t]['__id'] = ('__id', 'bigint')
-                newattrs[table] = {'__id': ('__id', 'bigint')}
+                    newattrs[t]['__id'] = Attr('__id', 'bigint')
+                newattrs[table] = {'__id': Attr('__id', 'bigint')}
         finally:
             _autocommit(self.db, self.dbtype, True)
         # Create indexes
@@ -367,8 +366,8 @@ class LDLite:
                 pbar = tqdm(desc='indexing', total=index_total, leave=False, mininterval=1, smoothing=0, colour='#A9A9A9', bar_format='{desc} {bar}{postfix}')
                 pbartotal = 0
             for t, attrs in newattrs.items():
-                for attr in sorted(list(attrs)):
-                    decoded_attr, _ = attrs[attr]
+                for attr in attrs:
+                    decoded_attr = attr[1]
                     cur = self.db.cursor()
                     try:
                         cur.execute('CREATE INDEX ON ' + _sqlid(t) + ' (' + _sqlid(decoded_attr) + ')')

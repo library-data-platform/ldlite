@@ -63,3 +63,15 @@ def _encode_sql_str(dbtype, s):
     b += '\''
     return b
 
+def _encode_sql(dbtype, data):
+    if data is None:
+        return 'NULL'
+    elif isinstance(data, str):
+        return _encode_sql_str(dbtype, data)
+    elif isinstance(data, int):
+        return str(data)
+    elif isinstance(data, bool):
+        return 'TRUE' if data else 'FALSE'
+    else:
+        return _encode_sql_str(dbtype, str(data))
+

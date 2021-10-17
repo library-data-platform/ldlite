@@ -18,7 +18,7 @@ selected_site = current_release
 # https://wiki.folio.org
 ###############################################################################
 
-import traceback
+import sys
 import ldlite
 ld = ldlite.LDLite()
 ld.connect_okapi(url=selected_site, tenant='diku', user='diku_admin', password='admin')
@@ -149,12 +149,12 @@ tables = []
 for q in queries:
     try:
         if len(q) == 4:
-            t = ld.query(table=q[0], path=q[1], query=q[2], json_depth=[3])
+            t = ld.query(table=q[0], path=q[1], query=q[2], json_depth=q[3])
         else:
             t = ld.query(table=q[0], path=q[1], query=q[2])
+        tables += t
     except Exception as e:
-        traceback.print_exception(type(e), e, e.__traceback__)
-    tables += t
+        print('folio_demo.py: error processing "' + q[1] + '"', file=sys.stderr)
 print()
 print('Tables:')
 for t in tables:
