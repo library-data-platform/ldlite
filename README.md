@@ -93,6 +93,10 @@ LDLite resources
 
 * Ask questions at [Discussions](https://github.com/library-data-platform/ldlite/discussions)
 
+* For notification of new releases:  On the [LDLite page in
+  GitHub](https://github.com/library-data-platform/ldlite) select
+  Watch > Custom > Releases.
+
 
 Other resources
 ---------------
