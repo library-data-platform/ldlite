@@ -23,12 +23,14 @@ class Attr:
         else:
             return '(name=' + self.name + ', datatype=' + self.datatype + ', order=' + str(self.order) + ', data=' + str(self.data) + ')'
 
-def _jtable(table):
+def _old_jtable(table):
     return table + '_jtable'
 
-def _drop_json_tables(db, dbtype, table):
-    jtable_sql = _sqlid(_jtable(table))
-    tables = []
+def _tcatalog(table):
+    return table + '__tcatalog'
+
+def _old_drop_json_tables(db, dbtype, table):
+    jtable_sql = _sqlid(_old_jtable(table))
     cur = db.cursor()
     try:
         cur.execute('SELECT table_name FROM ' + jtable_sql)
@@ -37,7 +39,6 @@ def _drop_json_tables(db, dbtype, table):
             if row == None:
                 break
             t = row[0]
-            tables.append(t)
             cur2 = db.cursor()
             try:
                 cur2.execute('DROP TABLE IF EXISTS ' + _sqlid(t))
@@ -56,7 +57,36 @@ def _drop_json_tables(db, dbtype, table):
         pass
     finally:
         cur.close()
-    return tables
+
+def _drop_json_tables(db, dbtype, table):
+    tcatalog_sql = _sqlid(_tcatalog(table))
+    cur = db.cursor()
+    try:
+        cur.execute('SELECT table_name FROM ' + tcatalog_sql)
+        while True:
+            row = cur.fetchone()
+            if row == None:
+                break
+            t = row[0]
+            cur2 = db.cursor()
+            try:
+                cur2.execute('DROP TABLE IF EXISTS ' + _sqlid(t))
+            except Exception as e:
+                pass
+            finally:
+                cur2.close()
+    except Exception as e:
+        pass
+    finally:
+        cur.close()
+    cur = db.cursor()
+    try:
+        cur.execute('DROP TABLE IF EXISTS ' + tcatalog_sql)
+    except Exception as e:
+        pass
+    finally:
+        cur.close()
+    _old_drop_json_tables(db, dbtype, table)
 
 def _table_name(parents):
     j = len(parents)
@@ -66,7 +96,7 @@ def _table_name(parents):
     i = 0
     while i < j:
         if i != 0:
-            table += '_'
+            table += '__'
         table += parents[i][1]
         i += 1
     return table
@@ -95,11 +125,6 @@ def _compile_array_attrs(parents, prefix, jarray, newattrs, depth, arrayattr, ma
             newattrs[table][arrayattr] = Attr(_decode_camel_case(arrayattr), 'bigint', order=3)
         else:
             newattrs[table][arrayattr] = Attr(_decode_camel_case(arrayattr), 'varchar', order=3)
-
-def _new_parent(parents, newparent):
-    if len(parents) == 0:
-        raise RuntimeError('internal error: _new_parent() undefined on empty list')
-    return newparent + '_j'
 
 def _compile_attrs(parents, prefix, jdict, newattrs, depth, max_depth, quasikey):
     if depth > max_depth:
@@ -134,10 +159,10 @@ def _compile_attrs(parents, prefix, jdict, newattrs, depth, max_depth, quasikey)
             qkey[attr] = a
             newattrs[table][attr] = a
     for b in objects:
-        p = [(0, _new_parent(parents, _decode_camel_case(b[2])))]
+        p = [(0, _decode_camel_case(b[2]))]
         _compile_attrs(parents + p, _decode_camel_case(b[0]) + '__', b[1], newattrs, depth + 1, max_depth, qkey)
     for y in arrays:
-        p = [(1, _new_parent(parents, _decode_camel_case(y[2])))]
+        p = [(1, _decode_camel_case(y[2]))]
         _compile_array_attrs(parents + p, _decode_camel_case(y[0]) + '__', y[1], newattrs, depth + 1, y[0], max_depth, qkey)
 
 def _transform_array_data(dbtype, prefix, cur, parents, jarray, newattrs, depth, row_ids, arrayattr, max_depth, quasikey):
@@ -213,10 +238,10 @@ def _compile_data(dbtype, prefix, cur, parents, jdict, newattrs, depth, row_ids,
             else:
                 row.append( (a.name, v) )
     for b in objects:
-        p = [(0, _new_parent(parents, _decode_camel_case(b[2])))]
+        p = [(0, _decode_camel_case(b[2]))]
         row += _compile_data(dbtype, _decode_camel_case(b[0]) + '__', cur, parents + p, b[1], newattrs, depth + 1, row_ids, max_depth, qkey)
     for y in arrays:
-        p = [(1, _new_parent(parents, _decode_camel_case(y[2])))]
+        p = [(1, _decode_camel_case(y[2]))]
         _transform_array_data(dbtype, _decode_camel_case(y[0]) + '__', cur, parents + p, y[1], newattrs, depth + 1, row_ids, y[0], max_depth, qkey)
     return row
 
@@ -282,7 +307,7 @@ def _transform_json(db, dbtype, table, total, quiet, max_depth):
                     json_attrs.append(attr)
                     json_attrs_set.add(attr)
                 attr_index = json_attrs.index(attr)
-                table_j = table + '_j' if attr_index == 0 else table + '_j' + str(attr_index + 1)
+                table_j = table + '__t' if attr_index == 0 else table + '__t' + str(attr_index + 1)
                 if table_j not in newattrs:
                     newattrs[table_j] = {}
                 _compile_attrs([(1, table_j)], '', jdict, newattrs, 1, max_depth, {})
@@ -340,7 +365,7 @@ def _transform_json(db, dbtype, table, total, quiet, max_depth):
                     jdict = json.loads(d)
                 except ValueError as e:
                     continue
-                table_j = table + '_j' if i == 0 else table + '_j' + str(i + 1)
+                table_j = table + '__t' if i == 0 else table + '__t' + str(i + 1)
                 _transform_data(dbtype, '', cur2, [(1, table_j)], jdict, newattrs, 1, row_ids, max_depth, {})
             if not quiet:
                 pbartotal += 1
@@ -350,14 +375,14 @@ def _transform_json(db, dbtype, table, total, quiet, max_depth):
     finally:
         cur.close()
     db.commit()
-    jtable = _jtable(table)
+    tcatalog = _tcatalog(table)
     cur = db.cursor()
     try:
-        cur.execute('CREATE TABLE ' + _sqlid(jtable) + '(table_name ' + _varchar_type(dbtype) + ' NOT NULL)')
+        cur.execute('CREATE TABLE ' + _sqlid(tcatalog) + '(table_name ' + _varchar_type(dbtype) + ' NOT NULL)')
         for t in newattrs.keys():
-            cur.execute('INSERT INTO ' + _sqlid(jtable) + ' VALUES(' + _encode_sql(dbtype, t) + ')')
+            cur.execute('INSERT INTO ' + _sqlid(tcatalog) + ' VALUES(' + _encode_sql(dbtype, t) + ')')
     finally:
         cur.close()
     db.commit()
-    return sorted(list(newattrs.keys()) + [jtable]), newattrs
+    return sorted(list(newattrs.keys()) + [tcatalog]), newattrs
 

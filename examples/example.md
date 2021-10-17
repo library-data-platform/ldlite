@@ -37,13 +37,13 @@ db = ld.connect_db(filename='ldlite.db')
 # The function "ld.query()" is used to send CQL queries to Okapi.  In this case
 # we will query patron groups and store the result in a new table named "g".
 # In addition to "g", this will create other tables having names beginning with
-# "g_j" where JSON data will be transformed to tables.
+# "g__t" where JSON data will be transformed to tables.
 
 _ = ld.query(table='g', path='/groups', query='cql.allRecords=1 sortby id')
 ```
 
     ldlite: querying: /groups
-    ldlite: created tables: g, g_j, g_jtable
+    ldlite: created tables: g, g__t, g__tcatalog
 
 
 
@@ -100,10 +100,10 @@ ld.select(table='g', limit=10)
 
 
 ```python
-# When ld.query() created table "g", it also created another table "g_j" with
-# JSON fields extracted into columns.
+# When ld.query() created table "g", it also created another table
+# "g__t" with JSON fields extracted into columns.
 
-ld.select(table='g_j', limit=10)
+ld.select(table='g__t', limit=10)
 ```
 
      __id |                  id                  |         desc          | expiration_offset_in_days |   group   
@@ -124,7 +124,7 @@ _ = ld.query(table='u', path='/users', query='cql.allRecords=1 sortby id')
 ```
 
     ldlite: querying: /users
-    ldlite: created tables: u, u_j, u_j_departments_j, u_j_personal_j_addresses_j, u_j_proxy_for_j, u_jtable
+    ldlite: created tables: u, u__t, u__t__departments, u__t__personal__addresses, u__t__proxy_for, u__tcatalog
 
 
 
@@ -137,9 +137,9 @@ cur = db.cursor()
 
 cur.execute("""
     CREATE TABLE user_groups AS
-    SELECT u_j.id, u_j.username, g_j.group
-        FROM u_j
-            JOIN g_j ON u_j.patron_group = g_j.id;
+    SELECT u__t.id, u__t.username, g__t.group
+        FROM u__t
+            JOIN g__t ON u__t.patron_group = g__t.id;
     """)
 
 ld.select(table='user_groups', limit=10)

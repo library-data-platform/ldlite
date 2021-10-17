@@ -193,8 +193,6 @@ class LDLite:
         A table called *table*_jtable is used to retrieve the names of the
         tables created by JSON transformation.
 
-        This function returns a list of all of the dropped tables.
-
         Example:
 
             ld.drop_tables('g')
@@ -212,9 +210,7 @@ class LDLite:
             pass
         finally:
             cur.close()
-        tables = [table]
-        tables += _drop_json_tables(self.db, self.dbtype, table)
-        return tables
+        _drop_json_tables(self.db, self.dbtype, table)
 
     def query(self, table, path, query=None, json_depth=3, limit=None, transform=None):
         """Submits a query to an Okapi module, and transforms and stores the result.
@@ -263,7 +259,7 @@ class LDLite:
         if not self._quiet:
             print('ldlite: querying: '+path, file=sys.stderr)
         querycopy = _query_dict(query)
-        _ = _drop_json_tables(self.db, self.dbtype, table)
+        _drop_json_tables(self.db, self.dbtype, table)
         _autocommit(self.db, self.dbtype, False)
         try:
             cur = self.db.cursor()
