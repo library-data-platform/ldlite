@@ -82,9 +82,9 @@ def _compile_array_attrs(parents, prefix, jarray, newattrs, depth, arrayattr, ma
         newattrs[table] = {}
     for k, a in quasikey.items():
         newattrs[table][k] = Attr(a.name, a.datatype, order=1)
-    j_ord = Attr(prefix + 'ord_j', 'integer', order=2)
-    qkey[prefix + 'ord_j'] = j_ord
-    newattrs[table][prefix + 'ord_j'] = j_ord
+    j_ord = Attr(prefix + 'o', 'integer', order=2)
+    qkey[prefix + 'o'] = j_ord
+    newattrs[table][prefix + 'o'] = j_ord
     for v in jarray:
         if isinstance(v, dict):
             _compile_attrs(parents, prefix, v, newattrs, depth, max_depth, qkey)
@@ -99,10 +99,7 @@ def _compile_array_attrs(parents, prefix, jarray, newattrs, depth, arrayattr, ma
 def _new_parent(parents, newparent):
     if len(parents) == 0:
         raise RuntimeError('internal error: _new_parent() undefined on empty list')
-    elif len(parents) == 1:
-        return newparent
-    else:
-        return 'j_' + newparent
+    return newparent + '_j'
 
 def _compile_attrs(parents, prefix, jdict, newattrs, depth, max_depth, quasikey):
     if depth > max_depth:
@@ -138,10 +135,10 @@ def _compile_attrs(parents, prefix, jdict, newattrs, depth, max_depth, quasikey)
             newattrs[table][attr] = a
     for b in objects:
         p = [(0, _new_parent(parents, _decode_camel_case(b[2])))]
-        _compile_attrs(parents + p, _decode_camel_case(b[0]) + '_j_', b[1], newattrs, depth + 1, max_depth, qkey)
+        _compile_attrs(parents + p, _decode_camel_case(b[0]) + '__', b[1], newattrs, depth + 1, max_depth, qkey)
     for y in arrays:
         p = [(1, _new_parent(parents, _decode_camel_case(y[2])))]
-        _compile_array_attrs(parents + p, _decode_camel_case(y[0]) + '_j_', y[1], newattrs, depth + 1, y[0], max_depth, qkey)
+        _compile_array_attrs(parents + p, _decode_camel_case(y[0]) + '__', y[1], newattrs, depth + 1, y[0], max_depth, qkey)
 
 def _transform_array_data(dbtype, prefix, cur, parents, jarray, newattrs, depth, row_ids, arrayattr, max_depth, quasikey):
     if depth > max_depth:
@@ -155,7 +152,7 @@ def _transform_array_data(dbtype, prefix, cur, parents, jarray, newattrs, depth,
             qkey = {}
             for k, a in quasikey.items():
                 qkey[k] = a
-            qkey[prefix + 'ord_j'] = Attr(prefix + 'ord_j', 'integer', data=i+1)
+            qkey[prefix + 'o'] = Attr(prefix + 'o', 'integer', data=i+1)
             _transform_data(dbtype, prefix, cur, parents, v, newattrs, depth, row_ids, max_depth, qkey)
             continue
         elif isinstance(v, list):
@@ -171,7 +168,7 @@ def _transform_array_data(dbtype, prefix, cur, parents, jarray, newattrs, depth,
             value = v
         q = 'INSERT INTO ' + _sqlid(table) + '(__id'
         q += '' if len(quasikey) == 0 else ',' + ','.join([_sqlid(kv[1].name) for kv in quasikey.items()])
-        q += ',' + prefix + 'ord_j,' + _sqlid(a.name)
+        q += ',' + prefix + 'o,' + _sqlid(a.name)
         q += ')VALUES(' + str(row_ids[table])
         q += '' if len(quasikey) == 0 else ',' + ','.join([_encode_sql(dbtype, kv[1].data) for kv in quasikey.items()])
         q += ',' + str(i+1) + ',' + _encode_sql(dbtype, value) + ')'
@@ -217,10 +214,10 @@ def _compile_data(dbtype, prefix, cur, parents, jdict, newattrs, depth, row_ids,
                 row.append( (a.name, v) )
     for b in objects:
         p = [(0, _new_parent(parents, _decode_camel_case(b[2])))]
-        row += _compile_data(dbtype, _decode_camel_case(b[0]) + '_j_', cur, parents + p, b[1], newattrs, depth + 1, row_ids, max_depth, qkey)
+        row += _compile_data(dbtype, _decode_camel_case(b[0]) + '__', cur, parents + p, b[1], newattrs, depth + 1, row_ids, max_depth, qkey)
     for y in arrays:
         p = [(1, _new_parent(parents, _decode_camel_case(y[2])))]
-        _transform_array_data(dbtype, _decode_camel_case(y[0]) + '_j_', cur, parents + p, y[1], newattrs, depth + 1, row_ids, y[0], max_depth, qkey)
+        _transform_array_data(dbtype, _decode_camel_case(y[0]) + '__', cur, parents + p, y[1], newattrs, depth + 1, row_ids, y[0], max_depth, qkey)
     return row
 
 def _transform_data(dbtype, prefix, cur, parents, jdict, newattrs, depth, row_ids, max_depth, quasikey):
