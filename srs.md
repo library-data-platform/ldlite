@@ -10,7 +10,7 @@ suggested process assumes PostgreSQL is being used for the reporting
 database.  Also, although ldpmarc is designed to work with LDP, the
 process below does not require LDP but only LDLite.
 
-The following requires LDLite v0.0.23 or later.
+The following requires LDLite v0.0.27 or later.
 
 
 Querying and retrieving SRS data
@@ -40,43 +40,34 @@ ld.query(table='folio_source_record.records', path='/source-storage/records', qu
 If the total number of SRS records is small, it may be possible to
 retrieve all of the records; but this could be prohibitively slow.
 
-The *json_depth* parameter must be set to 2.  This is important
-because it will cause the transformation to stop when it reaches the
-MARC JSON record and to write the JSON object as a whole.
+The *json_depth* parameter should be set to 2, which will cause the
+transformation to stop when it reaches the MARC JSON record and to
+write the JSON object as a whole.
 
-After this query has completed,
-`folio_source_record.records_j_parsed_record` should contain the MARC
-JSON data, and `folio_source_record.records_j` (among others) should
-contain the metadata.
+After this query has completed, `folio_source_record.records` should
+contain the MARC JSON data and metadata.
 
 
 Adjustments to work with ldpmarc
 --------------------------------
 
 The ldpmarc tool expects the columns `instance_id` and `instance_hrid`
-to be available.  We can at least create empty columns for them using
-SQL:
+to be present, although only `instance_id` is required to contain
+data.
+
+For `instance_id`, the needed data are in column
+`external_ids_holder__instance_id`.  So we can simply rename the
+column using SQL:
 
 ```sql
-ALTER TABLE folio_source_record.records_j ADD COLUMN instance_hrid varchar(32);
-
-ALTER TABLE folio_source_record.records_j ADD COLUMN instance_id varchar(36);
+ALTER TABLE folio_source_record.records__t RENAME COLUMN external_ids_holder__instance_id TO instance_id;
 ```
 
-The `instance_id` data are required by ldpmarc, and we can fill them
-in by copying them from another table:
+For `instance_hrid`, we can create an empty column:
 
 ```sql
-UPDATE folio_source_record.records_j AS r
-    SET instance_id = e.instance_id
-    FROM (SELECT id, instance_id
-              FROM folio_source_record.records_j_external_ids_holder) AS e
-    WHERE r.id = e.id;
+ALTER TABLE folio_source_record.records__t ADD COLUMN instance_hrid varchar(32);
 ```
-
-The `instance_hrid` data are not required by ldpmarc, but it may be a
-reasonable task to locate and extract them.  For now we leave them
-empty.
 
 
 Running ldpmarc
@@ -113,7 +104,7 @@ directory is called, for example, `ldpdata/`, then
 Then to run ldpmarc:
 
 ```bash
-ldpmarc -D ldpdata -m folio_source_record.records_j_parsed_record -r folio_source_record.records_j -j content
+ldpmarc -D ldpdata -m folio_source_record.records__t -r folio_source_record.records__t -j parsed_record__content
 ```
 
 This should create a new table `public.srs_marctab` containing the
@@ -148,6 +139,6 @@ MARC records in a form such as:
 ```
 
 These data can be queried effectively using SQL; contact the Reporting
-SIG for tips and examples.  Note that the `srs_marctab` table can be
-very large, since it contains many rows for every MARC record.
+SIG for tips and examples.  Note that the `srs_marctab` table contains
+many rows for every MARC record and can be very large.
 
