@@ -44,8 +44,8 @@ The *json_depth* parameter should be set to 2, which will cause the
 transformation to stop when it reaches the MARC JSON record and to
 write the JSON object as a whole.
 
-After this query has completed, `folio_source_record.records` should
-contain the MARC JSON data and metadata.
+After this query has completed, `folio_source_record.records__t`
+should contain the MARC JSON data and metadata.
 
 
 Adjustments to work with ldpmarc
