@@ -362,11 +362,10 @@ class LDLite:
                 pbar = tqdm(desc='indexing', total=index_total, leave=False, mininterval=1, smoothing=0, colour='#A9A9A9', bar_format='{desc} {bar}{postfix}')
                 pbartotal = 0
             for t, attrs in newattrs.items():
-                for attr in attrs:
-                    decoded_attr = attr[1]
+                for attr in attrs.values():
                     cur = self.db.cursor()
                     try:
-                        cur.execute('CREATE INDEX ON ' + _sqlid(t) + ' (' + _sqlid(decoded_attr) + ')')
+                        cur.execute('CREATE INDEX ON ' + _sqlid(t) + ' (' + _sqlid(attr.name) + ')')
                     except Exception as e:
                         pass
                     finally:
