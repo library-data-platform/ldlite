@@ -27,7 +27,7 @@ $ python
 ...                  tenant='diku',
 ...                  user='diku_admin',
 ...                  password='admin')
->>> db = ld.connect_db(filename='ldlite.db')
+>>> db = ld.connect_db()
 >>> _ = ld.query(table='g', path='/groups', query='cql.allRecords=1 sortby id')
 ldlite: querying: /groups
 ldlite: created tables: g, g__t, g__tcatalog
