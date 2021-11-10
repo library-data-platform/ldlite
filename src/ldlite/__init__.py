@@ -37,16 +37,17 @@ Example:
 
 import json
 import sys
-from warnings import warn
+# from warnings import warn
 
 import duckdb
-import pandas
+# import pandas
 import psycopg2
 import requests
 from tqdm import tqdm
 
-from ._camelcase import _decode_camel_case
+# from ._camelcase import _decode_camel_case
 from ._csv import _to_csv
+# from src.ldlite._csv import *
 from ._xlsx import _to_xlsx
 from ._jsonx import Attr
 from ._jsonx import _transform_json
@@ -90,13 +91,15 @@ class LDLite:
     def _set_page_size(self, page_size):
         self.page_size = page_size
 
-    def connect_db(self, filename):
+    def connect_db(self, filename=None):
         """Connects to an embedded database for storing data.
 
-        The *filename* specifies a local file containing the database or where
-        the database will be created if it does not exist.  By default LDLite
-        uses DuckDB to provide embedded reporting database features.  This
-        function returns a connection to the database which can be used to
+        The optional *filename* designates a local file containing the DuckDB
+        database or where the database will be created if it does not exist.
+        If *filename* is not specified, the database will be stored in memory
+        and will not be persisted to disk.
+
+        This function returns a connection to the database which can be used to
         submit SQL queries.
 
         Example:
@@ -105,7 +108,8 @@ class LDLite:
 
         """
         self.dbtype = 1
-        self.db = duckdb.connect(database=filename)
+        fn = filename if filename != None else ':memory:'
+        self.db = duckdb.connect(database=fn)
         return self.db
 
     def connect_db_postgresql(self, dsn):
@@ -362,11 +366,10 @@ class LDLite:
                 pbar = tqdm(desc='indexing', total=index_total, leave=False, mininterval=1, smoothing=0, colour='#A9A9A9', bar_format='{desc} {bar}{postfix}')
                 pbartotal = 0
             for t, attrs in newattrs.items():
-                for attr in attrs:
-                    decoded_attr = attr[1]
+                for attr in attrs.values():
                     cur = self.db.cursor()
                     try:
-                        cur.execute('CREATE INDEX ON ' + _sqlid(t) + ' (' + _sqlid(decoded_attr) + ')')
+                        cur.execute('CREATE INDEX ON ' + _sqlid(t) + ' (' + _sqlid(attr.name) + ')')
                     except Exception as e:
                         pass
                     finally:
@@ -499,3 +502,4 @@ class LDLite:
 if __name__ == '__main__':
     pass
 
+ld = LDLite()
