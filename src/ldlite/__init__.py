@@ -502,4 +502,3 @@ class LDLite:
 if __name__ == '__main__':
     pass
 
-ld = LDLite()
