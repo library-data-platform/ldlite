@@ -306,7 +306,7 @@ def _transform_json(db, dbtype, table, total, quiet, max_depth):
         pbar = None
         pbartotal = 0
         if not quiet:
-            pbar = tqdm(desc='scanning', total=total, leave=False, mininterval=1, smoothing=0, colour='#A9A9A9',
+            pbar = tqdm(desc='scanning', total=total, leave=False, mininterval=3, smoothing=0, colour='#A9A9A9',
                         bar_format='{desc} {bar}{postfix}')
         while True:
             row = cur.fetchone()
@@ -370,7 +370,7 @@ def _transform_json(db, dbtype, table, total, quiet, max_depth):
         pbar = None
         pbartotal = 0
         if not quiet:
-            pbar = tqdm(desc='transforming', total=total, leave=False, mininterval=1, smoothing=0, colour='#A9A9A9',
+            pbar = tqdm(desc='transforming', total=total, leave=False, mininterval=3, smoothing=0, colour='#A9A9A9',
                         bar_format='{desc} {bar}{postfix}')
         cur2 = db.cursor()
         while True:

@@ -312,10 +312,10 @@ class LDLite:
             pbartotal = 0
             if not self._quiet:
                 if total == -1:
-                    pbar = tqdm(desc='reading', leave=False, mininterval=1, smoothing=0, colour='#A9A9A9',
+                    pbar = tqdm(desc='reading', leave=False, mininterval=3, smoothing=0, colour='#A9A9A9',
                                 bar_format='{desc} {elapsed} {bar}{postfix}')
                 else:
-                    pbar = tqdm(desc='reading', total=total, leave=False, mininterval=1, smoothing=0, colour='#A9A9A9',
+                    pbar = tqdm(desc='reading', total=total, leave=False, mininterval=3, smoothing=0, colour='#A9A9A9',
                                 bar_format='{desc} {bar}{postfix}')
             cur = self.db.cursor()
             try:
@@ -375,7 +375,7 @@ class LDLite:
         if self.dbtype == 2:
             index_total = sum(map(len, newattrs.values()))
             if not self._quiet:
-                pbar = tqdm(desc='indexing', total=index_total, leave=False, mininterval=1, smoothing=0,
+                pbar = tqdm(desc='indexing', total=index_total, leave=False, mininterval=3, smoothing=0,
                             colour='#A9A9A9', bar_format='{desc} {bar}{postfix}')
                 pbartotal = 0
             for t, attrs in newattrs.items():
