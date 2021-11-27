@@ -3,6 +3,7 @@ import sys
 from ._sqlx import _server_cursor
 from ._sqlx import _sqlid
 
+
 def _format_attr(attr, width):
     s = ''
     a = attr[0]
@@ -16,19 +17,22 @@ def _format_attr(attr, width):
         s += ' '
     return s
 
+
 def _maxlen(lines):
     m = 0
-    for l in lines:
-        len_l = len(l)
+    for s in lines:
+        len_l = len(s)
         if len_l > m:
             m = len_l
     return m
 
+
 def _rstrip_lines(lines):
     newlines = []
-    for l in lines:
-        newlines.append(l.rstrip())
+    for s in lines:
+        newlines.append(s.rstrip())
     return newlines
+
 
 def _format_value(value, dtype):
     if len(value) > 1:
@@ -37,6 +41,7 @@ def _format_value(value, dtype):
         return ['t'] if value[0] == 'True' else ['f']
     else:
         return value
+
 
 def _format_row(row, attrs, width):
     s = ''
@@ -71,6 +76,7 @@ def _format_row(row, attrs, width):
         s += '\n'
     return s
 
+
 def _select(db, dbtype, table, columns, limit, file=sys.stdout):
     if columns is None or columns == []:
         colspec = '*'
@@ -83,7 +89,7 @@ def _select(db, dbtype, table, columns, limit, file=sys.stdout):
     try:
         cur.execute('SELECT ' + colspec + ' FROM ' + _sqlid(table) + ' LIMIT 1')
         for a in cur.description:
-            attrs.append( (a[0], a[1]) )
+            attrs.append((a[0], a[1]))
             width.append(len(a[0]))
     finally:
         cur.close()
@@ -136,8 +142,7 @@ def _select(db, dbtype, table, columns, limit, file=sys.stdout):
             s = _format_row(row, attrs, width)
             print(s, end='', file=file)
             row_i += 1
-        print('('+str(row_i)+' '+('row' if row_i == 1 else 'rows')+')', file=file)
+        print('(' + str(row_i) + ' ' + ('row' if row_i == 1 else 'rows') + ')', file=file)
         print('', file=file)
     finally:
         cur.close()
-

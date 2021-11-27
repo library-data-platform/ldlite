@@ -24,9 +24,9 @@ $ python
 >>> import ldlite
 >>> ld = ldlite.LDLite()
 >>> ld.connect_okapi(url='https://folio-juniper-okapi.dev.folio.org/',
-...                  tenant='diku',
-...                  user='diku_admin',
-...                  password='admin')
+                     tenant='diku',
+                     user='diku_admin',
+                     password='admin')
 >>> db = ld.connect_db()
 >>> _ = ld.query(table='g', path='/groups', query='cql.allRecords=1 sortby id')
 ldlite: querying: /groups
@@ -48,11 +48,11 @@ ldlite: querying: /users
 ldlite: created tables: u, u__t, u__t__departments, u__t__personal__addresses, u__t__proxy_for, u__tcatalog
 >>> cur = db.cursor()
 >>> _ = cur.execute("""
-...     CREATE TABLE user_groups AS
-...     SELECT u__t.id, u__t.username, g__t.group
-...         FROM u__t
-...             JOIN g__t ON u__t.patron_group = g__t.id;
-...     """)
+        CREATE TABLE user_groups AS
+        SELECT u__t.id, u__t.username, g__t.group
+            FROM u__t
+                JOIN g__t ON u__t.patron_group = g__t.id;
+        """)
 >>> ld.export_excel(table='user_groups', filename='groups.xlsx')
 ```
 

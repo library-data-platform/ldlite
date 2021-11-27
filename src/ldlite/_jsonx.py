@@ -1,13 +1,12 @@
 import json
-import sys
-
+import psycopg2
 from tqdm import tqdm
-
 from ._camelcase import _decode_camel_case
 from ._sqlx import _server_cursor
 from ._sqlx import _encode_sql
 from ._sqlx import _sqlid
 from ._sqlx import _varchar_type
+
 
 class Attr:
     def __init__(self, name, datatype, order=None, data=None):
@@ -15,49 +14,58 @@ class Attr:
         self.datatype = datatype
         self.order = order
         self.data = data
+
     def sqlattr(self, dbtype):
         return _sqlid(self.name) + ' ' + (_varchar_type(dbtype) if self.datatype == 'varchar' else self.datatype)
+
     def __repr__(self):
         if self.data is None:
             return '(name=' + self.name + ', datatype=' + self.datatype + ', order=' + str(self.order) + ')'
         else:
-            return '(name=' + self.name + ', datatype=' + self.datatype + ', order=' + str(self.order) + ', data=' + str(self.data) + ')'
+            return ('(name=' + self.name + ', datatype=' + self.datatype + ', order=' + str(self.order) + ', data=' +
+                    str(self.data) + ')')
+
 
 def _old_jtable(table):
     return table + '_jtable'
 
+
 def _tcatalog(table):
     return table + '__tcatalog'
 
-def _old_drop_json_tables(db, dbtype, table):
+
+# noinspection DuplicatedCode
+def _old_drop_json_tables(db, table):
     jtable_sql = _sqlid(_old_jtable(table))
     cur = db.cursor()
     try:
         cur.execute('SELECT table_name FROM ' + jtable_sql)
         while True:
             row = cur.fetchone()
-            if row == None:
+            if row is None:
                 break
             t = row[0]
             cur2 = db.cursor()
             try:
                 cur2.execute('DROP TABLE IF EXISTS ' + _sqlid(t))
-            except Exception as e:
+            except (RuntimeError, psycopg2.Error):
                 pass
             finally:
                 cur2.close()
-    except Exception as e:
+    except (RuntimeError, psycopg2.Error):
         pass
     finally:
         cur.close()
     cur = db.cursor()
     try:
         cur.execute('DROP TABLE IF EXISTS ' + jtable_sql)
-    except Exception as e:
+    except (RuntimeError, psycopg2.Error):
         pass
     finally:
         cur.close()
 
+
+# noinspection DuplicatedCode
 def _drop_json_tables(db, dbtype, table):
     tcatalog_sql = _sqlid(_tcatalog(table))
     cur = db.cursor()
@@ -65,32 +73,33 @@ def _drop_json_tables(db, dbtype, table):
         cur.execute('SELECT table_name FROM ' + tcatalog_sql)
         while True:
             row = cur.fetchone()
-            if row == None:
+            if row is None:
                 break
             t = row[0]
             cur2 = db.cursor()
             try:
                 cur2.execute('DROP TABLE IF EXISTS ' + _sqlid(t))
-            except Exception as e:
+            except (RuntimeError, psycopg2.Error):
                 pass
             finally:
                 cur2.close()
-    except Exception as e:
+    except (RuntimeError, psycopg2.Error):
         pass
     finally:
         cur.close()
     cur = db.cursor()
     try:
         cur.execute('DROP TABLE IF EXISTS ' + tcatalog_sql)
-    except Exception as e:
+    except (RuntimeError, psycopg2.Error):
         pass
     finally:
         cur.close()
-    _old_drop_json_tables(db, dbtype, table)
+    _old_drop_json_tables(db, table)
+
 
 def _table_name(parents):
     j = len(parents)
-    while j > 0 and parents[j-1][0] == 0:
+    while j > 0 and parents[j - 1][0] == 0:
         j -= 1
     table = ''
     i = 0
@@ -100,6 +109,7 @@ def _table_name(parents):
         table += parents[i][1]
         i += 1
     return table
+
 
 def _compile_array_attrs(parents, prefix, jarray, newattrs, depth, arrayattr, max_depth, quasikey):
     if depth > max_depth:
@@ -126,6 +136,7 @@ def _compile_array_attrs(parents, prefix, jarray, newattrs, depth, arrayattr, ma
         else:
             newattrs[table][arrayattr] = Attr(_decode_camel_case(arrayattr), 'varchar', order=3)
 
+
 def _compile_attrs(parents, prefix, jdict, newattrs, depth, max_depth, quasikey):
     if depth > max_depth:
         return
@@ -143,9 +154,9 @@ def _compile_attrs(parents, prefix, jdict, newattrs, depth, max_depth, quasikey)
             if depth == max_depth:
                 newattrs[table][attr] = Attr(_decode_camel_case(attr), 'varchar', order=3)
             else:
-                objects.append( (attr, v, k) )
+                objects.append((attr, v, k))
         elif isinstance(v, list):
-            arrays.append( (attr, v, k) )
+            arrays.append((attr, v, k))
         elif isinstance(v, bool):
             a = Attr(_decode_camel_case(attr), 'boolean', order=3)
             qkey[attr] = a
@@ -163,13 +174,15 @@ def _compile_attrs(parents, prefix, jdict, newattrs, depth, max_depth, quasikey)
         _compile_attrs(parents + p, _decode_camel_case(b[0]) + '__', b[1], newattrs, depth + 1, max_depth, qkey)
     for y in arrays:
         p = [(1, _decode_camel_case(y[2]))]
-        _compile_array_attrs(parents + p, _decode_camel_case(y[0]) + '__', y[1], newattrs, depth + 1, y[0], max_depth, qkey)
+        _compile_array_attrs(parents + p, _decode_camel_case(y[0]) + '__', y[1], newattrs, depth + 1, y[0], max_depth,
+                             qkey)
 
-def _transform_array_data(dbtype, prefix, cur, parents, jarray, newattrs, depth, row_ids, arrayattr, max_depth, quasikey):
+
+def _transform_array_data(dbtype, prefix, cur, parents, jarray, newattrs, depth, row_ids, arrayattr, max_depth,
+                          quasikey):
     if depth > max_depth:
         return
     table = _table_name(parents)
-    value = None
     for i, v in enumerate(jarray):
         if v is None:
             continue
@@ -177,7 +190,7 @@ def _transform_array_data(dbtype, prefix, cur, parents, jarray, newattrs, depth,
             qkey = {}
             for k, a in quasikey.items():
                 qkey[k] = a
-            qkey[prefix + 'o'] = Attr(prefix + 'o', 'integer', data=i+1)
+            qkey[prefix + 'o'] = Attr(prefix + 'o', 'integer', data=i + 1)
             _transform_data(dbtype, prefix, cur, parents, v, newattrs, depth, row_ids, max_depth, qkey)
             continue
         elif isinstance(v, list):
@@ -196,12 +209,13 @@ def _transform_array_data(dbtype, prefix, cur, parents, jarray, newattrs, depth,
         q += ',' + prefix + 'o,' + _sqlid(a.name)
         q += ')VALUES(' + str(row_ids[table])
         q += '' if len(quasikey) == 0 else ',' + ','.join([_encode_sql(dbtype, kv[1].data) for kv in quasikey.items()])
-        q += ',' + str(i+1) + ',' + _encode_sql(dbtype, value) + ')'
+        q += ',' + str(i + 1) + ',' + _encode_sql(dbtype, value) + ')'
         try:
             cur.execute(q)
-        except Exception as e:
+        except (RuntimeError, psycopg2.Error) as e:
             raise RuntimeError('error executing SQL: ' + q) from e
         row_ids[table] += 1
+
 
 def _compile_data(dbtype, prefix, cur, parents, jdict, newattrs, depth, row_ids, max_depth, quasikey):
     if depth > max_depth:
@@ -218,32 +232,35 @@ def _compile_data(dbtype, prefix, cur, parents, jdict, newattrs, depth, row_ids,
             continue
         attr = prefix + k
         if isinstance(v, dict) and depth < max_depth:
-            objects.append( (attr, v, k) )
+            objects.append((attr, v, k))
         elif isinstance(v, list):
-            arrays.append( (attr, v, k) )
+            arrays.append((attr, v, k))
         if attr not in newattrs[table]:
             continue
         aa = newattrs[table][attr]
         a = Attr(aa.name, aa.datatype, data=v)
         if a.datatype == 'bigint':
             qkey[attr] = a
-            row.append( (a.name, v) )
+            row.append((a.name, v))
         elif a.datatype == 'boolean':
             qkey[attr] = a
-            row.append( (a.name, v) )
+            row.append((a.name, v))
         else:
             qkey[attr] = a
             if isinstance(v, dict):
-                row.append( (a.name, json.dumps(v, indent=4)) )
+                row.append((a.name, json.dumps(v, indent=4)))
             else:
-                row.append( (a.name, v) )
+                row.append((a.name, v))
     for b in objects:
         p = [(0, _decode_camel_case(b[2]))]
-        row += _compile_data(dbtype, _decode_camel_case(b[0]) + '__', cur, parents + p, b[1], newattrs, depth + 1, row_ids, max_depth, qkey)
+        row += _compile_data(dbtype, _decode_camel_case(b[0]) + '__', cur, parents + p, b[1], newattrs, depth + 1,
+                             row_ids, max_depth, qkey)
     for y in arrays:
         p = [(1, _decode_camel_case(y[2]))]
-        _transform_array_data(dbtype, _decode_camel_case(y[0]) + '__', cur, parents + p, y[1], newattrs, depth + 1, row_ids, y[0], max_depth, qkey)
+        _transform_array_data(dbtype, _decode_camel_case(y[0]) + '__', cur, parents + p, y[1], newattrs, depth + 1,
+                              row_ids, y[0], max_depth, qkey)
     return row
+
 
 def _transform_data(dbtype, prefix, cur, parents, jdict, newattrs, depth, row_ids, max_depth, quasikey):
     if depth > max_depth:
@@ -251,7 +268,7 @@ def _transform_data(dbtype, prefix, cur, parents, jdict, newattrs, depth, row_id
     table = _table_name(parents)
     row = []
     for k, a in quasikey.items():
-        row.append( (a.name, a.data) )
+        row.append((a.name, a.data))
     row += _compile_data(dbtype, prefix, cur, parents, jdict, newattrs, depth, row_ids, max_depth, quasikey)
     q = 'INSERT INTO ' + _sqlid(table) + '(__id,'
     q += ','.join([_sqlid(kv[0]) for kv in row])
@@ -260,9 +277,10 @@ def _transform_data(dbtype, prefix, cur, parents, jdict, newattrs, depth, row_id
     q += ')'
     try:
         cur.execute(q)
-    except Exception as e:
+    except (RuntimeError, psycopg2.Error) as e:
         raise RuntimeError('error executing SQL: ' + q) from e
     row_ids[table] += 1
+
 
 def _transform_json(db, dbtype, table, total, quiet, max_depth):
     # Scan all fields for JSON data
@@ -285,12 +303,14 @@ def _transform_json(db, dbtype, table, total, quiet, max_depth):
     cur = _server_cursor(db, dbtype)
     try:
         cur.execute('SELECT ' + ','.join([_sqlid(a) for a in str_attrs]) + ' FROM ' + _sqlid(table))
+        pbar = None
+        pbartotal = 0
         if not quiet:
-            pbar = tqdm(desc='scanning', total=total, leave=False, mininterval=1, smoothing=0, colour='#A9A9A9', bar_format='{desc} {bar}{postfix}')
-            pbartotal = 0
+            pbar = tqdm(desc='scanning', total=total, leave=False, mininterval=1, smoothing=0, colour='#A9A9A9',
+                        bar_format='{desc} {bar}{postfix}')
         while True:
             row = cur.fetchone()
-            if row == None:
+            if row is None:
                 break
             for i, data in enumerate(row):
                 if data is None:
@@ -300,7 +320,7 @@ def _transform_json(db, dbtype, table, total, quiet, max_depth):
                     continue
                 try:
                     jdict = json.loads(d)
-                except ValueError as e:
+                except ValueError:
                     continue
                 attr = str_attrs[i]
                 if attr not in json_attrs_set:
@@ -347,13 +367,15 @@ def _transform_json(db, dbtype, table, total, quiet, max_depth):
     cur = _server_cursor(db, dbtype)
     try:
         cur.execute('SELECT ' + ','.join([_sqlid(a) for a in json_attrs]) + ' FROM ' + _sqlid(table))
+        pbar = None
+        pbartotal = 0
         if not quiet:
-            pbar = tqdm(desc='transforming', total=total, leave=False, mininterval=1, smoothing=0, colour='#A9A9A9', bar_format='{desc} {bar}{postfix}')
-            pbartotal = 0
+            pbar = tqdm(desc='transforming', total=total, leave=False, mininterval=1, smoothing=0, colour='#A9A9A9',
+                        bar_format='{desc} {bar}{postfix}')
         cur2 = db.cursor()
         while True:
             row = cur.fetchone()
-            if row == None:
+            if row is None:
                 break
             for i, data in enumerate(row):
                 if data is None:
@@ -363,7 +385,7 @@ def _transform_json(db, dbtype, table, total, quiet, max_depth):
                     continue
                 try:
                     jdict = json.loads(d)
-                except ValueError as e:
+                except ValueError:
                     continue
                 table_j = table + '__t' if i == 0 else table + '__t' + str(i + 1)
                 _transform_data(dbtype, '', cur2, [(1, table_j)], jdict, newattrs, 1, row_ids, max_depth, {})
@@ -385,4 +407,3 @@ def _transform_json(db, dbtype, table, total, quiet, max_depth):
         cur.close()
     db.commit()
     return sorted(list(newattrs.keys()) + [tcatalog]), newattrs
-
