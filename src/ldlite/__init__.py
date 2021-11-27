@@ -92,6 +92,7 @@ class LDLite:
         self.okapi_tenant = None
         self.okapi_user = None
         self.okapi_password = None
+        self._okapi_timeout = 60
 
     def _set_page_size(self, page_size):
         self.page_size = page_size
@@ -158,7 +159,8 @@ class LDLite:
                'Content-Type': 'application/json'}
         data = {'username': self.okapi_user,
                 'password': self.okapi_password}
-        resp = requests.post(self.okapi_url + '/authn/login', headers=hdr, data=json.dumps(data))
+        resp = requests.post(self.okapi_url + '/authn/login', headers=hdr, data=json.dumps(data),
+                             timeout=self._okapi_timeout)
         if resp.status_code != 201:
             raise RuntimeError('HTTP response status code: ' + str(resp.status_code))
         if 'x-okapi-token' in resp.headers:
@@ -220,6 +222,19 @@ class LDLite:
         finally:
             cur.close()
         _drop_json_tables(self.db, table)
+
+    def set_okapi_timeout(self, timeout):
+        """Sets the timeout for connections to Okapi.
+
+        This function changes the configured timeout which is initially set to
+        60 seconds.  The *timeout* parameter is the new timeout in seconds.
+
+        Example:
+
+            ld.set_okapi_timeout(300)
+
+        """
+        self._okapi_timeout = timeout
 
     def query(self, table, path, query=None, json_depth=3, limit=None, transform=None):
         """Submits a query to an Okapi module, and transforms and stores the result.
@@ -286,12 +301,12 @@ class LDLite:
             hdr = {'X-Okapi-Tenant': self.okapi_tenant, 'X-Okapi-Token': self.login_token}
             querycopy['offset'] = '0'
             querycopy['limit'] = '1'
-            resp = requests.get(self.okapi_url + path, params=querycopy, headers=hdr)
+            resp = requests.get(self.okapi_url + path, params=querycopy, headers=hdr, timeout=self._okapi_timeout)
             if resp.status_code == 401:
                 # Retry
                 self._login()
                 hdr = {'X-Okapi-Tenant': self.okapi_tenant, 'X-Okapi-Token': self.login_token}
-                resp = requests.get(self.okapi_url + path, params=querycopy, headers=hdr)
+                resp = requests.get(self.okapi_url + path, params=querycopy, headers=hdr, timeout=self._okapi_timeout)
             if resp.status_code != 200:
                 raise RuntimeError('HTTP response status code: ' + str(resp.status_code))
             try:
@@ -324,7 +339,8 @@ class LDLite:
                     lim = self.page_size
                     querycopy['offset'] = str(offset)
                     querycopy['limit'] = str(lim)
-                    resp = requests.get(self.okapi_url + path, params=querycopy, headers=hdr)
+                    resp = requests.get(self.okapi_url + path, params=querycopy, headers=hdr,
+                                        timeout=self._okapi_timeout)
                     if resp.status_code != 200:
                         raise RuntimeError('HTTP response status code: ' + str(resp.status_code))
                     try:
