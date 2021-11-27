@@ -219,7 +219,7 @@ class LDLite:
             pass
         finally:
             cur.close()
-        _drop_json_tables(self.db, self.dbtype, table)
+        _drop_json_tables(self.db, table)
 
     def query(self, table, path, query=None, json_depth=3, limit=None, transform=None):
         """Submits a query to an Okapi module, and transforms and stores the result.
@@ -269,7 +269,7 @@ class LDLite:
         if not self._quiet:
             print('ldlite: querying: ' + path, file=sys.stderr)
         querycopy = _query_dict(query)
-        _drop_json_tables(self.db, self.dbtype, table)
+        _drop_json_tables(self.db, table)
         _autocommit(self.db, self.dbtype, False)
         try:
             cur = self.db.cursor()

@@ -66,7 +66,7 @@ def _old_drop_json_tables(db, table):
 
 
 # noinspection DuplicatedCode
-def _drop_json_tables(db, dbtype, table):
+def _drop_json_tables(db, table):
     tcatalog_sql = _sqlid(_tcatalog(table))
     cur = db.cursor()
     try:
