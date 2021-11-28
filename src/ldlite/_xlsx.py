@@ -3,6 +3,7 @@ import xlsxwriter
 from ._sqlx import _server_cursor
 from ._sqlx import _sqlid
 
+
 def _to_xlsx(db, dbtype, table, filename, header):
     # Read attributes
     attrs = []
@@ -11,12 +12,13 @@ def _to_xlsx(db, dbtype, table, filename, header):
     try:
         cur.execute('SELECT * FROM ' + _sqlid(table) + ' LIMIT 1')
         for a in cur.description:
-            attrs.append( (a[0], a[1]) )
+            attrs.append((a[0], a[1]))
             width.append(len(a[0]))
     finally:
         cur.close()
     cols = ','.join([_sqlid(a[0]) for a in attrs])
-    query = 'SELECT ' + cols + ' FROM ' + _sqlid(table) + ' ORDER BY ' + ','.join([str(i + 1) for i in range(len(attrs))])
+    query = 'SELECT ' + cols + ' FROM ' + _sqlid(table) + ' ORDER BY ' + ','.join(
+        [str(i + 1) for i in range(len(attrs))])
     # Scan
     cur = _server_cursor(db, dbtype)
     try:
@@ -57,7 +59,7 @@ def _to_xlsx(db, dbtype, table, filename, header):
             datafmt.set_align('top')
             while True:
                 row = cur.fetchone()
-                if row == None:
+                if row is None:
                     break
                 for i, data in enumerate(row):
                     worksheet.write(row_i, i, data, datafmt)
@@ -66,4 +68,3 @@ def _to_xlsx(db, dbtype, table, filename, header):
             workbook.close()
     finally:
         cur.close()
-

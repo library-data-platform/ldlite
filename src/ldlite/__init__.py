@@ -46,6 +46,7 @@ import requests
 from tqdm import tqdm
 
 # from ._camelcase import _decode_camel_case
+from ._request import _request_get
 from ._csv import _to_csv
 # from src.ldlite._csv import *
 from ._xlsx import _to_xlsx
@@ -59,6 +60,7 @@ from ._sqlx import _autocommit
 from ._sqlx import _sqlid
 from ._sqlx import _strip_schema
 from ._sqlx import _varchar_type
+
 
 # def _rename_tables(db, tables):
 #     cur = db.cursor()
@@ -87,6 +89,12 @@ class LDLite:
         self.dbtype = 0
         self.db = None
         self.login_token = None
+        self.okapi_url = None
+        self.okapi_tenant = None
+        self.okapi_user = None
+        self.okapi_password = None
+        self._okapi_timeout = 60
+        self._okapi_max_retries = 2
 
     def _set_page_size(self, page_size):
         self.page_size = page_size
@@ -108,7 +116,7 @@ class LDLite:
 
         """
         self.dbtype = 1
-        fn = filename if filename != None else ':memory:'
+        fn = filename if filename is not None else ':memory:'
         self.db = duckdb.connect(database=fn)
         return self.db
 
@@ -149,13 +157,14 @@ class LDLite:
     def _login(self):
         if self._verbose:
             print('ldlite: logging in to okapi', file=sys.stderr)
-        hdr = { 'X-Okapi-Tenant': self.okapi_tenant,
-                'Content-Type': 'application/json' }
-        data = { 'username': self.okapi_user,
-                'password': self.okapi_password }
-        resp = requests.post(self.okapi_url+'/authn/login', headers=hdr, data=json.dumps(data))
+        hdr = {'X-Okapi-Tenant': self.okapi_tenant,
+               'Content-Type': 'application/json'}
+        data = {'username': self.okapi_user,
+                'password': self.okapi_password}
+        resp = requests.post(self.okapi_url + '/authn/login', headers=hdr, data=json.dumps(data),
+                             timeout=self._okapi_timeout)
         if resp.status_code != 201:
-            resp.raise_for_status()
+            raise RuntimeError('HTTP response status code: ' + str(resp.status_code))
         if 'x-okapi-token' in resp.headers:
             self.login_token = resp.headers['x-okapi-token']
         else:
@@ -210,11 +219,39 @@ class LDLite:
         cur = self.db.cursor()
         try:
             cur.execute('DROP TABLE IF EXISTS ' + _sqlid(table))
-        except Exception as e:
+        except (RuntimeError, psycopg2.Error):
             pass
         finally:
             cur.close()
-        _drop_json_tables(self.db, self.dbtype, table)
+        _drop_json_tables(self.db, table)
+
+    def set_okapi_max_retries(self, max_retries):
+        """Sets the maximum number of retries for Okapi requests.
+
+        This function changes the configured maximum number of retries which is
+        initially set to 2.  The *max_retries* parameter is the new value.
+
+        Note that a request is only retried if a timeout occurs.
+
+        Example:
+
+            ld.set_okapi_max_retries(5)
+
+        """
+        self._okapi_max_retries = max_retries
+
+    def set_okapi_timeout(self, timeout):
+        """Sets the timeout for connections to Okapi.
+
+        This function changes the configured timeout which is initially set to
+        60 seconds.  The *timeout* parameter is the new timeout in seconds.
+
+        Example:
+
+            ld.set_okapi_timeout(300)
+
+        """
+        self._okapi_timeout = timeout
 
     def query(self, table, path, query=None, json_depth=3, limit=None, transform=None):
         """Submits a query to an Okapi module, and transforms and stores the result.
@@ -244,14 +281,15 @@ class LDLite:
         the future.  Instead, specify *json_depth* as 0 to disable JSON
         transformation.
 
-        A list of newly created tables is returned by this function.
+        This function returns a list of newly created tables, or raises
+        ValueError or RuntimeError.
 
         Example:
 
             ld.query(table='g', path='/groups', query='cql.allRecords=1 sortby id')
 
         """
-        if transform != None:
+        if transform is not None:
             raise ValueError('transform is no longer supported: use json_depth=0 to disable JSON transformation')
         schema_table = table.split('.')
         if len(schema_table) != 1 and len(schema_table) != 2:
@@ -261,9 +299,9 @@ class LDLite:
         self._check_okapi()
         self._check_db()
         if not self._quiet:
-            print('ldlite: querying: '+path, file=sys.stderr)
+            print('ldlite: querying: ' + path, file=sys.stderr)
         querycopy = _query_dict(query)
-        _drop_json_tables(self.db, self.dbtype, table)
+        _drop_json_tables(self.db, table)
         _autocommit(self.db, self.dbtype, False)
         try:
             cur = self.db.cursor()
@@ -271,25 +309,28 @@ class LDLite:
                 if len(schema_table) == 2:
                     cur.execute('CREATE SCHEMA IF NOT EXISTS ' + _sqlid(schema_table[0]))
                 cur.execute('DROP TABLE IF EXISTS ' + _sqlid(table))
-                cur.execute('CREATE TABLE ' + _sqlid(table) + '(__id integer, jsonb ' + _varchar_type(self.dbtype) + ')')
+                cur.execute(
+                    'CREATE TABLE ' + _sqlid(table) + '(__id integer, jsonb ' + _varchar_type(self.dbtype) + ')')
             finally:
                 cur.close()
             self.db.commit()
             # First get total number of records
-            hdr = { 'X-Okapi-Tenant': self.okapi_tenant, 'X-Okapi-Token': self.login_token }
+            hdr = {'X-Okapi-Tenant': self.okapi_tenant, 'X-Okapi-Token': self.login_token}
             querycopy['offset'] = '0'
             querycopy['limit'] = '1'
-            resp = requests.get(self.okapi_url+path, params=querycopy, headers=hdr)
+            resp = _request_get(self.okapi_url + path, params=querycopy, headers=hdr, timeout=self._okapi_timeout,
+                                max_retries=self._okapi_max_retries)
             if resp.status_code == 401:
                 # Retry
                 self._login()
-                hdr = { 'X-Okapi-Tenant': self.okapi_tenant, 'X-Okapi-Token': self.login_token }
-                resp = requests.get(self.okapi_url+path, params=querycopy, headers=hdr)
+                hdr = {'X-Okapi-Tenant': self.okapi_tenant, 'X-Okapi-Token': self.login_token}
+                resp = _request_get(self.okapi_url + path, params=querycopy, headers=hdr, timeout=self._okapi_timeout,
+                                    max_retries=self._okapi_max_retries)
             if resp.status_code != 200:
-                resp.raise_for_status()
+                raise RuntimeError('HTTP response status code: ' + str(resp.status_code))
             try:
                 j = resp.json()
-            except Exception as e:
+            except (json.JSONDecodeError, ValueError) as e:
                 raise RuntimeError('received server response: ' + resp.text) from e
             if 'totalRecords' in j:
                 total_records = j['totalRecords']
@@ -297,16 +338,19 @@ class LDLite:
                 total_records = -1
             total = total_records if total_records is not None else 0
             if self._verbose:
-                print('ldlite: estimated row count: '+str(total), file=sys.stderr)
+                print('ldlite: estimated row count: ' + str(total), file=sys.stderr)
             # Read result pages
             count = 0
             page = 0
+            pbar = None
+            pbartotal = 0
             if not self._quiet:
                 if total == -1:
-                    pbar = tqdm(desc='reading', leave=False, mininterval=1, smoothing=0, colour='#A9A9A9', bar_format='{desc} {elapsed} {bar}{postfix}')
+                    pbar = tqdm(desc='reading', leave=False, mininterval=3, smoothing=0, colour='#A9A9A9',
+                                bar_format='{desc} {elapsed} {bar}{postfix}')
                 else:
-                    pbar = tqdm(desc='reading', total=total, leave=False, mininterval=1, smoothing=0, colour='#A9A9A9', bar_format='{desc} {bar}{postfix}')
-                pbartotal = 0
+                    pbar = tqdm(desc='reading', total=total, leave=False, mininterval=3, smoothing=0, colour='#A9A9A9',
+                                bar_format='{desc} {bar}{postfix}')
             cur = self.db.cursor()
             try:
                 while True:
@@ -314,12 +358,13 @@ class LDLite:
                     lim = self.page_size
                     querycopy['offset'] = str(offset)
                     querycopy['limit'] = str(lim)
-                    resp = requests.get(self.okapi_url + path, params=querycopy, headers=hdr)
+                    resp = _request_get(self.okapi_url + path, params=querycopy, headers=hdr,
+                                        timeout=self._okapi_timeout, max_retries=self._okapi_max_retries)
                     if resp.status_code != 200:
-                        resp.raise_for_status()
+                        raise RuntimeError('HTTP response status code: ' + str(resp.status_code))
                     try:
                         j = resp.json()
-                    except Exception as e:
+                    except (json.JSONDecodeError, ValueError) as e:
                         raise RuntimeError('received server response: ' + resp.text) from e
                     if isinstance(j, dict):
                         data = list(j.values())[0]
@@ -329,7 +374,9 @@ class LDLite:
                     if lendata == 0:
                         break
                     for d in data:
-                        cur.execute('INSERT INTO ' + _sqlid(table) + ' VALUES(' + str(count+1) + ',' + _encode_sql_str(self.dbtype, json.dumps(d, indent=4)) + ')')
+                        cur.execute(
+                            'INSERT INTO ' + _sqlid(table) + ' VALUES(' + str(count + 1) + ',' + _encode_sql_str(
+                                self.dbtype, json.dumps(d, indent=4)) + ')')
                         count += 1
                         if not self._quiet:
                             if pbartotal + 1 > total:
@@ -363,14 +410,15 @@ class LDLite:
         if self.dbtype == 2:
             index_total = sum(map(len, newattrs.values()))
             if not self._quiet:
-                pbar = tqdm(desc='indexing', total=index_total, leave=False, mininterval=1, smoothing=0, colour='#A9A9A9', bar_format='{desc} {bar}{postfix}')
+                pbar = tqdm(desc='indexing', total=index_total, leave=False, mininterval=3, smoothing=0,
+                            colour='#A9A9A9', bar_format='{desc} {bar}{postfix}')
                 pbartotal = 0
             for t, attrs in newattrs.items():
                 for attr in attrs.values():
                     cur = self.db.cursor()
                     try:
                         cur.execute('CREATE INDEX ON ' + _sqlid(t) + ' (' + _sqlid(attr.name) + ')')
-                    except Exception as e:
+                    except (RuntimeError, psycopg2.Error):
                         pass
                     finally:
                         cur.close()
@@ -381,7 +429,7 @@ class LDLite:
                 pbar.close()
         # Return table names
         if not self._quiet:
-            print('ldlite: created tables: '+', '.join(newtables), file=sys.stderr)
+            print('ldlite: created tables: ' + ', '.join(newtables), file=sys.stderr)
         return newtables
 
     def quiet(self, enable):
@@ -419,7 +467,7 @@ class LDLite:
         # f = sys.stdout if file is None else file
         f = sys.stdout
         if self._verbose:
-            print('ldlite: reading from table: '+table, file=sys.stderr)
+            print('ldlite: reading from table: ' + table, file=sys.stderr)
         _autocommit(self.db, self.dbtype, False)
         try:
             _select(self.db, self.dbtype, table, columns, limit, f)
@@ -499,6 +547,6 @@ class LDLite:
             raise ValueError('"verbose" and "quiet" modes cannot both be enabled')
         self._verbose = enable
 
+
 if __name__ == '__main__':
     pass
-

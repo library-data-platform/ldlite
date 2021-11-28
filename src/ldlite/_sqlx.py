@@ -7,10 +7,12 @@ def _strip_schema(table):
     else:
         raise ValueError('invalid table name: ' + table)
 
+
 def _autocommit(db, dbtype, enable):
     if dbtype == 2 or dbtype == 3:
         db.rollback()
         db.set_session(autocommit=enable)
+
 
 def _server_cursor(db, dbtype):
     if dbtype == 2 or dbtype == 3:
@@ -18,18 +20,21 @@ def _server_cursor(db, dbtype):
     else:
         return db.cursor()
 
+
 def _sqlid(ident):
     sp = ident.split('.')
     if len(sp) == 1:
-        return '"'+ident+'"'
+        return '"' + ident + '"'
     else:
-        return '.'.join(['"'+s+'"' for s in sp])
+        return '.'.join(['"' + s + '"' for s in sp])
+
 
 def _varchar_type(dbtype):
     if dbtype == 3:
         return 'varchar(65535)'
     else:
         return 'varchar'
+
 
 def _encode_sql_str(dbtype, s):
     if dbtype == 2:
@@ -63,6 +68,7 @@ def _encode_sql_str(dbtype, s):
     b += '\''
     return b
 
+
 def _encode_sql(dbtype, data):
     if data is None:
         return 'NULL'
@@ -74,4 +80,3 @@ def _encode_sql(dbtype, data):
         return 'TRUE' if data else 'FALSE'
     else:
         return _encode_sql_str(dbtype, str(data))
-

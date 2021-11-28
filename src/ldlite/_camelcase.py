@@ -47,12 +47,13 @@ def _decode_triple(c1, c2, c3):
         write = c2.lower()
     else:
         # All cases should have been checked by this point
-        raise ValueError('unexpected state: ("'+c1+'", "'+c2+'", "'+c3+'")')
+        raise ValueError('unexpected state: ("' + c1 + '", "' + c2 + '", "' + c3 + '")')
     # Write decoded characters
     if write_break:
         b += '_'
     b += write
     return b
+
 
 def _decode_camel_case(s):
     """Parses camel case string into lowercase words separated by underscores.
@@ -64,6 +65,7 @@ def _decode_camel_case(s):
     b = ''
     # c1, c2, and c3 are a sliding window of character triples
     c1 = chr(0)
+    _ = c1
     c2 = chr(0)
     c3 = chr(0)
     for c in s:
@@ -77,4 +79,3 @@ def _decode_camel_case(s):
     c3 = chr(0)
     b += _decode_triple(c1, c2, c3)
     return b
-

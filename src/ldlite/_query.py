@@ -1,5 +1,6 @@
 import copy
 
+
 def _query_dict(query):
     if query is None:
         return {}
@@ -9,5 +10,3 @@ def _query_dict(query):
         return copy.deepcopy(query)
     else:
         raise ValueError('invalid query "' + str(query) + '"')
-
-
