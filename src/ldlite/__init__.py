@@ -46,6 +46,7 @@ import requests
 from tqdm import tqdm
 
 # from ._camelcase import _decode_camel_case
+from ._request import _request_get
 from ._csv import _to_csv
 # from src.ldlite._csv import *
 from ._xlsx import _to_xlsx
@@ -93,6 +94,7 @@ class LDLite:
         self.okapi_user = None
         self.okapi_password = None
         self._okapi_timeout = 60
+        self._okapi_max_retries = 2
 
     def _set_page_size(self, page_size):
         self.page_size = page_size
@@ -223,6 +225,21 @@ class LDLite:
             cur.close()
         _drop_json_tables(self.db, table)
 
+    def set_okapi_max_retries(self, max_retries):
+        """Sets the maximum number of retries for Okapi requests.
+
+        This function changes the configured maximum number of retries which is
+        initially set to 2.  The *max_retries* parameter is the new value.
+
+        Note that a request is only retried if a timeout occurs.
+
+        Example:
+
+            ld.set_okapi_max_retries(5)
+
+        """
+        self._okapi_max_retries = max_retries
+
     def set_okapi_timeout(self, timeout):
         """Sets the timeout for connections to Okapi.
 
@@ -301,12 +318,14 @@ class LDLite:
             hdr = {'X-Okapi-Tenant': self.okapi_tenant, 'X-Okapi-Token': self.login_token}
             querycopy['offset'] = '0'
             querycopy['limit'] = '1'
-            resp = requests.get(self.okapi_url + path, params=querycopy, headers=hdr, timeout=self._okapi_timeout)
+            resp = _request_get(self.okapi_url + path, params=querycopy, headers=hdr, timeout=self._okapi_timeout,
+                                max_retries=self._okapi_max_retries)
             if resp.status_code == 401:
                 # Retry
                 self._login()
                 hdr = {'X-Okapi-Tenant': self.okapi_tenant, 'X-Okapi-Token': self.login_token}
-                resp = requests.get(self.okapi_url + path, params=querycopy, headers=hdr, timeout=self._okapi_timeout)
+                resp = _request_get(self.okapi_url + path, params=querycopy, headers=hdr, timeout=self._okapi_timeout,
+                                    max_retries=self._okapi_max_retries)
             if resp.status_code != 200:
                 raise RuntimeError('HTTP response status code: ' + str(resp.status_code))
             try:
@@ -339,8 +358,8 @@ class LDLite:
                     lim = self.page_size
                     querycopy['offset'] = str(offset)
                     querycopy['limit'] = str(lim)
-                    resp = requests.get(self.okapi_url + path, params=querycopy, headers=hdr,
-                                        timeout=self._okapi_timeout)
+                    resp = _request_get(self.okapi_url + path, params=querycopy, headers=hdr,
+                                        timeout=self._okapi_timeout, max_retries=self._okapi_max_retries)
                     if resp.status_code != 200:
                         raise RuntimeError('HTTP response status code: ' + str(resp.status_code))
                     try:
