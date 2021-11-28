@@ -52,6 +52,12 @@
                                 <a class="function" href="#LDLite.drop_tables">drop_tables</a>
                         </li>
                         <li>
+                                <a class="function" href="#LDLite.set_okapi_max_retries">set_okapi_max_retries</a>
+                        </li>
+                        <li>
+                                <a class="function" href="#LDLite.set_okapi_timeout">set_okapi_timeout</a>
+                        </li>
+                        <li>
                                 <a class="function" href="#LDLite.query">query</a>
                         </li>
                         <li>
@@ -282,6 +288,52 @@ tables created by JSON transformation.</p>
 
 
                             </div>
+                            <div id="LDLite.set_okapi_max_retries" class="classattr">
+                                        <div class="attr function"><a class="headerlink" href="#LDLite.set_okapi_max_retries">#&nbsp;&nbsp</a>
+
+        
+            <span class="def">def</span>
+            <span class="name">set_okapi_max_retries</span><span class="signature">(self, max_retries)</span>:
+    </div>
+
+        
+            <div class="docstring"><p>Sets the maximum number of retries for Okapi requests.</p>
+
+<p>This function changes the configured maximum number of retries which is
+initially set to 2.  The <em>max_retries</em> parameter is the new value.</p>
+
+<p>Note that a request is only retried if a timeout occurs.</p>
+
+<p>Example:</p>
+
+<pre><code>ld.set_okapi_max_retries(5)
+</code></pre>
+</div>
+
+
+                            </div>
+                            <div id="LDLite.set_okapi_timeout" class="classattr">
+                                        <div class="attr function"><a class="headerlink" href="#LDLite.set_okapi_timeout">#&nbsp;&nbsp</a>
+
+        
+            <span class="def">def</span>
+            <span class="name">set_okapi_timeout</span><span class="signature">(self, timeout)</span>:
+    </div>
+
+        
+            <div class="docstring"><p>Sets the timeout for connections to Okapi.</p>
+
+<p>This function changes the configured timeout which is initially set to
+60 seconds.  The <em>timeout</em> parameter is the new timeout in seconds.</p>
+
+<p>Example:</p>
+
+<pre><code>ld.set_okapi_timeout(300)
+</code></pre>
+</div>
+
+
+                            </div>
                             <div id="LDLite.query" class="classattr">
                                         <div class="attr function"><a class="headerlink" href="#LDLite.query">#&nbsp;&nbsp</a>
 
@@ -326,7 +378,8 @@ data the transformation will descend.  (The default is 3.)  If
 the future.  Instead, specify <em>json_depth</em> as 0 to disable JSON
 transformation.</p>
 
-<p>A list of newly created tables is returned by this function.</p>
+<p>This function returns a list of newly created tables, or raises
+ValueError or RuntimeError.</p>
 
 <p>Example:</p>
 
