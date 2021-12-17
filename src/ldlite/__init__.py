@@ -107,7 +107,7 @@ class LDLite:
         If *filename* is not specified, the database will be stored in memory
         and will not be persisted to disk.
 
-        This function returns a connection to the database which can be used to
+        This method returns a connection to the database which can be used to
         submit SQL queries.
 
         Example:
@@ -123,7 +123,7 @@ class LDLite:
     def connect_db_postgresql(self, dsn):
         """Connects to a PostgreSQL database for storing data.
 
-        The data source name is specified by *dsn*.  This function returns a
+        The data source name is specified by *dsn*.  This method returns a
         connection to the database which can be used to submit SQL queries.
         The returned connection defaults to autocommit mode.
 
@@ -140,7 +140,7 @@ class LDLite:
     def connect_db_redshift(self, dsn):
         """Connects to a Redshift database for storing data.
 
-        The data source name is specified by *dsn*.  This function returns a
+        The data source name is specified by *dsn*.  This method returns a
         connection to the database which can be used to submit SQL queries.
         The returned connection defaults to autocommit mode.
 
@@ -228,7 +228,7 @@ class LDLite:
     def set_okapi_max_retries(self, max_retries):
         """Sets the maximum number of retries for Okapi requests.
 
-        This function changes the configured maximum number of retries which is
+        This method changes the configured maximum number of retries which is
         initially set to 2.  The *max_retries* parameter is the new value.
 
         Note that a request is only retried if a timeout occurs.
@@ -243,8 +243,8 @@ class LDLite:
     def set_okapi_timeout(self, timeout):
         """Sets the timeout for connections to Okapi.
 
-        This function changes the configured timeout which is initially set to
-        60 seconds.  The *timeout* parameter is the new timeout in seconds.
+        This method changes the configured timeout which is initially set to 60
+        seconds.  The *timeout* parameter is the new timeout in seconds.
 
         Example:
 
@@ -281,7 +281,7 @@ class LDLite:
         the future.  Instead, specify *json_depth* as 0 to disable JSON
         transformation.
 
-        This function returns a list of newly created tables, or raises
+        This method returns a list of newly created tables, or raises
         ValueError or RuntimeError.
 
         Example:
