@@ -530,7 +530,7 @@ class LDLite:
         """Deprecated; use export_excel()."""
         raise ValueError('to_xlsx() is no longer supported: use export_excel()')
 
-    def _verbose(self, enable):
+    def __verbose(self, enable):
         """Configures verbose output.
 
         If *enable* is True, verbose output is enabled; if False, it is
