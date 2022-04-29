@@ -59,7 +59,7 @@ from ._sqlx import _encode_sql_str
 from ._sqlx import _autocommit
 from ._sqlx import _sqlid
 from ._sqlx import _strip_schema
-from ._sqlx import _varchar_type
+from ._sqlx import _json_type
 
 
 # def _rename_tables(db, tables):
@@ -310,7 +310,7 @@ class LDLite:
                     cur.execute('CREATE SCHEMA IF NOT EXISTS ' + _sqlid(schema_table[0]))
                 cur.execute('DROP TABLE IF EXISTS ' + _sqlid(table))
                 cur.execute(
-                    'CREATE TABLE ' + _sqlid(table) + '(__id integer, jsonb ' + _varchar_type(self.dbtype) + ')')
+                    'CREATE TABLE ' + _sqlid(table) + '(__id integer, jsonb ' + _json_type(self.dbtype) + ')')
             finally:
                 cur.close()
             self.db.commit()

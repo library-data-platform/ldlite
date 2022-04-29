@@ -1,11 +1,20 @@
 import json
 import psycopg2
+import uuid
 from tqdm import tqdm
 from ._camelcase import _decode_camel_case
 from ._sqlx import _server_cursor
 from ._sqlx import _encode_sql
 from ._sqlx import _sqlid
 from ._sqlx import _varchar_type
+
+
+def _is_uuid(val):
+    try:
+        uuid.UUID(val)
+        return True
+    except ValueError:
+        return False
 
 
 class Attr:
@@ -111,7 +120,7 @@ def _table_name(parents):
     return table
 
 
-def _compile_array_attrs(parents, prefix, jarray, newattrs, depth, arrayattr, max_depth, quasikey):
+def _compile_array_attrs(dbtype, parents, prefix, jarray, newattrs, depth, arrayattr, max_depth, quasikey):
     if depth > max_depth:
         return
     table = _table_name(parents)
@@ -127,17 +136,17 @@ def _compile_array_attrs(parents, prefix, jarray, newattrs, depth, arrayattr, ma
     newattrs[table][prefix + 'o'] = j_ord
     for v in jarray:
         if isinstance(v, dict):
-            _compile_attrs(parents, prefix, v, newattrs, depth, max_depth, qkey)
+            _compile_attrs(dbtype, parents, prefix, v, newattrs, depth, max_depth, qkey)
         elif isinstance(v, list):
             # TODO
             continue
-        elif isinstance(v, int):
-            newattrs[table][arrayattr] = Attr(_decode_camel_case(arrayattr), 'bigint', order=3)
+        elif isinstance(v, float) or isinstance(v, int):
+            newattrs[table][arrayattr] = Attr(_decode_camel_case(arrayattr), 'numeric', order=3)
         else:
             newattrs[table][arrayattr] = Attr(_decode_camel_case(arrayattr), 'varchar', order=3)
 
 
-def _compile_attrs(parents, prefix, jdict, newattrs, depth, max_depth, quasikey):
+def _compile_attrs(dbtype, parents, prefix, jdict, newattrs, depth, max_depth, quasikey):
     if depth > max_depth:
         return
     table = _table_name(parents)
@@ -161,8 +170,12 @@ def _compile_attrs(parents, prefix, jdict, newattrs, depth, max_depth, quasikey)
             a = Attr(_decode_camel_case(attr), 'boolean', order=3)
             qkey[attr] = a
             newattrs[table][attr] = a
-        elif isinstance(v, int):
-            a = Attr(_decode_camel_case(attr), 'bigint', order=3)
+        elif isinstance(v, float) or isinstance(v, int):
+            a = Attr(_decode_camel_case(attr), 'numeric', order=3)
+            qkey[attr] = a
+            newattrs[table][attr] = a
+        elif dbtype == 2 and _is_uuid(v):
+            a = Attr(_decode_camel_case(attr), 'uuid', order=3)
             qkey[attr] = a
             newattrs[table][attr] = a
         else:
@@ -171,10 +184,10 @@ def _compile_attrs(parents, prefix, jdict, newattrs, depth, max_depth, quasikey)
             newattrs[table][attr] = a
     for b in objects:
         p = [(0, _decode_camel_case(b[2]))]
-        _compile_attrs(parents + p, _decode_camel_case(b[0]) + '__', b[1], newattrs, depth + 1, max_depth, qkey)
+        _compile_attrs(dbtype, parents + p, _decode_camel_case(b[0]) + '__', b[1], newattrs, depth + 1, max_depth, qkey)
     for y in arrays:
         p = [(1, _decode_camel_case(y[2]))]
-        _compile_array_attrs(parents + p, _decode_camel_case(y[0]) + '__', y[1], newattrs, depth + 1, y[0], max_depth,
+        _compile_array_attrs(dbtype, parents + p, _decode_camel_case(y[0]) + '__', y[1], newattrs, depth + 1, y[0], max_depth,
                              qkey)
 
 
@@ -199,6 +212,8 @@ def _transform_array_data(dbtype, prefix, cur, parents, jarray, newattrs, depth,
         a = newattrs[table][arrayattr]
         a.data = v
         if a.datatype == 'bigint':
+            value = v
+        elif a.datatype == 'numeric':
             value = v
         elif a.datatype == 'boolean':
             value = v
@@ -240,6 +255,9 @@ def _compile_data(dbtype, prefix, cur, parents, jdict, newattrs, depth, row_ids,
         aa = newattrs[table][attr]
         a = Attr(aa.name, aa.datatype, data=v)
         if a.datatype == 'bigint':
+            qkey[attr] = a
+            row.append((a.name, v))
+        elif a.datatype == 'float':
             qkey[attr] = a
             row.append((a.name, v))
         elif a.datatype == 'boolean':
@@ -290,7 +308,7 @@ def _transform_json(db, dbtype, table, total, quiet, max_depth):
     try:
         cur.execute('SELECT * FROM ' + _sqlid(table) + ' LIMIT 1')
         for a in cur.description:
-            if a[1] == 'STRING' or a[1] == 1043:
+            if a[1] == 3802 or a[1] == 'STRING' or a[1] == 1043:
                 str_attrs.append(a[0])
     finally:
         cur.close()
@@ -302,7 +320,7 @@ def _transform_json(db, dbtype, table, total, quiet, max_depth):
     newattrs = {}
     cur = _server_cursor(db, dbtype)
     try:
-        cur.execute('SELECT ' + ','.join([_sqlid(a) for a in str_attrs]) + ' FROM ' + _sqlid(table))
+        cur.execute('SELECT ' + ','.join([_sqlid(a)+'::varchar' for a in str_attrs]) + ' FROM ' + _sqlid(table))
         pbar = None
         pbartotal = 0
         if not quiet:
@@ -315,11 +333,11 @@ def _transform_json(db, dbtype, table, total, quiet, max_depth):
             for i, data in enumerate(row):
                 if data is None:
                     continue
-                d = data.strip()
-                if len(d) == 0 or d[0] != '{':
+                ds = data.strip()
+                if len(ds) == 0 or ds[0] != '{':
                     continue
                 try:
-                    jdict = json.loads(d)
+                    jdict = json.loads(ds)
                 except ValueError:
                     continue
                 attr = str_attrs[i]
@@ -330,7 +348,7 @@ def _transform_json(db, dbtype, table, total, quiet, max_depth):
                 table_j = table + '__t' if attr_index == 0 else table + '__t' + str(attr_index + 1)
                 if table_j not in newattrs:
                     newattrs[table_j] = {}
-                _compile_attrs([(1, table_j)], '', jdict, newattrs, 1, max_depth, {})
+                _compile_attrs(dbtype, [(1, table_j)], '', jdict, newattrs, 1, max_depth, {})
             if not quiet:
                 pbartotal += 1
                 pbar.update(1)
@@ -366,7 +384,7 @@ def _transform_json(db, dbtype, table, total, quiet, max_depth):
         return [], {}
     cur = _server_cursor(db, dbtype)
     try:
-        cur.execute('SELECT ' + ','.join([_sqlid(a) for a in json_attrs]) + ' FROM ' + _sqlid(table))
+        cur.execute('SELECT ' + ','.join([_sqlid(a)+'::varchar' for a in json_attrs]) + ' FROM ' + _sqlid(table))
         pbar = None
         pbartotal = 0
         if not quiet:

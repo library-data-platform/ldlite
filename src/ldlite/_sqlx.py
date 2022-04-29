@@ -36,6 +36,13 @@ def _varchar_type(dbtype):
         return 'varchar'
 
 
+def _json_type(dbtype):
+    if dbtype == 2:
+        return 'jsonb'
+    else:
+        return 'varchar'
+
+
 def _encode_sql_str(dbtype, s):
     if dbtype == 2:
         b = 'E\''
