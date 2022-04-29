@@ -1,7 +1,7 @@
 LDLite
 ======
 
-Copyright (C) 2021 The Open Library Foundation.  This software is
+Copyright (C) 2021-2022 The Open Library Foundation.  This software is
 distributed under the terms of the Apache License, Version 2.0.  See
 the file
 [LICENSE](https://github.com/library-data-platform/ldlite/blob/master/LICENSE)
@@ -64,8 +64,8 @@ Features
   easier reporting
 * Full SQL query support and export to CSV or Excel
 * Compatible with DBeaver database tool
-* Compatible with DuckDB, PostgreSQL, and Redshift database systems
-* PostgreSQL/Redshift support enables:
+* Compatible with DuckDB and PostgreSQL database systems
+* PostgreSQL support enables:
   * Sharing the data in a multiuser database
   * Access to the data using more database tools
   * Storing the data in an existing LDP database if available
