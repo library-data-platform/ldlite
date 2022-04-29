@@ -137,22 +137,22 @@ class LDLite:
         _autocommit(self.db, self.dbtype, True)
         return self.db
 
-    def connect_db_redshift(self, dsn):
-        """Connects to a Redshift database for storing data.
+    # def connect_db_redshift(self, dsn):
+    #     """Connects to a Redshift database for storing data.
 
-        The data source name is specified by *dsn*.  This method returns a
-        connection to the database which can be used to submit SQL queries.
-        The returned connection defaults to autocommit mode.
+    #     The data source name is specified by *dsn*.  This method returns a
+    #     connection to the database which can be used to submit SQL queries.
+    #     The returned connection defaults to autocommit mode.
 
-        Example:
+    #     Example:
 
-            db = ld.connect_db_redshift(dsn='dbname=ldlite host=localhost user=ldlite')
+    #         db = ld.connect_db_redshift(dsn='dbname=ldlite host=localhost user=ldlite')
 
-        """
-        self.dbtype = 3
-        self.db = psycopg2.connect(dsn)
-        _autocommit(self.db, self.dbtype, True)
-        return self.db
+    #     """
+    #     self.dbtype = 3
+    #     self.db = psycopg2.connect(dsn)
+    #     _autocommit(self.db, self.dbtype, True)
+    #     return self.db
 
     def _login(self):
         if self._verbose:
