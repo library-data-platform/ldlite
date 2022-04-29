@@ -1,7 +1,7 @@
 LDLite
 ======
 
-Copyright (C) 2021 The Open Library Foundation.  This software is
+Copyright (C) 2021-2022 The Open Library Foundation.  This software is
 distributed under the terms of the Apache License, Version 2.0.  See
 the file
 [LICENSE](https://github.com/library-data-platform/ldlite/blob/master/LICENSE)
