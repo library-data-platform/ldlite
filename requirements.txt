@@ -1,4 +1,4 @@
-duckdb==0.3.4
+duckdb==0.5.0
 pandas==1.4.2
 psycopg2==2.9.3
 requests==2.27.1

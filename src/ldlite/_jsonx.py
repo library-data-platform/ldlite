@@ -1,4 +1,6 @@
 import json
+
+import duckdb
 import psycopg2
 import uuid
 from tqdm import tqdm
@@ -61,14 +63,14 @@ def _old_drop_json_tables(db, table):
                 pass
             finally:
                 cur2.close()
-    except (RuntimeError, psycopg2.Error):
+    except (duckdb.CatalogException, RuntimeError, psycopg2.Error):
         pass
     finally:
         cur.close()
     cur = db.cursor()
     try:
         cur.execute('DROP TABLE IF EXISTS ' + jtable_sql)
-    except (RuntimeError, psycopg2.Error):
+    except (duckdb.CatalogException, RuntimeError, psycopg2.Error):
         pass
     finally:
         cur.close()
@@ -88,11 +90,11 @@ def _drop_json_tables(db, table):
             cur2 = db.cursor()
             try:
                 cur2.execute('DROP TABLE IF EXISTS ' + _sqlid(t))
-            except (RuntimeError, psycopg2.Error):
+            except (duckdb.CatalogException, RuntimeError, psycopg2.Error):
                 pass
             finally:
                 cur2.close()
-    except (RuntimeError, psycopg2.Error):
+    except (duckdb.CatalogException, RuntimeError, psycopg2.Error):
         pass
     finally:
         cur.close()
