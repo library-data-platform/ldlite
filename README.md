@@ -89,13 +89,13 @@ LDLite resources
 
 * [LDLite API documentation](https://library-data-platform.github.io/ldlite/ldlite.html)
 
+* The LDP project runs a Slack workspace which is a good place to ask
+questions or to share your work.  It also serves as a community space
+for working together on library data problems.  To request an invitation,
+use the [Contact page](https://librarydataplatform.org/contact/)
+on the LDP website.
+
 * Report bugs at [Issues](https://github.com/library-data-platform/ldlite/issues)
-
-* Ask questions at [Discussions](https://github.com/library-data-platform/ldlite/discussions)
-
-* For notification of new releases:  On the [LDLite page in
-  GitHub](https://github.com/library-data-platform/ldlite) select
-  Watch > Custom > Releases.
 
 
 Other resources
