@@ -65,6 +65,8 @@ CREATE TABLE folio_source_record.records_lb AS
            external_ids_holder__instance_hrid AS external_hrid
         FROM folio_source_record.records__t;
 
+CREATE INDEX ON folio_source_record.records_lb (__id);
+
 CREATE INDEX ON folio_source_record.records_lb (id);
 
 CREATE INDEX ON folio_source_record.records_lb (state);
@@ -82,6 +84,8 @@ CREATE TABLE folio_source_record.marc_records_lb AS
            id::uuid,
            parsed_record__content AS content
         FROM folio_source_record.records__t;
+
+CREATE INDEX ON folio_source_record.marc_records_lb (__id);
 
 CREATE INDEX ON folio_source_record.marc_records_lb (id);
 
