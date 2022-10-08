@@ -4,7 +4,7 @@ import sys
 import ldlite
 
 # Demo sites
-current_release = 'https://folio-juniper-okapi.dev.folio.org/'
+current_release = 'https://folio-lotus-okapi.dev.folio.org/'
 latest_snapshot = 'https://folio-snapshot-okapi.dev.folio.org/'
 
 ###############################################################################
