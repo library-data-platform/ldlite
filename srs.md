@@ -109,6 +109,7 @@ directory is called, for example, `data/`, then `data/metadb.conf`
 should contain something like:
 
 ```ini
+[postgresql]
 host = <hostname>
 port = 5432
 database_name = <ldlite_database_name>
