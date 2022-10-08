@@ -7,10 +7,9 @@ below covers querying SRS data and using
 [ldpmarc](https://github.com/library-data-platform/ldpmarc) to
 transform the data to tabular format for easier querying via SQL.  The
 suggested process assumes PostgreSQL is being used for the reporting
-database.  Also, although ldpmarc is designed to work with LDP, the
-process below does not require LDP but only LDLite.
+database.
 
-The following requires LDLite v0.0.27 or later.
+The following requires ldpmarc 1.6 or later.
 
 
 Querying and retrieving SRS data
@@ -51,13 +50,42 @@ should contain the MARC JSON data and metadata.
 Adjustments to work with ldpmarc
 --------------------------------
 
-The ldpmarc tool expects the column `external_hrid` to be present.  We
-can create it with:
+The ldpmarc tool expects certain tables and columns to be present.  We
+can create them from `folio_source_record.records__t`:
 
 ```sql
-ALTER TABLE folio_source_record.records__t ADD COLUMN external_hrid varchar(32);
+DROP TABLE IF EXISTS folio_source_record.records_lb;
 
-UPDATE folio_source_record.records__t SET external_hrid = external_ids_holder__instance_hrid;
+CREATE TABLE folio_source_record.records_lb AS
+    SELECT __id,
+           id::uuid,
+           state,
+           matched_id::uuid,
+           external_ids_holder__instance_id::uuid AS external_id,
+           external_ids_holder__instance_hrid AS external_hrid
+        FROM folio_source_record.records__t;
+
+CREATE INDEX ON folio_source_record.records_lb (id);
+
+CREATE INDEX ON folio_source_record.records_lb (state);
+
+CREATE INDEX ON folio_source_record.records_lb (matched_id);
+
+CREATE INDEX ON folio_source_record.records_lb (external_id);
+
+CREATE INDEX ON folio_source_record.records_lb (external_hrid);
+
+DROP TABLE IF EXISTS folio_source_record.marc_records_lb;
+
+CREATE TABLE folio_source_record.marc_records_lb AS
+    SELECT __id,
+           id::uuid,
+           parsed_record__content AS content
+        FROM folio_source_record.records__t;
+
+CREATE INDEX ON folio_source_record.marc_records_lb (id);
+
+CREATE INDEX ON folio_source_record.marc_records_lb (content);
 ```
 
 
@@ -67,15 +95,12 @@ Running ldpmarc
 The data now should be compatible with ldpmarc.  Before continuing,
 see the [ldpmarc readme
 file](https://github.com/library-data-platform/ldpmarc/blob/main/README.md)
-for installation and usage documentation, but again note that LDP is
-not required for this process.
+for installation and usage documentation, but note that LDP1 and
+Metadb are not required for this process.
 
-The `main` branch of ldpmarc should be used because v1.2.0 does not
-include the changes made for compatibility with LDLite.
-
-Since ldpmarc is designed to work with LDP, it looks for database
+Since ldpmarc is designed to work with LDP1, it looks for database
 connection parameters in a JSON configuration file called
-`ldpconf.json` located within an LDP "data directory."  If the data
+`ldpconf.json` located within an LDP1 "data directory."  If the data
 directory is called, for example, `ldpdata/`, then
 `ldpdata/ldpconf.json` should contain something like:
 
@@ -95,7 +120,7 @@ directory is called, for example, `ldpdata/`, then
 Then to run ldpmarc:
 
 ```bash
-ldpmarc -D ldpdata -m folio_source_record.records__t -r folio_source_record.records__t -j parsed_record__content
+ldpmarc -D ldpdata -M
 ```
 
 This should create a new table `public.srs_marctab` containing the
@@ -128,8 +153,3 @@ MARC records in a form such as:
  14ea8ed4-672b-11eb-8681-aed9fae510e9 |   22 | 14ea8ed4-672b-11eb-8681-aed9fae510e9 |               | fef9f415-1b35-3e30-89cc-17857a611338 | 999   | f    | f    |   1 | i  | fef9f415-1b35-3e30-89cc-17857a611338
  14ea8ed4-672b-11eb-8681-aed9fae510e9 |   23 | 14ea8ed4-672b-11eb-8681-aed9fae510e9 |               | fef9f415-1b35-3e30-89cc-17857a611338 | 999   | f    | f    |   1 | s  | 14ea8ed4-672b-11eb-8681-aed9fae510e9
 ```
-
-These data can be queried effectively using SQL; contact the Reporting
-SIG for tips and examples.  Note that the `srs_marctab` table contains
-many rows for every MARC record and can be very large.
-
