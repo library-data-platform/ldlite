@@ -51,22 +51,13 @@ should contain the MARC JSON data and metadata.
 Adjustments to work with ldpmarc
 --------------------------------
 
-The ldpmarc tool expects the columns `instance_id` and `instance_hrid`
-to be present, although only `instance_id` is required to contain
-data.
-
-For `instance_id`, the needed data are in column
-`external_ids_holder__instance_id`.  So we can simply rename the
-column using SQL:
+The ldpmarc tool expects the column `external_hrid` to be present.  We
+can create it with:
 
 ```sql
-ALTER TABLE folio_source_record.records__t RENAME COLUMN external_ids_holder__instance_id TO instance_id;
-```
+ALTER TABLE folio_source_record.records__t ADD COLUMN external_hrid varchar(32);
 
-For `instance_hrid`, we can create an empty column:
-
-```sql
-ALTER TABLE folio_source_record.records__t ADD COLUMN instance_hrid varchar(32);
+UPDATE folio_source_record.records__t SET external_hrid = external_ids_holder__instance_hrid;
 ```
 
 
