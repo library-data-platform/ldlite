@@ -9,7 +9,7 @@ transform the data to tabular format for easier querying via SQL.  The
 suggested process assumes PostgreSQL is being used for the reporting
 database.
 
-The following requires ldpmarc 1.6 or later.
+The following requires ldpmarc v1.6.0-beta2 or later.
 
 
 Querying and retrieving SRS data
@@ -102,23 +102,19 @@ file](https://github.com/library-data-platform/ldpmarc/blob/main/README.md)
 for installation and usage documentation, but note that LDP1 and
 Metadb are not required for this process.
 
-Since ldpmarc is designed to work with LDP1, it looks for database
-connection parameters in a JSON configuration file called
-`ldpconf.json` located within an LDP1 "data directory."  If the data
-directory is called, for example, `ldpdata/`, then
-`ldpdata/ldpconf.json` should contain something like:
+When we run ldpmarc with the `-M` option (below), it will look for
+database connection parameters in a configuration file called
+`metadb.conf` located within a Metadb "data directory."  If the data
+directory is called, for example, `data/`, then `data/metadb.conf`
+should contain something like:
 
-```json
-{
-    "ldp_database": {
-        "database_name": "<ldlite_database_name>",
-        "database_host": "<hostname>",
-        "database_port": 5432,
-        "database_user": "<username>",
-        "database_password": "<password>",
-        "database_sslmode": "<disable_or_require>"
-    }
-}
+```ini
+host = <hostname>
+port = 5432
+database_name = <ldlite_database_name>
+metadb_user = <username>
+metadb_password = <password>
+sslmode = <disable_or_require>
 ```
 
 Then to run ldpmarc:
