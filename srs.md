@@ -106,7 +106,7 @@ When we run ldpmarc with the `-M` option (below), it will look for
 database connection parameters in a configuration file called
 `metadb.conf` located within a Metadb "data directory."  If the data
 directory is called, for example, `data/`, then `data/metadb.conf`
-should contain something like:
+should contain settings in the form:
 
 ```ini
 [postgresql]
