@@ -124,8 +124,8 @@ Then to run ldpmarc:
 ldpmarc -D data -M
 ```
 
-This should create a new table `public.srs_marctab` containing the
-MARC records in a form such as:
+This should create a new table `folio_source_record.marctab`
+containing the MARC records in a form such as:
 
 ```
                 srs_id                | line |              matched_id              | instance_hrid |             instance_id              | field | ind1 | ind2 | ord | sf |                 content
