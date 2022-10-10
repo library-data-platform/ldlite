@@ -9,7 +9,7 @@ transform the data to tabular format for easier querying via SQL.  The
 suggested process assumes PostgreSQL is being used for the reporting
 database.
 
-The following requires ldpmarc v1.6.0-beta2 or later.
+The following requires ldpmarc v1.6.0-beta3 or later.
 
 
 Querying and retrieving SRS data
@@ -109,13 +109,13 @@ directory is called, for example, `data/`, then `data/metadb.conf`
 should contain settings in the form:
 
 ```ini
-[postgresql]
+[main]
 host = <hostname>
 port = 5432
-database_name = <ldlite_database_name>
-metadb_user = <username>
-metadb_password = <password>
-sslmode = <disable_or_require>
+database = <ldlite_database_name>
+systemuser = <username>
+systemuser_password = <password>
+sslmode = <require_or_disable>
 ```
 
 Then to run ldpmarc:
