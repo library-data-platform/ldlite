@@ -9,7 +9,7 @@ transform the data to tabular format for easier querying via SQL.  The
 suggested process assumes PostgreSQL is being used for the reporting
 database.
 
-The following requires ldpmarc v1.6.0-beta3 or later.
+The following requires ldpmarc v1.6.0-beta4 or later.
 
 
 Querying and retrieving SRS data
@@ -124,8 +124,8 @@ Then to run ldpmarc:
 ldpmarc -D data -M
 ```
 
-This should create a new table `public.srs_marctab` containing the
-MARC records in a form such as:
+This should create a new table `folio_source_record.marctab`
+containing the MARC records in a form such as:
 
 ```
                 srs_id                | line |              matched_id              | instance_hrid |             instance_id              | field | ind1 | ind2 | ord | sf |                 content
