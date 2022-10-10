@@ -9,7 +9,7 @@ transform the data to tabular format for easier querying via SQL.  The
 suggested process assumes PostgreSQL is being used for the reporting
 database.
 
-The following requires ldpmarc v1.6.0-beta4 or later.
+The following requires ldpmarc v1.6.0-beta5 or later.
 
 
 Querying and retrieving SRS data
