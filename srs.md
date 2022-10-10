@@ -104,7 +104,7 @@ Metadb are not required for this process.
 
 When we run ldpmarc with the `-M` option (below), it will look for
 database connection parameters in a configuration file called
-`metadb.conf` located within a Metadb "data directory."  If the data
+`metadb.conf` located within a Metadb data directory.  If the data
 directory is called, for example, `data/`, then `data/metadb.conf`
 should contain settings in the form:
 
@@ -121,7 +121,7 @@ sslmode = <require_or_disable>
 Then to run ldpmarc:
 
 ```bash
-ldpmarc -D ldpdata -M
+ldpmarc -D data -M
 ```
 
 This should create a new table `public.srs_marctab` containing the
