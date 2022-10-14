@@ -121,7 +121,7 @@ sslmode = <require_or_disable>
 Then to run ldpmarc:
 
 ```bash
-ldpmarc -D data -M
+ldpmarc -D data -M -f
 ```
 
 This should create a new table `folio_source_record.marctab`
