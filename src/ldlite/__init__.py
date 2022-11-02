@@ -159,8 +159,10 @@ class LDLite:
         _autocommit(self.db, self.dbtype, True)
         return self.db
 
-    def connect_db_sqlite(self, filename=None):
+    def experimental_connect_db_sqlite(self, filename=None):
         """Connects to an embedded SQLite database for storing data.
+        
+        This method is experimental and may not be supported in future versions.
 
         The optional *filename* designates a local file containing the SQLite
         database or where the database will be created if it does not exist.
