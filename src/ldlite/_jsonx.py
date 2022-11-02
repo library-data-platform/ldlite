@@ -401,11 +401,7 @@ def _transform_json(db, dbtype, table, total, quiet, max_depth):
                         bar_format='{desc} {bar}{postfix}')
         cur2 = db.cursor()
         while True:
-            try:
-                row = cur.fetchone()  # Error: String value is not valid UTF8
-            except (RuntimeError, psycopg2.Error, sqlite3.OperationalError, duckdb.CatalogException) as e:
-                print('reading row for JSON transform: ' + repr(e), file=sys.stderr)
-                continue
+            row = cur.fetchone()
             if row is None:
                 break
             for i, data in enumerate(row):
@@ -425,6 +421,9 @@ def _transform_json(db, dbtype, table, total, quiet, max_depth):
                 pbar.update(1)
         if not quiet:
             pbar.close()
+    except (RuntimeError, psycopg2.Error, sqlite3.OperationalError, duckdb.CatalogException) as e:
+        print('ldlite: running JSON transform: ' + repr(e), file=sys.stderr)
+        return [], {}
     finally:
         cur.close()
     db.commit()
@@ -434,6 +433,9 @@ def _transform_json(db, dbtype, table, total, quiet, max_depth):
         cur.execute('CREATE TABLE ' + _sqlid(tcatalog) + '(table_name ' + _varchar_type(dbtype) + ' NOT NULL)')
         for t in newattrs.keys():
             cur.execute('INSERT INTO ' + _sqlid(tcatalog) + ' VALUES(' + _encode_sql(dbtype, t) + ')')
+    except (RuntimeError, psycopg2.Error, sqlite3.OperationalError, duckdb.CatalogException) as e:
+        print('ldlite: writing table catalog for JSON transform: ' + repr(e), file=sys.stderr)
+        return [], {}
     finally:
         cur.close()
     db.commit()
