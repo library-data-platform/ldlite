@@ -1,6 +1,5 @@
 import json
 import sqlite3
-import sys
 import uuid
 
 import duckdb
@@ -422,8 +421,7 @@ def _transform_json(db, dbtype, table, total, quiet, max_depth):
         if not quiet:
             pbar.close()
     except (RuntimeError, psycopg2.Error, sqlite3.OperationalError, duckdb.CatalogException) as e:
-        print('ldlite: running JSON transform: ' + repr(e), file=sys.stderr)
-        return [], {}
+        raise RuntimeError('running JSON transform: ' + str(e))
     finally:
         cur.close()
     db.commit()
@@ -434,8 +432,7 @@ def _transform_json(db, dbtype, table, total, quiet, max_depth):
         for t in newattrs.keys():
             cur.execute('INSERT INTO ' + _sqlid(tcatalog) + ' VALUES(' + _encode_sql(dbtype, t) + ')')
     except (RuntimeError, psycopg2.Error, sqlite3.OperationalError, duckdb.CatalogException) as e:
-        print('ldlite: writing table catalog for JSON transform: ' + repr(e), file=sys.stderr)
-        return [], {}
+        raise RuntimeError('writing table catalog for JSON transform: ' + str(e))
     finally:
         cur.close()
     db.commit()
