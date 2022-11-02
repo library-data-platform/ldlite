@@ -1,5 +1,6 @@
 import json
 import sqlite3
+import sys
 import uuid
 
 import duckdb
@@ -400,7 +401,11 @@ def _transform_json(db, dbtype, table, total, quiet, max_depth):
                         bar_format='{desc} {bar}{postfix}')
         cur2 = db.cursor()
         while True:
-            row = cur.fetchone()
+            try:
+                row = cur.fetchone()  # Error: String value is not valid UTF8
+            except (RuntimeError, psycopg2.Error, sqlite3.OperationalError, duckdb.CatalogException) as e:
+                print('reading row for JSON transform: ' + repr(e), file=sys.stderr)
+                continue
             if row is None:
                 break
             for i, data in enumerate(row):
