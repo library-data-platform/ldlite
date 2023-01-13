@@ -237,9 +237,9 @@ class LDLite:
 
         Example:
 
-            ld.connect_okapi(url='https://folio-snapshot-okapi.dev.folio.org',
-                             tenant='diku',
-                             token=developer_token)
+            ld.connect_okapi_token(url='https://folio-snapshot-okapi.dev.folio.org',
+                                   tenant='diku',
+                                   token=developer_token)
 
         """
         self.okapi_url = url.rstrip('/')
