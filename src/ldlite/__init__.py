@@ -208,7 +208,7 @@ class LDLite:
             raise RuntimeError('database connection not configured: use connect_db() or connect_db_postgresql()')
 
     def connect_okapi(self, url, tenant, user, password):
-        """Connects to an Okapi instance.
+        """Connects to an Okapi instance with a user name and password.
 
         The *url*, *tenant*, *user*, and *password* settings are Okapi-specific
         connection parameters.
@@ -228,6 +228,23 @@ class LDLite:
         self.okapi_user = user
         self.okapi_password = password
         self._login()
+
+    def connect_okapi_token(self, url, tenant, token):
+        """Connects to an Okapi instance with a login token.
+
+        The *url*, *tenant*, and *token* settings are Okapi-specific
+        connection parameters.
+
+        Example:
+
+            ld.connect_okapi(url='https://folio-snapshot-okapi.dev.folio.org',
+                             tenant='diku',
+                             token=developer_token)
+
+        """
+        self.okapi_url = url.rstrip('/')
+        self.okapi_tenant = tenant
+        self.login_token = token
 
     def drop_tables(self, table):
         """Drops a specified table and any accompanying tables that were output from JSON transformation.
