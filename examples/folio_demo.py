@@ -1,10 +1,11 @@
 # This script uses LDLite to extract sample data from the FOLIO demo sites.
 
 import sys
+
 import ldlite
 
 # Demo sites
-current_release = 'https://folio-juniper-okapi.dev.folio.org/'
+current_release = 'https://folio-lotus-okapi.dev.folio.org/'
 latest_snapshot = 'https://folio-snapshot-okapi.dev.folio.org/'
 
 ###############################################################################
@@ -157,8 +158,8 @@ for q in queries:
         else:
             t = ld.query(table=q[0], path=q[1], query=q[2])
         tables += t
-    except (ValueError, RuntimeError):
-        print('folio_demo.py: error processing "' + q[1] + '"', file=sys.stderr)
+    except (ValueError, RuntimeError) as e:
+        print('folio_demo.py: error processing "' + q[1] + '": ' + str(e), file=sys.stderr)
 print()
 print('Tables:')
 for t in tables:

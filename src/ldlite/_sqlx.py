@@ -1,3 +1,14 @@
+import secrets
+from enum import Enum
+
+
+class _DBType(Enum):
+    UNDEFINED = 0
+    DUCKDB = 1
+    POSTGRES = 2
+    SQLITE = 4
+
+
 def _strip_schema(table):
     st = table.split('.')
     if len(st) == 1:
@@ -9,14 +20,20 @@ def _strip_schema(table):
 
 
 def _autocommit(db, dbtype, enable):
-    if dbtype == 2 or dbtype == 3:
+    if dbtype == _DBType.POSTGRES:
         db.rollback()
         db.set_session(autocommit=enable)
+    if dbtype == _DBType.SQLITE:
+        db.rollback()
+        if enable:
+            db.isolation_level = None
+        else:
+            db.isolation_level = "DEFERRED"
 
 
 def _server_cursor(db, dbtype):
-    if dbtype == 2 or dbtype == 3:
-        return db.cursor(name='ldlite')
+    if dbtype == _DBType.POSTGRES:
+        return db.cursor(name=('ldlite' + secrets.token_hex(4)))
     else:
         return db.cursor()
 
@@ -29,32 +46,40 @@ def _sqlid(ident):
         return '.'.join(['"' + s + '"' for s in sp])
 
 
+def _cast_to_varchar(ident: str, dbtype: _DBType):
+    if dbtype == _DBType.SQLITE:
+        return 'CAST(' + ident + ' as TEXT)'
+    return ident + '::varchar'
+
+
 def _varchar_type(dbtype):
-    if dbtype == 3:
-        return 'varchar(65535)'
+    if dbtype == _DBType.POSTGRES or _DBType.SQLITE:
+        return 'text'
     else:
         return 'varchar'
 
 
 def _json_type(dbtype):
-    if dbtype == 2:
+    if dbtype == _DBType.POSTGRES:
         return 'jsonb'
+    elif dbtype == _DBType.SQLITE:
+        return 'text'
     else:
         return 'varchar'
 
 
 def _encode_sql_str(dbtype, s):
-    if dbtype == 2:
+    if dbtype == _DBType.POSTGRES:
         b = 'E\''
     else:
         b = '\''
-    if dbtype == 1:
+    if dbtype == _DBType.SQLITE or dbtype == _DBType.DUCKDB:
         for c in s:
             if c == '\'':
                 b += '\'\''
             else:
                 b += c
-    if dbtype == 2 or dbtype == 3:
+    if dbtype == _DBType.POSTGRES:
         for c in s:
             if c == '\'':
                 b += '\'\''

@@ -4,14 +4,12 @@
 import ldlite
 ```
 
-
 ```python
 # We also have to initialize LDLite.  This will create a variable "ld" which we
 # can use to call LDLite functions.
 
 ld = ldlite.LDLite()
 ```
-
 
 ```python
 # LDLite must be configured to connect to an Okapi instance and to a database
@@ -24,14 +22,12 @@ ld.connect_okapi(url='https://folio-juniper-okapi.dev.folio.org/',
                  password='admin')
 ```
 
-
 ```python
 # Next we call "ld.connect_db()" to create a database and connect it to DBLite.
 # The database will be stored in a file called "ldlite.db".
 
 db = ld.connect_db(filename='ldlite.db')
 ```
-
 
 ```python
 # The function "ld.query()" is used to send CQL queries to Okapi.  In this case
@@ -44,8 +40,6 @@ _ = ld.query(table='g', path='/groups', query='cql.allRecords=1 sortby id')
 
     ldlite: querying: /groups
     ldlite: created tables: g, g__t, g__tcatalog
-
-
 
 ```python
 # We can use "ld.select()" to show a quick view of a table, in this case table
@@ -95,9 +89,6 @@ ld.select(table='g', limit=10)
           |     } 
           | } 
     (4 rows)
-    
-
-
 
 ```python
 # When ld.query() created table "g", it also created another table
@@ -113,9 +104,6 @@ ld.select(table='g__t', limit=10)
         3 | ad0bc554-d5bc-463c-85d1-5562127ae91b | Graduate Student      |                           | graduate  
         4 | bdc2b6d4-5ceb-4a12-ab46-249b9a68473e | Undergraduate Student |                           | undergrad 
     (4 rows)
-    
-
-
 
 ```python
 # We will also query user data and store the result in table "u" etc.
@@ -125,8 +113,6 @@ _ = ld.query(table='u', path='/users', query='cql.allRecords=1 sortby id')
 
     ldlite: querying: /users
     ldlite: created tables: u, u__t, u__t__departments, u__t__personal__addresses, u__t__proxy_for, u__tcatalog
-
-
 
 ```python
 # We can now join table "u" to table "g" and generate a list of user names and
@@ -158,9 +144,6 @@ ld.select(table='user_groups', limit=10)
      08522da4-668a-4450-a769-3abfae5678ad | johan    | staff     
      0a246f61-d85f-42b6-8dcc-48d25a46690b | maxine   | staff     
     (10 rows)
-    
-
-
 
 ```python
 # The "user_groups" table can also be exported to a CSV or Excel file.
@@ -169,7 +152,6 @@ ld.export_csv(table='user_groups', filename='user_groups.csv')
 
 ld.export_excel(table='user_groups', filename='user_groups.xlsx')
 ```
-
 
 ```python
 # We can look at the distribution of groups.
@@ -191,8 +173,6 @@ print(df)
     2    faculty     71
     3   graduate     62
 
-
-
 ```python
 # We can plot the distribution with a bar graph.
 
@@ -201,12 +181,7 @@ import matplotlib
 _ = df.plot(kind='bar', x='user_group')
 ```
 
-
-    
 ![png](output_13_1.png)
-    
-
-
 
 ```python
 # Or a pie chart.
@@ -214,8 +189,6 @@ _ = df.plot(kind='bar', x='user_group')
 _ = df.plot(kind='pie', x='user_group', y='count')
 ```
 
-
-    
 ![png](output_14_1.png)
     
 

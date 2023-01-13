@@ -1,6 +1,6 @@
-duckdb==0.3.4
-pandas==1.4.2
-psycopg2==2.9.3
-requests==2.27.1
-tqdm==4.64.0
-XlsxWriter==3.0.3
+duckdb==0.6.1
+pandas==1.5.2
+psycopg2==2.9.5
+requests==2.28.2
+tqdm==4.64.1
+XlsxWriter==3.0.6

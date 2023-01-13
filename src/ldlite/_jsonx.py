@@ -1,10 +1,15 @@
 import json
-import psycopg2
+import sqlite3
 import uuid
+
+import duckdb
+import psycopg2
 from tqdm import tqdm
+
 from ._camelcase import _decode_camel_case
-from ._sqlx import _server_cursor
+from ._sqlx import _cast_to_varchar
 from ._sqlx import _encode_sql
+from ._sqlx import _server_cursor
 from ._sqlx import _sqlid
 from ._sqlx import _varchar_type
 
@@ -61,14 +66,14 @@ def _old_drop_json_tables(db, table):
                 pass
             finally:
                 cur2.close()
-    except (RuntimeError, psycopg2.Error):
+    except (RuntimeError, psycopg2.Error, sqlite3.OperationalError, duckdb.CatalogException):
         pass
     finally:
         cur.close()
     cur = db.cursor()
     try:
         cur.execute('DROP TABLE IF EXISTS ' + jtable_sql)
-    except (RuntimeError, psycopg2.Error):
+    except (duckdb.CatalogException, RuntimeError, psycopg2.Error):
         pass
     finally:
         cur.close()
@@ -88,11 +93,11 @@ def _drop_json_tables(db, table):
             cur2 = db.cursor()
             try:
                 cur2.execute('DROP TABLE IF EXISTS ' + _sqlid(t))
-            except (RuntimeError, psycopg2.Error):
+            except (duckdb.CatalogException, RuntimeError, psycopg2.Error):
                 pass
             finally:
                 cur2.close()
-    except (RuntimeError, psycopg2.Error):
+    except (RuntimeError, psycopg2.Error, sqlite3.OperationalError, duckdb.CatalogException):
         pass
     finally:
         cur.close()
@@ -187,8 +192,8 @@ def _compile_attrs(dbtype, parents, prefix, jdict, newattrs, depth, max_depth, q
         _compile_attrs(dbtype, parents + p, _decode_camel_case(b[0]) + '__', b[1], newattrs, depth + 1, max_depth, qkey)
     for y in arrays:
         p = [(1, _decode_camel_case(y[2]))]
-        _compile_array_attrs(dbtype, parents + p, _decode_camel_case(y[0]) + '__', y[1], newattrs, depth + 1, y[0], max_depth,
-                             qkey)
+        _compile_array_attrs(dbtype, parents + p, _decode_camel_case(y[0]) + '__', y[1], newattrs, depth + 1, y[0],
+                             max_depth, qkey)
 
 
 def _transform_array_data(dbtype, prefix, cur, parents, jarray, newattrs, depth, row_ids, arrayattr, max_depth,
@@ -308,8 +313,9 @@ def _transform_json(db, dbtype, table, total, quiet, max_depth):
     try:
         cur.execute('SELECT * FROM ' + _sqlid(table) + ' LIMIT 1')
         for a in cur.description:
-            if a[1] == 3802 or a[1] == 'STRING' or a[1] == 1043:
-                str_attrs.append(a[0])
+            str_attrs.append(a[0])
+            # if a[1] == 3802 or a[1] == 'STRING' or a[1] == 1043:
+            #     str_attrs.append(a[0])
     finally:
         cur.close()
     # Scan data for JSON objects
@@ -320,7 +326,8 @@ def _transform_json(db, dbtype, table, total, quiet, max_depth):
     newattrs = {}
     cur = _server_cursor(db, dbtype)
     try:
-        cur.execute('SELECT ' + ','.join([_sqlid(a)+'::varchar' for a in str_attrs]) + ' FROM ' + _sqlid(table))
+        cur.execute('SELECT ' + ','.join([_cast_to_varchar(_sqlid(a), dbtype) for a in str_attrs]) + ' FROM ' +
+                    _sqlid(table))
         pbar = None
         pbartotal = 0
         if not quiet:
@@ -384,7 +391,8 @@ def _transform_json(db, dbtype, table, total, quiet, max_depth):
         return [], {}
     cur = _server_cursor(db, dbtype)
     try:
-        cur.execute('SELECT ' + ','.join([_sqlid(a)+'::varchar' for a in json_attrs]) + ' FROM ' + _sqlid(table))
+        cur.execute('SELECT ' + ','.join([_cast_to_varchar(_sqlid(a), dbtype) for a in json_attrs]) + ' FROM ' +
+                    _sqlid(table))
         pbar = None
         pbartotal = 0
         if not quiet:
@@ -412,6 +420,8 @@ def _transform_json(db, dbtype, table, total, quiet, max_depth):
                 pbar.update(1)
         if not quiet:
             pbar.close()
+    except (RuntimeError, psycopg2.Error, sqlite3.OperationalError, duckdb.CatalogException) as e:
+        raise RuntimeError('running JSON transform: ' + str(e))
     finally:
         cur.close()
     db.commit()
@@ -421,6 +431,8 @@ def _transform_json(db, dbtype, table, total, quiet, max_depth):
         cur.execute('CREATE TABLE ' + _sqlid(tcatalog) + '(table_name ' + _varchar_type(dbtype) + ' NOT NULL)')
         for t in newattrs.keys():
             cur.execute('INSERT INTO ' + _sqlid(tcatalog) + ' VALUES(' + _encode_sql(dbtype, t) + ')')
+    except (RuntimeError, psycopg2.Error, sqlite3.OperationalError, duckdb.CatalogException) as e:
+        raise RuntimeError('writing table catalog for JSON transform: ' + str(e))
     finally:
         cur.close()
     db.commit()

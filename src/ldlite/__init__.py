@@ -36,8 +36,8 @@ Example:
 """
 
 import json
+import sqlite3
 import sys
-# from warnings import warn
 
 import duckdb
 # import pandas
@@ -45,21 +45,25 @@ import psycopg2
 import requests
 from tqdm import tqdm
 
+from ._csv import _to_csv
+from ._jsonx import Attr
+from ._jsonx import _drop_json_tables
+from ._jsonx import _transform_json
+from ._query import _query_dict
 # from ._camelcase import _decode_camel_case
 from ._request import _request_get
-from ._csv import _to_csv
-# from src.ldlite._csv import *
-from ._xlsx import _to_xlsx
-from ._jsonx import Attr
-from ._jsonx import _transform_json
-from ._jsonx import _drop_json_tables
-from ._query import _query_dict
 from ._select import _select
-from ._sqlx import _encode_sql_str
+from ._sqlx import _DBType
 from ._sqlx import _autocommit
+from ._sqlx import _encode_sql_str
+from ._sqlx import _json_type
 from ._sqlx import _sqlid
 from ._sqlx import _strip_schema
-from ._sqlx import _json_type
+# from src.ldlite._csv import *
+from ._xlsx import _to_xlsx
+
+
+# from warnings import warn
 
 
 # def _rename_tables(db, tables):
@@ -86,7 +90,7 @@ class LDLite:
         self.page_size = 1000
         self._verbose = False
         self._quiet = False
-        self.dbtype = 0
+        self.dbtype: _DBType = _DBType.UNDEFINED
         self.db = None
         self.login_token = None
         self.okapi_url = None
@@ -102,7 +106,7 @@ class LDLite:
     def connect_db(self, filename=None):
         """Connects to an embedded database for storing data.
 
-        The optional *filename* designates a local file containing the DuckDB
+        The optional *filename* designates a local file containing the
         database or where the database will be created if it does not exist.
         If *filename* is not specified, the database will be stored in memory
         and will not be persisted to disk.
@@ -115,7 +119,25 @@ class LDLite:
             db = ld.connect_db(filename='ldlite.db')
 
         """
-        self.dbtype = 1
+        self._connect_db_duckdb(filename)
+
+    def _connect_db_duckdb(self, filename=None):
+        """Connects to an embedded DuckDB database for storing data.
+
+        The optional *filename* designates a local file containing the DuckDB
+        database or where the database will be created if it does not exist.
+        If *filename* is not specified, the database will be stored in memory
+        and will not be persisted to disk.
+
+        This method returns a connection to the database which can be used to
+        submit SQL queries.
+
+        Example:
+
+            db = ld.connect_db_duckdb(filename='ldlite.db')
+
+        """
+        self.dbtype = _DBType.DUCKDB
         fn = filename if filename is not None else ':memory:'
         self.db = duckdb.connect(database=fn)
         return self.db
@@ -132,27 +154,34 @@ class LDLite:
             db = ld.connect_db_postgresql(dsn='dbname=ldlite host=localhost user=ldlite')
 
         """
-        self.dbtype = 2
+        self.dbtype = _DBType.POSTGRES
         self.db = psycopg2.connect(dsn)
         _autocommit(self.db, self.dbtype, True)
         return self.db
 
-    # def connect_db_redshift(self, dsn):
-    #     """Connects to a Redshift database for storing data.
+    def experimental_connect_db_sqlite(self, filename=None):
+        """Connects to an embedded SQLite database for storing data.
+        
+        This method is experimental and may not be supported in future versions.
 
-    #     The data source name is specified by *dsn*.  This method returns a
-    #     connection to the database which can be used to submit SQL queries.
-    #     The returned connection defaults to autocommit mode.
+        The optional *filename* designates a local file containing the SQLite
+        database or where the database will be created if it does not exist.
+        If *filename* is not specified, the database will be stored in memory
+        and will not be persisted to disk.
 
-    #     Example:
+        This method returns a connection to the database which can be used to
+        submit SQL queries.
 
-    #         db = ld.connect_db_redshift(dsn='dbname=ldlite host=localhost user=ldlite')
+        Example:
 
-    #     """
-    #     self.dbtype = 3
-    #     self.db = psycopg2.connect(dsn)
-    #     _autocommit(self.db, self.dbtype, True)
-    #     return self.db
+            db = ld.connect_db_sqlite(filename='ldlite.db')
+
+        """
+        self.dbtype = _DBType.SQLITE
+        fn = filename if filename is not None else ':memory:'
+        self.db = sqlite3.connect(fn)
+        _autocommit(self.db, self.dbtype, True)
+        return self.db
 
     def _login(self):
         if self._verbose:
@@ -179,7 +208,7 @@ class LDLite:
             raise RuntimeError('database connection not configured: use connect_db() or connect_db_postgresql()')
 
     def connect_okapi(self, url, tenant, user, password):
-        """Connects to an Okapi instance.
+        """Connects to an Okapi instance with a user name and password.
 
         The *url*, *tenant*, *user*, and *password* settings are Okapi-specific
         connection parameters.
@@ -199,6 +228,23 @@ class LDLite:
         self.okapi_user = user
         self.okapi_password = password
         self._login()
+
+    def connect_okapi_token(self, url, tenant, token):
+        """Connects to an Okapi instance with a login token.
+
+        The *url*, *tenant*, and *token* settings are Okapi-specific
+        connection parameters.
+
+        Example:
+
+            ld.connect_okapi(url='https://folio-snapshot-okapi.dev.folio.org',
+                             tenant='diku',
+                             token=developer_token)
+
+        """
+        self.okapi_url = url.rstrip('/')
+        self.okapi_tenant = tenant
+        self.login_token = token
 
     def drop_tables(self, table):
         """Drops a specified table and any accompanying tables that were output from JSON transformation.
@@ -223,7 +269,7 @@ class LDLite:
             pass
         finally:
             cur.close()
-        _drop_json_tables(self.db, table)
+        _drop_json_tables(self.db, self.dbtype, table)
 
     def set_okapi_max_retries(self, max_retries):
         """Sets the maximum number of retries for Okapi requests.
@@ -257,29 +303,34 @@ class LDLite:
         """Submits a query to an Okapi module, and transforms and stores the result.
 
         The retrieved result is stored in *table* within the reporting
-        database.
+        database.  the *table* name may include a schema name;
+        however, if the database is SQLite, which does not support
+        schemas, the schema name will be added to the table name as a
+        prefix.
 
         The *path* parameter is the request path.
 
-        If *query* is a string, it is assumed to be a CQL or similar query and
-        is encoded as query=*query*.  If *query* is a dictionary, it is
-        interpreted as a set of query parameters.  Each value of the dictionary
-        must be either a string or a list of strings.  If a string, it is
-        encoded as key=value.  If a list of strings, it is encoded as
-        key=value1&key=value2&...
+        If *query* is a string, it is assumed to be a CQL or similar
+        query and is encoded as query=*query*.  If *query* is a
+        dictionary, it is interpreted as a set of query parameters.
+        Each value of the dictionary must be either a string or a list
+        of strings.  If a string, it is encoded as key=value.  If a
+        list of strings, it is encoded as key=value1&key=value2&...
 
-        By default JSON data are transformed into one or more tables that are
-        created in addition to *table*.  New tables overwrite any existing
-        tables having the same name.  If *json_depth* is specified within the
-        range 0 < *json_depth* < 5, this determines how far into nested JSON
-        data the transformation will descend.  (The default is 3.)  If
-        *json_depth* is specified as 0, JSON data are not transformed.
+        By default JSON data are transformed into one or more tables
+        that are created in addition to *table*.  New tables overwrite
+        any existing tables having the same name.  If *json_depth* is
+        specified within the range 0 < *json_depth* < 5, this
+        determines how far into nested JSON data the transformation
+        will descend.  (The default is 3.)  If *json_depth* is
+        specified as 0, JSON data are not transformed.
 
-        If *limit* is specified, then only up to *limit* records are retrieved.
+        If *limit* is specified, then only up to *limit* records are
+        retrieved.
 
-        The *transform* parameter is no longer supported and will be removed in
-        the future.  Instead, specify *json_depth* as 0 to disable JSON
-        transformation.
+        The *transform* parameter is no longer supported and will be
+        removed in the future.  Instead, specify *json_depth* as 0 to
+        disable JSON transformation.
 
         This method returns a list of newly created tables, or raises
         ValueError or RuntimeError.
@@ -298,6 +349,9 @@ class LDLite:
             raise ValueError('invalid value for json_depth: ' + str(json_depth))
         self._check_okapi()
         self._check_db()
+        if len(schema_table) == 2 and self.dbtype == _DBType.SQLITE:
+            table = schema_table[0] + '_' + schema_table[1]
+            schema_table = [table]
         if not self._quiet:
             print('ldlite: querying: ' + path, file=sys.stderr)
         querycopy = _query_dict(query)
@@ -471,7 +525,7 @@ class LDLite:
         _autocommit(self.db, self.dbtype, False)
         try:
             _select(self.db, self.dbtype, table, columns, limit, f)
-            if self.dbtype == 2 or self.dbtype == 3:
+            if self.dbtype == _DBType.POSTGRES:
                 self.db.rollback()
         finally:
             _autocommit(self.db, self.dbtype, True)
@@ -494,7 +548,7 @@ class LDLite:
         _autocommit(self.db, self.dbtype, False)
         try:
             _to_csv(self.db, self.dbtype, table, filename, header)
-            if self.dbtype == 2 or self.dbtype == 3:
+            if self.dbtype == _DBType.POSTGRES:
                 self.db.rollback()
         finally:
             _autocommit(self.db, self.dbtype, True)
@@ -521,7 +575,7 @@ class LDLite:
         _autocommit(self.db, self.dbtype, False)
         try:
             _to_xlsx(self.db, self.dbtype, table, filename, header)
-            if self.dbtype == 2 or self.dbtype == 3:
+            if self.dbtype == _DBType.POSTGRES:
                 self.db.rollback()
         finally:
             _autocommit(self.db, self.dbtype, True)
