@@ -1,7 +1,5 @@
 from unittest import TestCase
 
-from src.ldlite import *
-
 
 class TestLDLite(TestCase):
     def test_connect_db(self):
