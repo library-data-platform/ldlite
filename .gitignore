@@ -3,4 +3,4 @@ dist
 ldlite.egg-info
 tmp
 .idea
-
+.env
