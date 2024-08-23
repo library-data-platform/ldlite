@@ -31,7 +31,7 @@ selected_site = current_release
 ###############################################################################
 
 ld = ldlite.LDLite()
-ld.connect_okapi(url=selected_site, tenant='diku', user='diku_admin', password='admin')
+#ld.connect_okapi(url=selected_site, tenant='diku', user='diku_admin', password='admin')
 
 db = ld.connect_db(filename='ldlite.db')
 # For PostgreSQL, use connect_db_postgresql() instead of connect_db():
