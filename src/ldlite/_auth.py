@@ -23,9 +23,6 @@ def okapi_auth(okapi_endpoint, username, password, tenant):
         print("Response body:", response.text)  # This prints more details from the server
         return {}, {}  # Return empty since authentication failed
 
-    #    print("Headers:", response.headers)
-    #    print("Cookies:", response.cookies.get_dict())
-
     return response.cookies.get_dict()
 
 def okapi_auth_refresh(okapi_endpoint, username, password, tenant):
@@ -48,9 +45,6 @@ def okapi_auth_refresh(okapi_endpoint, username, password, tenant):
         print("Response body:", response.text)  # This prints more details from the server
         return {}, {}  # Return empty since authentication failed
 
-    #    print("Headers:", response.headers)
-    #    print("Cookies:", response.cookies.get_dict())
-
     return response.cookies.get_dict()
-# Example usage
+
 
