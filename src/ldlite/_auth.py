@@ -3,9 +3,6 @@ import json
 import os
 from dotenv import load_dotenv
 
-username = os.getenv("OKAPI_USERNAME")
-password = os.getenv("OKAPI_PASSWORD")
-
 def okapi_auth(okapi_endpoint, username, password, tenant):
     headers = {
         "X-Okapi-Tenant": tenant,
@@ -57,7 +54,3 @@ def okapi_auth_refresh(okapi_endpoint, username, password, tenant):
     return response.cookies.get_dict()
 # Example usage
 
-okapi_endpoint = 'https://okapi-fivecolleges-test.folio.ebsco.com'
-username = 'username'
-password = 'password'
-tenant = 'tenant'
