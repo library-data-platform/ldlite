@@ -444,6 +444,10 @@ class LDLite:
                     if limit is not None and count == limit:
                         break
                     page += 1
+
+                    # in case we passed the limit
+                    if offset > total:
+                        break
             finally:
                 cur.close()
             if not self._quiet:
