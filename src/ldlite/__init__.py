@@ -38,6 +38,8 @@ Example:
 import json
 import sqlite3
 import sys
+import threading
+import time
 
 import duckdb
 # import pandas
@@ -45,6 +47,7 @@ import psycopg2
 import requests
 from tqdm import tqdm
 
+from src.ldlite._auth import okapi_auth_refresh
 from ._csv import _to_csv
 from ._jsonx import Attr
 from ._jsonx import _drop_json_tables
@@ -99,8 +102,14 @@ class LDLite:
         self.okapi_password = None
         self._okapi_timeout = 60
         self._okapi_max_retries = 2
+        self._token_refresh_interval = 600  # Refresh every 10 minutes
+        self._stop_event = threading.Event()
+        self._lock = threading.Lock()
+        from ._auth import okapi_auth, okapi_auth_refresh
 
-    def _set_page_size(self, page_size):
+
+
+def _set_page_size(self, page_size):
         self.page_size = page_size
 
     def connect_db(self, filename=None):
@@ -207,6 +216,8 @@ class LDLite:
         if self.db is None:
             raise RuntimeError('database connection not configured: use connect_db() or connect_db_postgresql()')
 
+
+
     def connect_okapi(self, url, tenant, user, password):
         """Connects to an Okapi instance with a user name and password.
 
@@ -229,22 +240,58 @@ class LDLite:
         self.okapi_password = password
         self._login()
 
+    def _okapi_auth_refresh(self):
+        """Refresh the access token using the refresh token from _auth.py."""
+        with self._lock:
+            if not self.refresh_token:
+                print("No refresh token available, skipping refresh.")
+                return False
+
+            tokens = okapi_auth_refresh(self.okapi_url, self.okapi_user, self.okapi_password, self.okapi_tenant)
+
+            if not tokens:
+                print("Failed to refresh access token.")
+                return False
+
+            self.access_token = tokens.get("folioAccessToken")
+            self.refresh_token = tokens.get("folioRefreshToken")
+
+        return True
+
+    def _token_refresh_thread(self):
+        """Background thread to refresh tokens periodically."""
+        while not self._stop_event.is_set():
+            success = self._okapi_auth_refresh()
+            if success and self._verbose:
+                print("Access token refreshed successfully.")
+            time.sleep(self._token_refresh_interval)
+
+    def start_token_refresh(self):
+        """Starts the token refresh thread."""
+        self._stop_event.clear()
+        threading.Thread(target=self._token_refresh_thread, daemon=True).start()
+
+    def stop_token_refresh(self):
+        """Stops the token refresh thread."""
+        self._stop_event.set()
+
+
     def connect_okapi_token(self, url, tenant, token):
-        """Connects to an Okapi instance with a login token.
+            """Connects to an Okapi instance with a login token.
 
-        The *url*, *tenant*, and *token* settings are Okapi-specific
-        connection parameters.
+            The *url*, *tenant*, and *token* settings are Okapi-specific
+            connection parameters.
 
-        Example:
+            Example:
 
-            ld.connect_okapi_token(url='https://folio-snapshot-okapi.dev.folio.org',
-                                   tenant='diku',
-                                   token=developer_token)
+                ld.connect_okapi_token(url='https://folio-snapshot-okapi.dev.folio.org',
+                                       tenant='diku',
+                                       token=developer_token)
 
-        """
-        self.okapi_url = url.rstrip('/')
-        self.okapi_tenant = tenant
-        self.login_token = token
+            """
+            self.okapi_url = url.rstrip('/')
+            self.okapi_tenant = tenant
+            self.login_token = token
 
     def drop_tables(self, table):
         """Drops a specified table and any accompanying tables that were output from JSON transformation.
