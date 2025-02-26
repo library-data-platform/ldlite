@@ -244,18 +244,7 @@ class LDLite:
         self._login()
 
     def connect_okapi_token(self, url, tenant, token):
-        """Connects to an Okapi instance with a login token.
-
-        The *url*, *tenant*, and *token* settings are Okapi-specific
-        connection parameters.
-
-        Example:
-
-            ld.connect_okapi_token(url='https://folio-snapshot-okapi.dev.folio.org',
-                                   tenant='diku',
-                                   token=developer_token)
-
-        """
+        """Deprecated; use connect_okapi(). This will be removed for the Sunflower release. """
         self.okapi_url = url.rstrip('/')
         self.okapi_tenant = tenant
         self.login_token = token
