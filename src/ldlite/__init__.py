@@ -93,6 +93,7 @@ class LDLite:
         self.dbtype: _DBType = _DBType.UNDEFINED
         self.db = None
         self.login_token = None
+        self.legacy_auth = True
         self.okapi_url = None
         self.okapi_tenant = None
         self.okapi_user = None
@@ -190,12 +191,17 @@ class LDLite:
                'Content-Type': 'application/json'}
         data = {'username': self.okapi_user,
                 'password': self.okapi_password}
-        resp = requests.post(self.okapi_url + '/authn/login', headers=hdr, data=json.dumps(data),
+
+        authn = self.okapi_url + '/authn/' + ('login' if self.legacy_auth else 'login-with-expiry')
+        resp = requests.post(authn, headers=hdr, data=json.dumps(data),
                              timeout=self._okapi_timeout)
         if resp.status_code != 201:
             raise RuntimeError('HTTP response status code: ' + str(resp.status_code))
-        if 'x-okapi-token' in resp.headers:
+
+        if self.legacy_auth and 'x-okapi-token' in resp.headers:
             self.login_token = resp.headers['x-okapi-token']
+        elif not self.legacy_auth and 'folioAccessToken' in resp.cookies:
+            self.login_token = resp.cookies['folioAccessToken']
         else:
             raise RuntimeError('authentication service did not return a login token')
 
@@ -207,18 +213,25 @@ class LDLite:
         if self.db is None:
             raise RuntimeError('database connection not configured: use connect_db() or connect_db_postgresql()')
 
-    def connect_okapi(self, url, tenant, user, password):
+    def connect_okapi(self, url, tenant, user, password, legacy_auth=True):
         """Connects to an Okapi instance with a user name and password.
 
         The *url*, *tenant*, *user*, and *password* settings are Okapi-specific
         connection parameters.
+
+        The *legacy_auth* parameter indicates whether the older /authn/login 
+        endpoint with a non-expiring token should be used. Passing False will
+        use the newer /authn/login-with-expiry. The legacy login endpoint will
+        be removed as part of the Sunflower release. In the next release this parameter
+        will default to True!
 
         Example:
 
             ld.connect_okapi(url='https://folio-snapshot-okapi.dev.folio.org',
                              tenant='diku',
                              user='diku_admin',
-                             password='admin')
+                             password='admin',
+                             legacy_auth=False)
 
         """
         if not url.startswith('https://'):
@@ -227,6 +240,7 @@ class LDLite:
         self.okapi_tenant = tenant
         self.okapi_user = user
         self.okapi_password = password
+        self.legacy_auth = legacy_auth
         self._login()
 
     def connect_okapi_token(self, url, tenant, token):

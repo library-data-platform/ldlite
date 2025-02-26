@@ -20,6 +20,11 @@ $ python -m pip install --upgrade ldlite
 
 (On some systems it might be `python3` rather than `python`.)
 
+> [!Important]
+> The legacy /auth/login endpoint with a non expiring token is going to be removed in the Sunflower release.
+> In the next release of this library the default endpoint to be used will be the newer /authn/login-with-expiry.
+> For more information on these changes see: https://folio-org.atlassian.net/wiki/spaces/FOLIJET/pages/1396980/Refresh+Token+Rotation+RTR
+
 To extract and transform data:
 
 ```python
