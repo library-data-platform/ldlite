@@ -379,6 +379,12 @@ class LDLite:
                                 max_retries=self._okapi_max_retries)
             if resp.status_code == 401:
                 # Retry
+                # Warning! There are now an edge case with expiring tokens.
+                # If a request is retried here because of timeout enough times for the token to expire
+                # the token won't automatically be refreshed.
+                # There's also another edge case where a request could have been retried some number of times
+                # before the token expired and then it would be retried for the full _okapi_max_retries value again.
+                # This will be cleaned up in future releases after tests are added allow for bigger internal changes.
                 self._login()
                 hdr = {'X-Okapi-Tenant': self.okapi_tenant, 'X-Okapi-Token': self.login_token}
                 resp = _request_get(self.okapi_url + path, params=querycopy, headers=hdr, timeout=self._okapi_timeout,
