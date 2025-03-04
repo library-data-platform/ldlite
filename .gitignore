@@ -1,3 +1,6 @@
+ldlite.db
+ldlite.db.wal
+
 __pycache__
 dist
 ldlite.egg-info
