@@ -12,11 +12,11 @@ ld = ldlite.LDLite()
 ```
 
 ```python
-# LDLite must be configured to connect to an Okapi instance and to a database
-# that will be used for reporting.  To configure the Okapi connection, we use
-# the function "ld.connect_okapi()".
+# LDLite must be configured to connect to a FOLIO instance and to a database
+# that will be used for reporting.  To configure the FOLIO connection, we use
+# the function "ld.connect_folio()".
 
-ld.connect_okapi(url='https://folio-juniper-okapi.dev.folio.org/',
+ld.connect_folio(url='https://folio-etesting-snapshot-kong.ci.folio.org',
                  tenant='diku',
                  user='diku_admin',
                  password='admin')
@@ -30,7 +30,7 @@ db = ld.connect_db(filename='ldlite.db')
 ```
 
 ```python
-# The function "ld.query()" is used to send CQL queries to Okapi.  In this case
+# The function "ld.query()" is used to send CQL queries to FOLIO.  In this case
 # we will query patron groups and store the result in a new table named "g".
 # In addition to "g", this will create other tables having names beginning with
 # "g__t" where JSON data will be transformed to tables.
