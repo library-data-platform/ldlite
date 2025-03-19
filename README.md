@@ -7,7 +7,7 @@ the file
 [LICENSE](https://github.com/library-data-platform/ldlite/blob/master/LICENSE)
 for more information.
 
-LDLite is a lightweight, open source reporting tool for Okapi-based
+LDLite is a lightweight, open source reporting tool for FOLIO
 services. It is part of the Library Data Platform project and
 provides basic LDP functions without requiring the server to be
 installed.
@@ -32,7 +32,7 @@ To extract and transform data:
 $ python
 >> > import ldlite
 >> > ld = ldlite.LDLite()
->> > ld.connect_okapi(url='https://folio-juniper-okapi.dev.folio.org/',
+>> > ld.connect_folio(url='https://folio-etesting-snapshot-kong.ci.folio.org',
                       tenant='diku',
                       user='diku_admin',
                       password='admin')
@@ -72,7 +72,7 @@ tables: u, u__t, u__t__departments, u__t__personal__addresses, u__t__proxy_for, 
 Features
 --------
 
-* Queries Okapi-based modules and transforms JSON data into tables for
+* Queries FOLIO modules and transforms JSON data into tables for
   easier reporting
 * Full SQL query support and export to CSV or Excel
 * Compatible with DBeaver database tool
