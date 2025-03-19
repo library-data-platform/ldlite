@@ -22,7 +22,7 @@ $ python -m pip install --upgrade ldlite
 
 > [!Warning]
 > The legacy /auth/login endpoint with a non expiring token is going to be removed in the Sunflower release.
-> In the next release of this library the default endpoint to be used will be the newer /authn/login-with-expiry.
+> As of 1.0.0 this library defaults to using the newer /authn/login-with-expiry.
 > Because of these changes the connect_okapi_token method will no longer function and will be removed with the release of Sunflower.
 > For more information on these changes see: https://folio-org.atlassian.net/wiki/spaces/FOLIJET/pages/1396980/Refresh+Token+Rotation+RTR
 

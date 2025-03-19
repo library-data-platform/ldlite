@@ -213,7 +213,7 @@ class LDLite:
         if self.db is None:
             raise RuntimeError('database connection not configured: use connect_db() or connect_db_postgresql()')
 
-    def connect_okapi(self, url, tenant, user, password, legacy_auth=True):
+    def connect_okapi(self, url, tenant, user, password, legacy_auth=False):
         """Connects to an Okapi instance with a user name and password.
 
         The *url*, *tenant*, *user*, and *password* settings are Okapi-specific
@@ -222,16 +222,14 @@ class LDLite:
         The *legacy_auth* parameter indicates whether the older /authn/login 
         endpoint with a non-expiring token should be used. Passing False will
         use the newer /authn/login-with-expiry. The legacy login endpoint will
-        be removed as part of the Sunflower release. In the next release this parameter
-        will default to True!
+        be removed as part of the Sunflower release.
 
         Example:
 
             ld.connect_okapi(url='https://folio-snapshot-okapi.dev.folio.org',
                              tenant='diku',
                              user='diku_admin',
-                             password='admin',
-                             legacy_auth=False)
+                             password='admin')
 
         """
         if not url.startswith('https://'):
