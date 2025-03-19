@@ -5,25 +5,27 @@ import sys
 import ldlite
 
 # Demo sites
-current_release = 'https://folio-lotus-okapi.dev.folio.org/'
-latest_snapshot = 'https://folio-snapshot-okapi.dev.folio.org/'
+okapi_snapshot = 'https://folio-snapshot-okapi.dev.folio.org'
+eureka_snapshot = 'https://folio-etesting-snapshot-kong.ci.folio.org'
 
 ###############################################################################
 # Select a demo site here:
-selected_site = current_release
+selected_site = okapi_snapshot
 ###############################################################################
 # Note that these demo sites are unavailable at certain times in the evening
 # (Eastern time) or if a bug is introduced and makes one of them unresponsive.
-# At the time of this writing, the "current release" demo site appears to be
-# more stable than the "latest snapshot" site.  For information about the
-# status of the demo sites, please see the #hosted-reference-envs channel in
-# the FOLIO Slack organization.  For general information about FOLIO demo
-# sites, see the "Demo Sites" section of the FOLIO Wiki at:
-# https://wiki.folio.org
+# For information about the status of the demo sites, please see the
+# hosted-reference-envs channel in the FOLIO Slack organization. For general
+# information about FOLIO demo sites, see the "Reference Environments" section
+# of the FOLIO Wiki at:
+# https://folio-org.atlassian.net/wiki/spaces/FOLIJET/pages/513704182/Reference+environments
 ###############################################################################
 
 ld = ldlite.LDLite()
-ld.connect_okapi(url=selected_site, tenant='diku', user='diku_admin', password='admin')
+if selected_site == okapi_snapshot:
+    ld.connect_okapi(url=selected_site, tenant='diku', user='diku_admin', password='admin')
+else:
+    ld.connect_folio(url=selected_site, tenant='diku', user='diku_admin', password='admin')
 
 db = ld.connect_db(filename='ldlite.db')
 # For PostgreSQL, use connect_db_postgresql() instead of connect_db():

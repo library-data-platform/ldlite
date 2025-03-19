@@ -1,9 +1,9 @@
 """
-LDLite is a lightweight reporting tool for Okapi-based services.  It is part of
+LDLite is a lightweight reporting tool for FOLIO services.  It is part of
 the Library Data Platform project and provides basic LDP functions without
 requiring the platform to be installed.
 
-LDLite functions include retrieving data from an Okapi instance, transforming
+LDLite functions include retrieving data from a FOLIO instance, transforming
 the data, and storing the data in a reporting database for further querying.
 
 To install LDLite or upgrade to the latest version:
@@ -19,8 +19,8 @@ Example:
     # Connect to a database.
     db = ld.connect_db(filename='ldlite.db')
 
-    # Connect to Okapi.
-    ld.connect_okapi(url='https://folio-snapshot-okapi.dev.folio.org',
+    # Connect to FOLIO.
+    ld.connect_folio(url='https://folio-etesting-snapshot-kong.ci.folio.org',
                      tenant='diku',
                      user='diku_admin',
                      password='admin')
@@ -186,7 +186,7 @@ class LDLite:
 
     def _login(self):
         if self._verbose:
-            print('ldlite: logging in to okapi', file=sys.stderr)
+            print('ldlite: logging in to folio', file=sys.stderr)
         hdr = {'X-Okapi-Tenant': self.okapi_tenant,
                'Content-Type': 'application/json'}
         data = {'username': self.okapi_user,
@@ -207,31 +207,30 @@ class LDLite:
 
     def _check_okapi(self):
         if self.login_token is None:
-            raise RuntimeError('connection to okapi not configured: use connect_okapi()')
+            raise RuntimeError('connection to folio not configured: use connect_folio()')
 
     def _check_db(self):
         if self.db is None:
             raise RuntimeError('database connection not configured: use connect_db() or connect_db_postgresql()')
 
-    def connect_okapi(self, url, tenant, user, password, legacy_auth=False):
-        """Connects to an Okapi instance with a user name and password.
+    def connect_folio(self, url, tenant, user, password):
+        """Connects to a FOLIO instance with a user name and password.
 
-        The *url*, *tenant*, *user*, and *password* settings are Okapi-specific
+        The *url*, *tenant*, *user*, and *password* settings are FOLIO-specific
         connection parameters.
-
-        The *legacy_auth* parameter indicates whether the older /authn/login 
-        endpoint with a non-expiring token should be used. Passing False will
-        use the newer /authn/login-with-expiry. The legacy login endpoint will
-        be removed as part of the Sunflower release.
 
         Example:
 
-            ld.connect_okapi(url='https://folio-snapshot-okapi.dev.folio.org',
+            ld.connect_folio(url='https://folio-etesting-snapshot-kong.ci.folio.org',
                              tenant='diku',
                              user='diku_admin',
                              password='admin')
 
         """
+        self.connect_okapi(url, tenant, user, password)
+
+    def connect_okapi(self, url, tenant, user, password, legacy_auth=False):
+        """Deprecated; use connect_folio(). This will be removed for the Sunflower release. """
         if not url.startswith('https://'):
             raise ValueError('url must begin with "https://"')
         self.okapi_url = url.rstrip('/')
@@ -242,7 +241,7 @@ class LDLite:
         self._login()
 
     def connect_okapi_token(self, url, tenant, token):
-        """Deprecated; use connect_okapi(). This will be removed for the Sunflower release. """
+        """Deprecated; use connect_folio(). This will be removed for the Sunflower release. """
         self.okapi_url = url.rstrip('/')
         self.okapi_tenant = tenant
         self.login_token = token
@@ -272,8 +271,8 @@ class LDLite:
             cur.close()
         _drop_json_tables(self.db, self.dbtype, table)
 
-    def set_okapi_max_retries(self, max_retries):
-        """Sets the maximum number of retries for Okapi requests.
+    def set_folio_max_retries(self, max_retries):
+        """Sets the maximum number of retries for FOLIO requests.
 
         This method changes the configured maximum number of retries which is
         initially set to 2.  The *max_retries* parameter is the new value.
@@ -282,26 +281,35 @@ class LDLite:
 
         Example:
 
-            ld.set_okapi_max_retries(5)
+            ld.set_folio_max_retries(5)
 
         """
+        self.set_okapi_max_retries(max_retries)
+
+    def set_okapi_max_retries(self, max_retries):
+        """Deprecated; use set_folio_max_retries(). This will be removed for the Sunflower release. """
         self._okapi_max_retries = max_retries
 
-    def set_okapi_timeout(self, timeout):
-        """Sets the timeout for connections to Okapi.
+    def set_folio_timeout(self, timeout):
+        """Sets the timeout for connections to FOLIO.
 
         This method changes the configured timeout which is initially set to 60
         seconds.  The *timeout* parameter is the new timeout in seconds.
 
         Example:
 
-            ld.set_okapi_timeout(300)
+            ld.set_folio_timeout(300)
 
         """
+        self.set_okapi_timeout(timeout)
+
+
+    def set_okapi_timeout(self, timeout):
+        """Deprecated; use set_folio_timeout(). This will be removed for the Sunflower release. """
         self._okapi_timeout = timeout
 
     def query(self, table, path, query=None, json_depth=3, limit=None, transform=None):
-        """Submits a query to an Okapi module, and transforms and stores the result.
+        """Submits a query to a FOLIO module, and transforms and stores the result.
 
         The retrieved result is stored in *table* within the reporting
         database.  the *table* name may include a schema name;
