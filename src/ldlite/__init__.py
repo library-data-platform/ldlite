@@ -213,6 +213,22 @@ class LDLite:
         if self.db is None:
             raise RuntimeError('database connection not configured: use connect_db() or connect_db_postgresql()')
 
+    def connect_folio(self, url, tenant, user, password):
+        """Connects to a FOLIO instance with a user name and password.
+
+        The *url*, *tenant*, *user*, and *password* settings are Okapi-specific
+        connection parameters.
+
+        Example:
+
+            ld.connect_okapi(url='https://folio-etesting-snapshot-kong.ci.folio.org',
+                             tenant='diku',
+                             user='diku_admin',
+                             password='admin')
+
+        """
+        self.connect_okapi(url, tenant, user, password)
+
     def connect_okapi(self, url, tenant, user, password, legacy_auth=False):
         """Connects to an Okapi instance with a user name and password.
 
