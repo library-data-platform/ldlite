@@ -61,8 +61,8 @@ ld.connect_folio(url="...", tenant="...", user="...", password="...")
 ```
 Verify that ldlite continues to function normally.
 
-The url you use to connect to Eureka will change from the one you are using for Okapi.
-After upgrading FOLIO you can find the Eureka URL in the same location as the Okapi URL.
+You're now ready for Sunflower and Eureka! Please note, the url you use to connect to Eureka will change from the one you are using for Okapi.
+After upgrading FOLIO you can find the Eureka URL in the same location as the Okapi URL:
 > Settings > Software versions > Services > On url
 
 ## Previous Major Releases
