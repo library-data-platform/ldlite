@@ -1,4 +1,4 @@
-# Migrating a newer version of LDLite
+# Migrating to a newer version of LDLite
 
 LDLite follows the [Semantic Versioning](https://semver.org/).
 For the most part, it should be safe to upgrade LDLite to the latest MINOR and PATCH versions.
