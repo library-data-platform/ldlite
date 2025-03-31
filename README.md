@@ -19,11 +19,12 @@ $ python -m pip install --upgrade ldlite
 ```
 
 (On some systems it might be `python3` rather than `python`.)
+Check out the [migration guide](./MIGRATING.md) for more information about major version upgrades.
 
 > [!Warning]
 > The legacy /auth/login endpoint with a non expiring token is going to be removed in the Sunflower release.
 > As of 1.0.0 this library defaults to using the newer /authn/login-with-expiry.
-> Because of these changes the connect_okapi_token method will no longer function and will be removed with the release of Sunflower.
+> Because of these changes the connect_okapi_token method will no longer function and will be removed as part of the 2.0.0 release.
 > For more information on these changes see: https://folio-org.atlassian.net/wiki/spaces/FOLIJET/pages/1396980/Refresh+Token+Rotation+RTR
 
 To extract and transform data:
