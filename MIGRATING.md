@@ -14,7 +14,7 @@ If you'd like support or assistance upgrading please feel free to reach out to l
 
 ## Latest Major Release
 
-### 1.0.0 - The Sunflower Release
+### 1.0.0 - The Sunflower Ready Release
 
 The Sunflower release of FOLIO is bringing some necessary security changes that impact how integrations connect to the API.
 1. Refresh Token Rotation was introduced in the Poppy release and will be the only authentication method as of Sunflower.
