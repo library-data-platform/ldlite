@@ -41,6 +41,9 @@
                                 <a class="function" href="#LDLite.experimental_connect_db_sqlite">experimental_connect_db_sqlite</a>
                         </li>
                         <li>
+                                <a class="function" href="#LDLite.connect_folio">connect_folio</a>
+                        </li>
+                        <li>
                                 <a class="function" href="#LDLite.connect_okapi">connect_okapi</a>
                         </li>
                         <li>
@@ -50,7 +53,13 @@
                                 <a class="function" href="#LDLite.drop_tables">drop_tables</a>
                         </li>
                         <li>
+                                <a class="function" href="#LDLite.set_folio_max_retries">set_folio_max_retries</a>
+                        </li>
+                        <li>
                                 <a class="function" href="#LDLite.set_okapi_max_retries">set_okapi_max_retries</a>
+                        </li>
+                        <li>
+                                <a class="function" href="#LDLite.set_folio_timeout">set_folio_timeout</a>
                         </li>
                         <li>
                                 <a class="function" href="#LDLite.set_okapi_timeout">set_okapi_timeout</a>
@@ -96,11 +105,11 @@
                     <h1 class="modulename">
 ldlite    </h1>
 
-                        <div class="docstring"><p>LDLite is a lightweight reporting tool for Okapi-based services.  It is part of
+                        <div class="docstring"><p>LDLite is a lightweight reporting tool for FOLIO services.  It is part of
 the Library Data Platform project and provides basic LDP functions without
 requiring the platform to be installed.</p>
 
-<p>LDLite functions include retrieving data from an Okapi instance, transforming
+<p>LDLite functions include retrieving data from a FOLIO instance, transforming
 the data, and storing the data in a reporting database for further querying.</p>
 
 <p>To install LDLite or upgrade to the latest version:</p>
@@ -117,8 +126,8 @@ ld = <a href="#LDLite">ldlite.LDLite()</a>
 # Connect to a database.
 db = ld.connect_db(filename='ldlite.db')
 
-# Connect to Okapi.
-ld.connect_okapi(url='https://folio-snapshot-okapi.dev.folio.org',
+# Connect to FOLIO.
+ld.connect_folio(url='https://folio-etesting-snapshot-kong.ci.folio.org',
                  tenant='diku',
                  user='diku_admin',
                  password='admin')
@@ -252,35 +261,43 @@ submit SQL queries.</p>
 
 
                             </div>
+                            <div id="LDLite.connect_folio" class="classattr">
+                                <div class="attr function">
+            
+        <span class="def">def</span>
+        <span class="name">connect_folio</span><span class="signature pdoc-code condensed">(<span class="param"><span class="bp">self</span>, </span><span class="param"><span class="n">url</span>, </span><span class="param"><span class="n">tenant</span>, </span><span class="param"><span class="n">user</span>, </span><span class="param"><span class="n">password</span></span><span class="return-annotation">):</span></span>
+
+        
+    </div>
+    <a class="headerlink" href="#LDLite.connect_folio"></a>
+    
+            <div class="docstring"><p>Connects to a FOLIO instance with a user name and password.</p>
+
+<p>The <em>url</em>, <em>tenant</em>, <em>user</em>, and <em>password</em> settings are FOLIO-specific
+connection parameters.</p>
+
+<p>Example:</p>
+
+<pre><code>ld.connect_folio(url='https://folio-etesting-snapshot-kong.ci.folio.org',
+                 tenant='diku',
+                 user='diku_admin',
+                 password='admin')
+</code></pre>
+</div>
+
+
+                            </div>
                             <div id="LDLite.connect_okapi" class="classattr">
                                 <div class="attr function">
             
         <span class="def">def</span>
-        <span class="name">connect_okapi</span><span class="signature pdoc-code condensed">(<span class="param"><span class="bp">self</span>, </span><span class="param"><span class="n">url</span>, </span><span class="param"><span class="n">tenant</span>, </span><span class="param"><span class="n">user</span>, </span><span class="param"><span class="n">password</span>, </span><span class="param"><span class="n">legacy_auth</span><span class="o">=</span><span class="kc">True</span></span><span class="return-annotation">):</span></span>
+        <span class="name">connect_okapi</span><span class="signature pdoc-code condensed">(<span class="param"><span class="bp">self</span>, </span><span class="param"><span class="n">url</span>, </span><span class="param"><span class="n">tenant</span>, </span><span class="param"><span class="n">user</span>, </span><span class="param"><span class="n">password</span>, </span><span class="param"><span class="n">legacy_auth</span><span class="o">=</span><span class="kc">False</span></span><span class="return-annotation">):</span></span>
 
         
     </div>
     <a class="headerlink" href="#LDLite.connect_okapi"></a>
     
-            <div class="docstring"><p>Connects to an Okapi instance with a user name and password.</p>
-
-<p>The <em>url</em>, <em>tenant</em>, <em>user</em>, and <em>password</em> settings are Okapi-specific
-connection parameters.</p>
-
-<p>The <em>legacy_auth</em> parameter indicates whether the older /authn/login 
-endpoint with a non-expiring token should be used. Passing False will
-use the newer /authn/login-with-expiry. The legacy login endpoint will
-be removed as part of the Sunflower release. In the next release this parameter
-will default to True!</p>
-
-<p>Example:</p>
-
-<pre><code>ld.connect_okapi(url='https://folio-snapshot-okapi.dev.folio.org',
-                 tenant='diku',
-                 user='diku_admin',
-                 password='admin',
-                 legacy_auth=False)
-</code></pre>
+            <div class="docstring"><p>Deprecated; use connect_folio(). This will be removed for the Sunflower release.</p>
 </div>
 
 
@@ -295,7 +312,7 @@ will default to True!</p>
     </div>
     <a class="headerlink" href="#LDLite.connect_okapi_token"></a>
     
-            <div class="docstring"><p>Deprecated; use connect_okapi(). This will be removed for the Sunflower release.</p>
+            <div class="docstring"><p>Deprecated; use connect_folio(). This will be removed for the Sunflower release.</p>
 </div>
 
 
@@ -323,6 +340,31 @@ tables created by JSON transformation.</p>
 
 
                             </div>
+                            <div id="LDLite.set_folio_max_retries" class="classattr">
+                                <div class="attr function">
+            
+        <span class="def">def</span>
+        <span class="name">set_folio_max_retries</span><span class="signature pdoc-code condensed">(<span class="param"><span class="bp">self</span>, </span><span class="param"><span class="n">max_retries</span></span><span class="return-annotation">):</span></span>
+
+        
+    </div>
+    <a class="headerlink" href="#LDLite.set_folio_max_retries"></a>
+    
+            <div class="docstring"><p>Sets the maximum number of retries for FOLIO requests.</p>
+
+<p>This method changes the configured maximum number of retries which is
+initially set to 2.  The <em>max_retries</em> parameter is the new value.</p>
+
+<p>Note that a request is only retried if a timeout occurs.</p>
+
+<p>Example:</p>
+
+<pre><code>ld.set_folio_max_retries(5)
+</code></pre>
+</div>
+
+
+                            </div>
                             <div id="LDLite.set_okapi_max_retries" class="classattr">
                                 <div class="attr function">
             
@@ -333,16 +375,29 @@ tables created by JSON transformation.</p>
     </div>
     <a class="headerlink" href="#LDLite.set_okapi_max_retries"></a>
     
-            <div class="docstring"><p>Sets the maximum number of retries for Okapi requests.</p>
+            <div class="docstring"><p>Deprecated; use set_folio_max_retries(). This will be removed for the Sunflower release.</p>
+</div>
 
-<p>This method changes the configured maximum number of retries which is
-initially set to 2.  The <em>max_retries</em> parameter is the new value.</p>
 
-<p>Note that a request is only retried if a timeout occurs.</p>
+                            </div>
+                            <div id="LDLite.set_folio_timeout" class="classattr">
+                                <div class="attr function">
+            
+        <span class="def">def</span>
+        <span class="name">set_folio_timeout</span><span class="signature pdoc-code condensed">(<span class="param"><span class="bp">self</span>, </span><span class="param"><span class="n">timeout</span></span><span class="return-annotation">):</span></span>
+
+        
+    </div>
+    <a class="headerlink" href="#LDLite.set_folio_timeout"></a>
+    
+            <div class="docstring"><p>Sets the timeout for connections to FOLIO.</p>
+
+<p>This method changes the configured timeout which is initially set to 60
+seconds.  The <em>timeout</em> parameter is the new timeout in seconds.</p>
 
 <p>Example:</p>
 
-<pre><code>ld.set_okapi_max_retries(5)
+<pre><code>ld.set_folio_timeout(300)
 </code></pre>
 </div>
 
@@ -358,15 +413,7 @@ initially set to 2.  The <em>max_retries</em> parameter is the new value.</p>
     </div>
     <a class="headerlink" href="#LDLite.set_okapi_timeout"></a>
     
-            <div class="docstring"><p>Sets the timeout for connections to Okapi.</p>
-
-<p>This method changes the configured timeout which is initially set to 60
-seconds.  The <em>timeout</em> parameter is the new timeout in seconds.</p>
-
-<p>Example:</p>
-
-<pre><code>ld.set_okapi_timeout(300)
-</code></pre>
+            <div class="docstring"><p>Deprecated; use set_folio_timeout(). This will be removed for the Sunflower release.</p>
 </div>
 
 
@@ -381,7 +428,7 @@ seconds.  The <em>timeout</em> parameter is the new timeout in seconds.</p>
     </div>
     <a class="headerlink" href="#LDLite.query"></a>
     
-            <div class="docstring"><p>Submits a query to an Okapi module, and transforms and stores the result.</p>
+            <div class="docstring"><p>Submits a query to a FOLIO module, and transforms and stores the result.</p>
 
 <p>The retrieved result is stored in <em>table</em> within the reporting
 database.  the <em>table</em> name may include a schema name;
