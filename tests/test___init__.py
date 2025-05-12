@@ -1,6 +1,6 @@
 from unittest import TestCase
 
-from src.ldlite import *
+from ldlite import LDLite
 
 
 class TestLDLite(TestCase):
