@@ -30,6 +30,11 @@ classifiers = [
 [project.urls]
 Homepage = "https://github.com/library-data-platform/ldlite"
 "Bug Tracker" = "https://github.com/library-data-platform/ldlite/issues"
+
+[project.optional-dependencies]
+test = [
+    "pytest>=7.4.4",
+]
 [tool.pdm]
 distribution = true
 package-dir = "src"
