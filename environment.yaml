@@ -1,0 +1,8 @@
+---
+name: ldlite
+channels:
+  - conda-forge
+  - nodefaults
+dependencies:
+  - python>=3.7
+  - pdm==2.24.1
