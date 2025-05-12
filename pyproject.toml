@@ -12,7 +12,7 @@ authors = [
 ]
 dependencies = [
     "duckdb==0.6.1",
-    "pandas==1.5.2",
+    "pandas<=1.5.2",
     "psycopg2==2.9.5",
     "requests==2.28.2",
     "tqdm==4.64.1",
