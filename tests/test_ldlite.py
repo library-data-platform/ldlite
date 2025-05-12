@@ -1,5 +1,26 @@
+from uuid import uuid4
 from unittest import mock
 from unittest.mock import MagicMock
+from typing import Union
+
+import pytest
+
+@pytest.fixture(scope="session")
+def postgres(pytestconfig) -> Union[None, str]:
+    host =  pytestconfig.getoption("pg_host")
+    if host is None:
+        return None
+
+    import psycopg2
+    base_dsn = f"host={host} user=ldlite password=ldlite"
+    db = str(uuid4()).split("-")[0]
+    print(db)
+    with psycopg2.connect(base_dsn) as base_conn:
+        base_conn.set_session(autocommit=True)
+        curr = base_conn.cursor()
+        curr.execute(f"CREATE DATABASE {db}")
+
+    return base_dsn + f" dbname={db}"
 
 @mock.patch("ldlite._request_get")
 def test_one_table_sqlite(_request_get_mock: MagicMock) -> None:
