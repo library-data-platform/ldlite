@@ -1,9 +1,11 @@
 import sqlite3
 from unittest import mock
 from unittest.mock import MagicMock
-from .cases import QueryTestCases, QueryCase
+import contextlib
 
 from pytest_cases import parametrize_with_cases
+
+from .cases import QueryTestCases, QueryCase
 
 @mock.patch("ldlite._request_get")
 @parametrize_with_cases("tc", cases=QueryTestCases)
@@ -23,16 +25,17 @@ def test_sqlite(_request_get_mock: MagicMock, tc: QueryCase) -> None:
     prefix = "prefix"
     ld.experimental_connect_db_sqlite(dsn)
     # we're not testing the endpoint behavior so path doesn't matter
-    ld.query(table=prefix, path="/pancakes")
+    ld.query(table=prefix, path="/pancakes", json_depth=tc.json_depth)
 
     with sqlite3.connect(dsn) as conn:
-        res = conn.cursor()
-        res.execute("SELECT name FROM sqlite_master WHERE type='table';")
-        assert [r[0] for r in res.fetchall()] == [prefix, *[f"{prefix}__{t}" for t in tc.expected_tables], f"{prefix}__tcatalog"]
+        with contextlib.closing(conn.cursor()) as res:
+            res.execute("SELECT name FROM sqlite_master WHERE type='table';")
+            assert sorted([r[0] for r in res.fetchall()]) == sorted([prefix, f"{prefix}__tcatalog", *[f"{prefix}__{t}" for t in tc.expected_tables]])
 
         for table, (cols, values) in tc.expected_values.items():
-            res.execute(f"SELECT {','.join(cols)} FROM {prefix}__{table};")
-            for v in values:
-                assert res.fetchone() == v
+            with contextlib.closing(conn.cursor()) as res:
+                res.execute(f"SELECT {','.join(cols)} FROM {prefix}__{table};")
+                for v in values:
+                    assert res.fetchone() == v
 
-            assert res.fetchone() is None
+                assert res.fetchone() is None

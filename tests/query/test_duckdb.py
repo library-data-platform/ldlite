@@ -24,13 +24,14 @@ def test_duckdb(_request_get_mock: MagicMock, tc: QueryCase) -> None:
     prefix = "prefix"
     ld.connect_db(dsn)
     # we're not testing the endpoint behavior so path doesn't matter
-    ld.query(table=prefix, path="/pancakes")
+    ld.query(table=prefix, path="/pancakes", json_depth=tc.json_depth)
 
     with duckdb.connect(dsn) as res:
         res.execute("SHOW TABLES;")
-        assert [r[0] for r in res.fetchall()] == [prefix, *[f"{prefix}__{t}" for t in tc.expected_tables], f"{prefix}__tcatalog"]
+        assert sorted([r[0] for r in res.fetchall()]) == sorted([prefix, f"{prefix}__tcatalog", *[f"{prefix}__{t}" for t in tc.expected_tables]])
 
-        for table, (cols, values) in tc.expected_values.items():
+    for table, (cols, values) in tc.expected_values.items():
+        with duckdb.connect(dsn) as res:
             res.execute(f"SELECT {','.join(cols)} FROM {prefix}__{table};")
             for v in values:
                 assert res.fetchone() == v
