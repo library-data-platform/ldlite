@@ -1,7 +1,7 @@
 import duckdb
 from unittest import mock
 from unittest.mock import MagicMock
-from .cases import QueryTestCases, QueryCase
+from .expansion_cases import QueryTestCases, QueryCase
 
 from pytest_cases import parametrize_with_cases
 

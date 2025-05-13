@@ -7,7 +7,7 @@ import contextlib
 import pytest
 from pytest_cases import parametrize_with_cases
 
-from .cases import QueryTestCases, QueryCase
+from .expansion_cases import QueryTestCases, QueryCase
 
 @pytest.fixture(scope="session")
 def pg_dsn(pytestconfig) -> Union[None, Callable[[str], str]]:

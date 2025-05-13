@@ -5,7 +5,7 @@ import contextlib
 
 from pytest_cases import parametrize_with_cases
 
-from .cases import QueryTestCases, QueryCase
+from .expansion_cases import QueryTestCases, QueryCase
 
 @mock.patch("ldlite._request_get")
 @parametrize_with_cases("tc", cases=QueryTestCases)
