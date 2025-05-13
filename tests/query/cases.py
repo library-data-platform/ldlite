@@ -260,3 +260,59 @@ class QueryTestCases:
             },
         )
 
+    def case_id_generation(self) -> QueryCase:
+        return QueryCase(
+            self._db(),
+            4,
+            [{
+                "purchaseOrders": [
+                    {
+                        "id": "b096504a-3d54-4664-9bf5-1b872466fd66",
+                        "subObjects": [
+                            {
+                                "id": "2b94c631-fca9-4892-a730-03ee529ffe2a",
+                                "subSubObjects": [
+                                    {
+                                        "id": "2b94c631-fca9-4892-a730-03ee529ffe2a",
+                                    },
+                                    {
+                                        "id": "8516a913-8bf7-55a4-ab71-417aba9171c9",
+                                    },
+                                ],
+                            },
+                            {
+                                "id": "b5d8cdc4-9441-487c-90cf-0c7ec97728eb",
+                                "subSubObjects": [
+                                    {
+                                        "id": "13a24cc8-a15c-4158-abbd-4abf25c8815a",
+                                    },
+                                    {
+                                        "id": "37344879-09ce-4cd8-976f-bf1a57c0cfa6",
+                                    },
+                                ],
+                            }
+                        ]
+                    }
+                ]
+            }],
+            ["t", "tcatalog", "t__sub_objects", "t__sub_objects__sub_sub_objects"],
+            {
+                "t__sub_objects": (
+                    ["__id", "id", "sub_objects__o", "sub_objects__id"],
+                    [
+                        (1, "b096504a-3d54-4664-9bf5-1b872466fd66", 1, "2b94c631-fca9-4892-a730-03ee529ffe2a"),
+                        (2, "b096504a-3d54-4664-9bf5-1b872466fd66", 2, "b5d8cdc4-9441-487c-90cf-0c7ec97728eb"),
+                    ]
+                ),
+                "t__sub_objects__sub_sub_objects": (
+                    ["__id", "sub_objects__o", "sub_objects__sub_sub_objects__o"],
+                    [
+                        (1, 1, 1),
+                        (2, 1, 2),
+                        (3, 2, 1),
+                        (4, 2, 2),
+                    ]
+                )
+            },
+        )
+
