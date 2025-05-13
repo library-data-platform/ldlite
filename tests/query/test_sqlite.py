@@ -7,7 +7,7 @@ from pytest_cases import parametrize_with_cases
 
 @mock.patch("ldlite._request_get")
 @parametrize_with_cases("tc", cases=QueryTestCases)
-def test_one_table_sqlite(_request_get_mock: MagicMock, tc: QueryCase) -> None:
+def test_sqlite(_request_get_mock: MagicMock, tc: QueryCase) -> None:
     from ldlite import LDLite as uut
 
     dsn = f"file:{tc.db}?mode=memory&cache=shared"
@@ -25,14 +25,14 @@ def test_one_table_sqlite(_request_get_mock: MagicMock, tc: QueryCase) -> None:
     # we're not testing the endpoint behavior so path doesn't matter
     ld.query(table=prefix, path="/pancakes")
 
-    with sqlite3.connect(dsn) as res:
-        cur = res.cursor()
-        cur.execute("SELECT name FROM sqlite_master WHERE type='table';")
-        assert [r[0] for r in cur.fetchall()] == [prefix, *[f"{prefix}__{t}" for t in tc.expected_tables], f"{prefix}__tcatalog"]
+    with sqlite3.connect(dsn) as conn:
+        res = conn.cursor()
+        res.execute("SELECT name FROM sqlite_master WHERE type='table';")
+        assert [r[0] for r in res.fetchall()] == [prefix, *[f"{prefix}__{t}" for t in tc.expected_tables], f"{prefix}__tcatalog"]
 
         for table, (cols, values) in tc.expected_values.items():
-            cur.execute(f"SELECT {','.join(cols)} FROM {prefix}__{table};")
+            res.execute(f"SELECT {','.join(cols)} FROM {prefix}__{table};")
             for v in values:
-                assert cur.fetchone() == v
+                assert res.fetchone() == v
 
-            assert cur.fetchone() is None
+            assert res.fetchone() is None
