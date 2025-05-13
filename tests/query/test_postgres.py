@@ -1,38 +1,44 @@
+import psycopg2
 from uuid import uuid4
 from unittest import mock
 from unittest.mock import MagicMock
-from typing import Union
+from typing import Union, Callable
 import contextlib
 
 import pytest
+from pytest_cases import parametrize_with_cases
+
+from .cases import QueryTestCases, QueryCase
 
 @pytest.fixture(scope="session")
-def pg_dsn(pytestconfig) -> Union[None, str]:
+def pg_dsn(pytestconfig) -> Union[None, Callable[[str], str]]:
     host =  pytestconfig.getoption("pg_host")
     if host is None:
         return None
 
-    import psycopg2
-    base_dsn = f"host={host} user=ldlite password=ldlite"
-    db = "db_" + str(uuid4()).split("-")[0]
-    print(db)
-    with contextlib.closing(psycopg2.connect(base_dsn)) as base_conn:
-        base_conn.autocommit = True
-        with base_conn.cursor() as curr:
-            curr.execute(f"CREATE DATABASE {db};")
+    def setup(db: str) -> str:
+        base_dsn = f"host={host} user=ldlite password=ldlite"
+        with contextlib.closing(psycopg2.connect(base_dsn)) as base_conn:
+            base_conn.autocommit = True
+            with base_conn.cursor() as curr:
+                curr.execute(f"CREATE DATABASE {db};")
 
-    return base_dsn + f" dbname={db}"
+        return base_dsn + f" dbname={db}"
+
+    return setup
 
 @mock.patch("ldlite._request_get")
-def test_one_table_postgres(_request_get_mock: MagicMock, pg_dsn: Union[None, str]) -> None:
+@parametrize_with_cases("tc", cases=QueryTestCases)
+def test_one_table_postgres(_request_get_mock: MagicMock, pg_dsn: Union[None, Callable[[str], str]], tc: QueryCase) -> None:
     if pg_dsn is None:
         pytest.skip("Specify the pg host using --pg-host to run")
 
-    import psycopg2
     from ldlite import LDLite as uut
 
+    dsn = pg_dsn(tc.db)
+    tc.patch__request_get(_request_get_mock)
+
     ld = uut()
-    ld.connect_db_postgresql(pg_dsn)
 
     # _check_okapi() hack
     ld.login_token = "token"
@@ -40,39 +46,19 @@ def test_one_table_postgres(_request_get_mock: MagicMock, pg_dsn: Union[None, st
     # leave tqdm out of it
     ld.quiet(enable=True)
 
-    total_mock = MagicMock()
-    total_mock.status_code = 200
-    # the total number of records is only used for TQDM
-    total_mock.json.return_value = {}
-
-    value_mock = MagicMock()
-    value_mock.status_code = 200
-    test_id = "b096504a-3d54-4664-9bf5-1b872466fd66"
-    value_mock.json.return_value = {
-        "purchaseOrders": [
-            {
-                "id": test_id,
-                "maple": "syrup",
-            }
-        ]
-    }
-
-    end_mock = MagicMock()
-    end_mock.status_code = 200
-    end_mock.json.return_value = { "purchaseOrders": [] }
-
-    _request_get_mock.side_effect = [total_mock, value_mock, end_mock]
+    prefix = "prefix"
+    ld.connect_db_postgresql(dsn)
     # we're not testing the endpoint behavior so path doesn't matter
-    ld.query(table="banana", path="/pancakes")
+    ld.query(table=prefix, path="/pancakes")
 
-    with psycopg2.connect(pg_dsn) as conn:
+    with psycopg2.connect(dsn) as conn:
         with conn.cursor() as res:
             res.execute("SELECT table_name FROM information_schema.tables WHERE table_schema='public'")
-            assert sorted([r[0] for r in res.fetchall()]) == ["banana", "banana__t", "banana__tcatalog"]
+            assert [r[0] for r in res.fetchall()] == [prefix, *[f"{prefix}__{t}" for t in tc.expected_tables], f"{prefix}__tcatalog"]
 
-            res.execute("SELECT id, maple FROM banana__t;")
-            assert res.fetchone() == (test_id, "syrup")
-            assert res.fetchone() is None
+            for table, (cols, values) in tc.expected_values.items():
+                res.execute(f"SELECT {','.join(cols)} FROM {prefix}__{table};")
+                for v in values:
+                    assert res.fetchone() == v
 
-
-
+                assert res.fetchone() is None
