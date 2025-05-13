@@ -66,17 +66,29 @@ class QueryTestCases:
                     {
                         "id": "b096504a-3d54-4664-9bf5-1b872466fd66",
                         "value": "value",
-                        "subObjects": [{
-                            "id": "2b94c631-fca9-4892-a730-03ee529ffe2a",
-                            "value": "sub-value",
-                        }]
+                        "subObjects": [
+                            {
+                                "id": "2b94c631-fca9-4892-a730-03ee529ffe2a",
+                                "value": "sub-value-1",
+                            },
+                            {
+                                "id": "f5bda109-a719-4f72-b797-b9c22f45e4e1",
+                                "value": "sub-value-2",
+                            }
+                        ]
                     }
                 ]
             }],
             ["t", "tcatalog", "t__sub_objects"],
             {
                 "t": (["id", "value"], [("b096504a-3d54-4664-9bf5-1b872466fd66", "value")]),
-                "t__sub_objects": (["id", "sub_objects__id", "sub_objects__value"], [("b096504a-3d54-4664-9bf5-1b872466fd66", "2b94c631-fca9-4892-a730-03ee529ffe2a", "sub-value")])
+                "t__sub_objects": (
+                    ["id", "sub_objects__id", "sub_objects__value"],
+                    [
+                        ("b096504a-3d54-4664-9bf5-1b872466fd66", "2b94c631-fca9-4892-a730-03ee529ffe2a", "sub-value-1"),
+                        ("b096504a-3d54-4664-9bf5-1b872466fd66", "f5bda109-a719-4f72-b797-b9c22f45e4e1", "sub-value-2"),
+                    ]
+                )
             },
         )
 
