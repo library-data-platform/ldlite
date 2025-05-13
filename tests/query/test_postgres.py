@@ -53,7 +53,7 @@ def test_postgres(_request_get_mock: MagicMock, pg_dsn: Union[None, Callable[[st
     with psycopg2.connect(dsn) as conn:
         with conn.cursor() as res:
             res.execute("SELECT table_name FROM information_schema.tables WHERE table_schema='public'")
-            assert sorted([r[0] for r in res.fetchall()]) == sorted([prefix, f"{prefix}__tcatalog", *[f"{prefix}__{t}" for t in tc.expected_tables]])
+            assert sorted([r[0] for r in res.fetchall()]) == sorted([prefix, *[f"{prefix}__{t}" for t in tc.expected_tables]])
 
         for table, (cols, values) in tc.expected_values.items():
             with conn.cursor() as res:

@@ -52,7 +52,7 @@ class QueryTestCases:
                     }
                 ]
             }],
-            ["t"],
+            ["t", "tcatalog"],
             {"t": (["id", "value"], [("b096504a-3d54-4664-9bf5-1b872466fd66", "value")])},
         )
 
@@ -73,9 +73,30 @@ class QueryTestCases:
                     }
                 ]
             }],
-            ["t", "t__sub_objects"],
+            ["t", "tcatalog", "t__sub_objects"],
             {
                 "t": (["id", "value"], [("b096504a-3d54-4664-9bf5-1b872466fd66", "value")]),
                 "t__sub_objects": (["id", "sub_objects__id", "sub_objects__value"], [("b096504a-3d54-4664-9bf5-1b872466fd66", "2b94c631-fca9-4892-a730-03ee529ffe2a", "sub-value")])
             },
         )
+
+    def case_json_depth_0(self) -> QueryCase:
+        return QueryCase(
+            self._db(),
+            0,
+            [{
+                "purchaseOrders": [
+                    {
+                        "id": "b096504a-3d54-4664-9bf5-1b872466fd66",
+                        "value": "value",
+                        "subObjects": [{
+                            "id": "2b94c631-fca9-4892-a730-03ee529ffe2a",
+                            "value": "sub-value",
+                        }]
+                    }
+                ]
+            }],
+            [],
+            {}
+        )
+

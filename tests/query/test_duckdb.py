@@ -28,7 +28,7 @@ def test_duckdb(_request_get_mock: MagicMock, tc: QueryCase) -> None:
 
     with duckdb.connect(dsn) as res:
         res.execute("SHOW TABLES;")
-        assert sorted([r[0] for r in res.fetchall()]) == sorted([prefix, f"{prefix}__tcatalog", *[f"{prefix}__{t}" for t in tc.expected_tables]])
+        assert sorted([r[0] for r in res.fetchall()]) == sorted([prefix, *[f"{prefix}__{t}" for t in tc.expected_tables]])
 
     for table, (cols, values) in tc.expected_values.items():
         with duckdb.connect(dsn) as res:
