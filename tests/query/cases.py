@@ -205,6 +205,36 @@ class QueryTestCases:
             },
         )
 
+    def case_doubly_nested_object(self) -> QueryCase:
+        return QueryCase(
+            self._db(),
+            3,
+            [{
+                "purchaseOrders": [
+                    {
+                        "id": "b096504a-3d54-4664-9bf5-1b872466fd66",
+                        "value": "value",
+                        "subObject": {
+                            "id": "2b94c631-fca9-4892-a730-03ee529ffe2a",
+                            "value": "sub-value",
+                            "subSubObject":
+                            {
+                                "id": "2b94c631-fca9-4892-a730-03ee529ffe2a",
+                                "value": "sub-sub-value",
+                            },
+                        }
+                    }
+                ]
+            }],
+            ["t", "tcatalog"],
+            {"t": (
+                ["id", "value", "sub_object__id", "sub_object__sub_sub_object__id", "sub_object__sub_sub_object__value"], 
+                [
+                    ("b096504a-3d54-4664-9bf5-1b872466fd66", "value", "2b94c631-fca9-4892-a730-03ee529ffe2a", "2b94c631-fca9-4892-a730-03ee529ffe2a", "sub-sub-value")
+                ])
+            },
+        )
+
     def case_nested_object_underexpansion(self) -> QueryCase:
         return QueryCase(
             self._db(),
