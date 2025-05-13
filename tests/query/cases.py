@@ -144,3 +144,38 @@ class QueryTestCases:
             },
         )
 
+    @parametrize(json_depth=range(3,4))
+    def case_three_tables(self, json_depth: int) -> QueryCase:
+        return QueryCase(
+            self._db(),
+            json_depth,
+            [{
+                "purchaseOrders": [
+                    {
+                        "id": "b096504a-3d54-4664-9bf5-1b872466fd66",
+                        "value": "value",
+                        "subObjects": [
+                            {
+                                "id": "2b94c631-fca9-4892-a730-03ee529ffe2a",
+                                "value": "sub-value",
+                                "subSubObjects": [
+                                {
+                                    "id": "2b94c631-fca9-4892-a730-03ee529ffe2a",
+                                    "value": "sub-sub-value",
+                                }],
+                            }
+                        ]
+                    }
+                ]
+            }],
+            ["t", "tcatalog", "t__sub_objects", "t__sub_objects__sub_sub_objects"],
+            {
+                "t__sub_objects__sub_sub_objects": (
+                    ["id", "sub_objects__id", "sub_objects__sub_sub_objects__id", "sub_objects__sub_sub_objects__value"],
+                    [
+                        ("b096504a-3d54-4664-9bf5-1b872466fd66", "2b94c631-fca9-4892-a730-03ee529ffe2a", "2b94c631-fca9-4892-a730-03ee529ffe2a", "sub-sub-value"),
+                    ]
+                )
+            },
+        )
+
