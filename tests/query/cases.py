@@ -11,7 +11,7 @@ class QueryCase:
     json_depth: int
     values: list[dict[str, Any]]
     expected_tables: list[str]
-    expected_values: dict[str, tuple[list[str], list[tuple[str,...]]]]
+    expected_values: dict[str, tuple[list[str], list[tuple[Any,...]]]]
 
     def patch__request_get(self, _request_get_mock: MagicMock) -> None:
         total_mock = MagicMock()
@@ -92,10 +92,11 @@ class QueryTestCases:
             },
         )
 
-    def case_json_depth_0(self) -> QueryCase:
+    @parametrize(json_depth=range(0,1))
+    def case_no_expansion(self, json_depth) -> QueryCase:
         return QueryCase(
             self._db(),
-            0,
+            json_depth,
             [{
                 "purchaseOrders": [
                     {
@@ -110,5 +111,36 @@ class QueryTestCases:
             }],
             [],
             {}
+        )
+
+    def case_underexpansion(self) -> QueryCase:
+        return QueryCase(
+            self._db(),
+            2,
+            [{
+                "purchaseOrders": [
+                    {
+                        "id": "b096504a-3d54-4664-9bf5-1b872466fd66",
+                        "subObjects": [ {
+                            "id": "2b94c631-fca9-4892-a730-03ee529ffe2a",
+                            "value": "sub-value",
+                            "subSubObjects": [
+                            {
+                                "id": "2b94c631-fca9-4892-a730-03ee529ffe2a",
+                                "value": "sub-sub-value",
+                            }],
+                        }],
+                    },
+                ],
+            }],
+            ["t", "tcatalog", "t__sub_objects"],
+            {
+                "t__sub_objects": (
+                    ["*"],
+                    [
+                        (1, "b096504a-3d54-4664-9bf5-1b872466fd66", 1, "2b94c631-fca9-4892-a730-03ee529ffe2a", "sub-value"),
+                    ]
+                )
+            },
         )
 
