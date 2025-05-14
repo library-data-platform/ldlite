@@ -23,9 +23,13 @@ selected_site = okapi_snapshot
 
 ld = ldlite.LDLite()
 if selected_site == okapi_snapshot:
-    ld.connect_okapi(url=selected_site, tenant="diku", user="diku_admin", password="admin")
+    ld.connect_okapi(
+        url=selected_site, tenant="diku", user="diku_admin", password="admin"
+    )
 else:
-    ld.connect_folio(url=selected_site, tenant="diku", user="diku_admin", password="admin")
+    ld.connect_folio(
+        url=selected_site, tenant="diku", user="diku_admin", password="admin"
+    )
 
 db = ld.connect_db(filename="ldlite.db")
 # For PostgreSQL, use connect_db_postgresql() instead of connect_db():
@@ -41,26 +45,65 @@ queries = [
     ("folio_agreements.usage_data_provider", "/usage-data-providers", allrec),
     ("folio_audit.circulation_logs", "/audit-data/circulation/logs", allrec),
     ("folio_circulation.audit_loan", "/loan-storage/loan-history", allrec),
-    ("folio_circulation.cancellation_reason", "/cancellation-reason-storage/cancellation-reasons", allrec),
+    (
+        "folio_circulation.cancellation_reason",
+        "/cancellation-reason-storage/cancellation-reasons",
+        allrec,
+    ),
     ("folio_circulation.check_in", "/check-in-storage/check-ins", allrec),
-    ("folio_circulation.fixed_due_date_schedule", "/fixed-due-date-schedule-storage/fixed-due-date-schedules",
-     allrec),
+    (
+        "folio_circulation.fixed_due_date_schedule",
+        "/fixed-due-date-schedule-storage/fixed-due-date-schedules",
+        allrec,
+    ),
     ("folio_circulation.loan", "/loan-storage/loans", allrec),
     ("folio_circulation.loan_policy", "/loan-policy-storage/loan-policies", allrec),
-    ("folio_circulation.patron_action_session", "/patron-action-session-storage/patron-action-sessions", allrec),
-    ("folio_circulation.patron_notice_policy", "/patron-notice-policy-storage/patron-notice-policies", allrec),
+    (
+        "folio_circulation.patron_action_session",
+        "/patron-action-session-storage/patron-action-sessions",
+        allrec,
+    ),
+    (
+        "folio_circulation.patron_notice_policy",
+        "/patron-notice-policy-storage/patron-notice-policies",
+        allrec,
+    ),
     ("folio_circulation.request", "/request-storage/requests", allrec),
-    ("folio_circulation.request_policy", "/request-policy-storage/request-policies", allrec),
-    ("folio_circulation.scheduled_notice", "/scheduled-notice-storage/scheduled-notices", allrec),
+    (
+        "folio_circulation.request_policy",
+        "/request-policy-storage/request-policies",
+        allrec,
+    ),
+    (
+        "folio_circulation.scheduled_notice",
+        "/scheduled-notice-storage/scheduled-notices",
+        allrec,
+    ),
     ("folio_circulation.staff_slips", "/staff-slips-storage/staff-slips", allrec),
-    ("folio_circulation.user_request_preference", "/request-preference-storage/request-preference", allrec),
+    (
+        "folio_circulation.user_request_preference",
+        "/request-preference-storage/request-preference",
+        allrec,
+    ),
     ("folio_configuration.config_data", "/configurations/entries", allrec),
-    ("folio_courses.coursereserves_copyrightstates", "/coursereserves/copyrightstatuses", allrec),
-    ("folio_courses.coursereserves_courselistings", "/coursereserves/courselistings", allrec),
+    (
+        "folio_courses.coursereserves_copyrightstates",
+        "/coursereserves/copyrightstatuses",
+        allrec,
+    ),
+    (
+        "folio_courses.coursereserves_courselistings",
+        "/coursereserves/courselistings",
+        allrec,
+    ),
     ("folio_courses.coursereserves_courses", "/coursereserves/courses", allrec),
     ("folio_courses.coursereserves_coursetypes", "/coursereserves/coursetypes", allrec),
     ("folio_courses.coursereserves_departments", "/coursereserves/departments", allrec),
-    ("folio_courses.coursereserves_processingstates", "/coursereserves/processingstatuses", allrec),
+    (
+        "folio_courses.coursereserves_processingstates",
+        "/coursereserves/processingstatuses",
+        allrec,
+    ),
     ("folio_courses.coursereserves_reserves", "/coursereserves/reserves", allrec),
     ("folio_courses.coursereserves_roles", "/coursereserves/roles", allrec),
     ("folio_courses.coursereserves_terms", "/coursereserves/terms", allrec),
@@ -83,7 +126,11 @@ queries = [
     ("folio_finance.fiscal_year", "/finance-storage/fiscal-years", allrec),
     ("folio_finance.fund", "/finance-storage/funds", allrec),
     ("folio_finance.fund_type", "/finance-storage/fund-types", allrec),
-    ("folio_finance.group_fund_fiscal_year", "/finance-storage/group-fund-fiscal-years", allrec),
+    (
+        "folio_finance.group_fund_fiscal_year",
+        "/finance-storage/group-fund-fiscal-years",
+        allrec,
+    ),
     ("folio_finance.groups", "/finance-storage/groups", allrec),
     ("folio_finance.ledger", "/finance-storage/ledgers", allrec),
     ("folio_finance.transaction", "/finance-storage/transactions", allrec),
@@ -92,7 +139,11 @@ queries = [
     ("folio_inventory.classification_type", "/classification-types", allrec),
     ("folio_inventory.contributor_name_type", "/contributor-name-types", allrec),
     ("folio_inventory.contributor_type", "/contributor-types", allrec),
-    ("folio_inventory.electronic_access_relationship", "/electronic-access-relationships", allrec),
+    (
+        "folio_inventory.electronic_access_relationship",
+        "/electronic-access-relationships",
+        allrec,
+    ),
     ("folio_inventory.holdings_note_type", "/holdings-note-types", allrec),
     ("folio_inventory.holdings_record", "/holdings-storage/holdings", allrec),
     ("folio_inventory.holdings_records_source", "/holdings-sources", allrec),
@@ -102,8 +153,16 @@ queries = [
     ("folio_inventory.instance", "/instance-storage/instances", allrec),
     ("folio_inventory.instance_format", "/instance-formats", allrec),
     ("folio_inventory.instance_note_type", "/instance-note-types", allrec),
-    ("folio_inventory.instance_relationship", "/instance-storage/instance-relationships", allrec),
-    ("folio_inventory.instance_relationship_type", "/instance-relationship-types", allrec),
+    (
+        "folio_inventory.instance_relationship",
+        "/instance-storage/instance-relationships",
+        allrec,
+    ),
+    (
+        "folio_inventory.instance_relationship_type",
+        "/instance-relationship-types",
+        allrec,
+    ),
     ("folio_inventory.instance_status", "/instance-statuses", allrec),
     ("folio_inventory.instance_type", "/instance-types", allrec),
     ("folio_inventory.item", "/item-storage/items", allrec),
@@ -128,9 +187,17 @@ queries = [
     ("folio_licenses.license", "/licenses/licenses", allrec),
     ("folio_notes.note_data", "/notes", allrec),
     ("folio_orders.acquisitions_unit", "/acquisitions-units-storage/units", allrec),
-    ("folio_orders.acquisitions_unit_membership", "/acquisitions-units-storage/memberships", allrec),
+    (
+        "folio_orders.acquisitions_unit_membership",
+        "/acquisitions-units-storage/memberships",
+        allrec,
+    ),
     ("folio_orders.alert", "/orders-storage/alerts", allrec),
-    ("folio_orders.order_invoice_relationship", "/orders-storage/order-invoice-relns", allrec),
+    (
+        "folio_orders.order_invoice_relationship",
+        "/orders-storage/order-invoice-relns",
+        allrec,
+    ),
     ("folio_orders.order_templates", "/orders-storage/order-templates", allrec),
     ("folio_orders.pieces", "/orders-storage/pieces", allrec),
     ("folio_orders.po_line", "/orders-storage/po-lines", allrec),
@@ -141,8 +208,16 @@ queries = [
     ("folio_organizations.contacts", "/organizations-storage/contacts", allrec),
     ("folio_organizations.emails", "/organizations-storage/emails", allrec),
     ("folio_organizations.interfaces", "/organizations-storage/interfaces", allrec),
-    ("folio_organizations.organizations", "/organizations-storage/organizations", allrec),
-    ("folio_organizations.phone_numbers", "/organizations-storage/phone-numbers", allrec),
+    (
+        "folio_organizations.organizations",
+        "/organizations-storage/organizations",
+        allrec,
+    ),
+    (
+        "folio_organizations.phone_numbers",
+        "/organizations-storage/phone-numbers",
+        allrec,
+    ),
     ("folio_organizations.urls", "/organizations-storage/urls", allrec),
     ("folio_source_record.records", "/source-storage/records", {}, 2),
     ("folio_users.addresstype", "/addresstypes", allrec),
@@ -161,7 +236,9 @@ for q in queries:
             t = ld.query(table=q[0], path=q[1], query=q[2])
         tables += t
     except (ValueError, RuntimeError) as e:
-        print('folio_demo.py: error processing "' + q[1] + '": ' + str(e), file=sys.stderr)
+        print(
+            'folio_demo.py: error processing "' + q[1] + '": ' + str(e), file=sys.stderr
+        )
 print()
 print("Tables:")
 for t in tables:
