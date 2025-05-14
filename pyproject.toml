@@ -45,7 +45,7 @@ fixable = ["ALL"]
 ignore = ["FBT", "ANN401", "D105", "FIX002", "PLR2004", "TD002", "TD003", "COM812"]
 pydocstyle.convention = "google"
 [tool.ruff.lint.per-file-ignores]
-"tests/*" = ["D", "INP001", "N813", "S101"]
+"tests/*" = ["D", "INP001", "N813", "S101", "S106"]
 "src/*" = ["ALL"]
 "examples/*" = ["ALL"]
 
