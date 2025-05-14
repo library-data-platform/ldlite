@@ -95,7 +95,7 @@ class QueryTestCases:
         )
 
     @parametrize(json_depth=range(1))
-    def case_table_no_expansion(self, json_depth) -> QueryCase:
+    def case_table_no_expansion(self, json_depth: int) -> QueryCase:
         return QueryCase(
             self._db(),
             json_depth,
