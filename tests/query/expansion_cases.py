@@ -1,10 +1,11 @@
 import json
-from uuid import uuid4
 from dataclasses import dataclass
 from typing import Any
 from unittest.mock import MagicMock
+from uuid import uuid4
 
 from pytest_cases import parametrize
+
 
 @dataclass(frozen=True)
 class QueryCase:
@@ -93,7 +94,7 @@ class QueryTestCases:
             },
         )
 
-    @parametrize(json_depth=range(0,1))
+    @parametrize(json_depth=range(1))
     def case_table_no_expansion(self, json_depth) -> QueryCase:
         return QueryCase(
             self._db(),
@@ -198,7 +199,7 @@ class QueryTestCases:
             }],
             ["t", "tcatalog"],
             {"t": (
-                ["id", "value", "sub_object__id", "sub_object__value"], 
+                ["id", "value", "sub_object__id", "sub_object__value"],
                 [
                     ("b096504a-3d54-4664-9bf5-1b872466fd66", "value", "2b94c631-fca9-4892-a730-03ee529ffe2a", "sub-value")
                 ])
@@ -228,7 +229,7 @@ class QueryTestCases:
             }],
             ["t", "tcatalog"],
             {"t": (
-                ["id", "value", "sub_object__id", "sub_object__sub_sub_object__id", "sub_object__sub_sub_object__value"], 
+                ["id", "value", "sub_object__id", "sub_object__sub_sub_object__id", "sub_object__sub_sub_object__value"],
                 [
                     ("b096504a-3d54-4664-9bf5-1b872466fd66", "value", "2b94c631-fca9-4892-a730-03ee529ffe2a", "2b94c631-fca9-4892-a730-03ee529ffe2a", "sub-sub-value")
                 ])
@@ -253,7 +254,7 @@ class QueryTestCases:
             }],
             ["t", "tcatalog"],
             {"t": (
-                ["id", "value", "sub_object"], 
+                ["id", "value", "sub_object"],
                 [
                     ("b096504a-3d54-4664-9bf5-1b872466fd66", "value", json.dumps({"id": "2b94c631-fca9-4892-a730-03ee529ffe2a", "value": "sub-value"}, indent=4))
                 ])

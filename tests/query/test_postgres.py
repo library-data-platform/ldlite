@@ -1,13 +1,14 @@
-import psycopg2
+import contextlib
+from typing import Callable, Union
 from unittest import mock
 from unittest.mock import MagicMock
-from typing import Union, Callable
-import contextlib
 
+import psycopg2
 import pytest
 from pytest_cases import parametrize_with_cases
 
-from .expansion_cases import QueryTestCases, QueryCase
+from .expansion_cases import QueryCase, QueryTestCases
+
 
 @pytest.fixture(scope="session")
 def pg_dsn(pytestconfig) -> Union[None, Callable[[str], str]]:

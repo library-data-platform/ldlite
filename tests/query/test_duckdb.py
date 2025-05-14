@@ -1,9 +1,11 @@
-import duckdb
 from unittest import mock
 from unittest.mock import MagicMock
-from .expansion_cases import QueryTestCases, QueryCase
 
+import duckdb
 from pytest_cases import parametrize_with_cases
+
+from .expansion_cases import QueryCase, QueryTestCases
+
 
 @mock.patch("ldlite._request_get")
 @parametrize_with_cases("tc", cases=QueryTestCases)
