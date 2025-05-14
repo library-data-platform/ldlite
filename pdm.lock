@@ -5,7 +5,7 @@
 groups = ["default", "test"]
 strategy = ["inherit_metadata"]
 lock_version = "4.5.0"
-content_hash = "sha256:71adf6e9ff1edd38fb3978d342f821442381593a112a801dcb2ec57834b1e1f9"
+content_hash = "sha256:a8d8a6bcb48c6dca9f936b426d3ced9bf4e63580fefe45c56cc50819cce9c431"
 
 [[metadata.targets]]
 requires_python = ">=3.7,<3.10"
@@ -80,6 +80,21 @@ marker = "platform_system == \"Windows\" or sys_platform == \"win32\""
 files = [
     {file = "colorama-0.4.6-py2.py3-none-any.whl", hash = "sha256:4f1d9991f5acc0ca119f9d443620b77f9d6b33703e51011c16baf57afb285fc6"},
     {file = "colorama-0.4.6.tar.gz", hash = "sha256:08695f5cb7ed6e0531a20572697297273c47b8cae5a63ffc6d6ed5c201be6e44"},
+]
+
+[[package]]
+name = "decopatch"
+version = "1.4.10"
+summary = "Create decorators easily in python."
+groups = ["test"]
+dependencies = [
+    "enum34; python_version < \"3.4\"",
+    "funcsigs; python_version < \"3.3\"",
+    "makefun>=1.5.0",
+]
+files = [
+    {file = "decopatch-1.4.10-py2.py3-none-any.whl", hash = "sha256:e151f7f93de2b1b3fd3f3272dcc7cefd1a69f68ec1c2d8e288ecd9deb36dc5f7"},
+    {file = "decopatch-1.4.10.tar.gz", hash = "sha256:957f49c93f4150182c23f8fb51d13bb3213e0f17a79e09c8cca7057598b55720"},
 ]
 
 [[package]]
@@ -170,6 +185,19 @@ groups = ["test"]
 files = [
     {file = "iniconfig-2.0.0-py3-none-any.whl", hash = "sha256:b6a85871a79d2e3b22d2d1b94ac2824226a63c6b741c88f7ae975f18b6778374"},
     {file = "iniconfig-2.0.0.tar.gz", hash = "sha256:2d91e135bf72d31a410b17c16da610a82cb55f6b0477d1a902134b24a455b8b3"},
+]
+
+[[package]]
+name = "makefun"
+version = "1.16.0"
+summary = "Small library to dynamically create python functions."
+groups = ["test"]
+dependencies = [
+    "funcsigs; python_version < \"3.3\"",
+]
+files = [
+    {file = "makefun-1.16.0-py2.py3-none-any.whl", hash = "sha256:43baa4c3e7ae2b17de9ceac20b669e9a67ceeadff31581007cca20a07bbe42c4"},
+    {file = "makefun-1.16.0.tar.gz", hash = "sha256:e14601831570bff1f6d7e68828bcd30d2f5856f24bad5de0ccb22921ceebc947"},
 ]
 
 [[package]]
@@ -296,6 +324,23 @@ dependencies = [
 files = [
     {file = "pytest-7.4.4-py3-none-any.whl", hash = "sha256:b090cdf5ed60bf4c45261be03239c2c1c22df034fbffe691abe93cd80cea01d8"},
     {file = "pytest-7.4.4.tar.gz", hash = "sha256:2cf0005922c6ace4a3e2ec8b4080eb0d9753fdc93107415332f50ce9e7994280"},
+]
+
+[[package]]
+name = "pytest-cases"
+version = "3.8.6"
+summary = "Separate test code from test cases in pytest."
+groups = ["test"]
+dependencies = [
+    "decopatch",
+    "funcsigs; python_version < \"3.3\"",
+    "functools32; python_version < \"3.2\"",
+    "makefun>=1.15.1",
+    "packaging",
+]
+files = [
+    {file = "pytest_cases-3.8.6-py2.py3-none-any.whl", hash = "sha256:564c722492ea7e7ec3ac433fd14070180e65866f49fa35bfe938c0d5d9afba67"},
+    {file = "pytest_cases-3.8.6.tar.gz", hash = "sha256:5c24e0ab0cb6f8e802a469b7965906a333d3babb874586ebc56f7e2cbe1a7c44"},
 ]
 
 [[package]]
