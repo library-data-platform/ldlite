@@ -37,6 +37,18 @@ addopts = [
     "--import-mode=importlib",
 ]
 
+[tool.ruff]
+target-version = "py39"
+[tool.ruff.lint]
+select = ["ALL"]
+fixable = ["ALL"]
+ignore = ["FBT", "ANN401", "D105", "FIX002", "PLR2004", "TD002", "TD003", "COM812"]
+pydocstyle.convention = "google"
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = ["D", "INP001", "N813", "S101"]
+"src/*" = ["ALL"]
+"examples/*" = ["ALL"]
+
 [tool.pdm]
 distribution = true
 package-dir = "src"
