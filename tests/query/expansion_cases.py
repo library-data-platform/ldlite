@@ -52,16 +52,16 @@ class QueryTestCases:
                         {
                             "id": "b096504a-3d54-4664-9bf5-1b872466fd66",
                             "value": "value",
-                        }
-                    ]
-                }
+                        },
+                    ],
+                },
             ],
             ["t", "tcatalog"],
             {
                 "t": (
                     ["id", "value"],
                     [("b096504a-3d54-4664-9bf5-1b872466fd66", "value")],
-                )
+                ),
             },
         )
 
@@ -86,9 +86,9 @@ class QueryTestCases:
                                     "value": "sub-value-2",
                                 },
                             ],
-                        }
-                    ]
-                }
+                        },
+                    ],
+                },
             ],
             ["t", "tcatalog", "t__sub_objects"],
             {
@@ -129,11 +129,11 @@ class QueryTestCases:
                                 {
                                     "id": "2b94c631-fca9-4892-a730-03ee529ffe2a",
                                     "value": "sub-value",
-                                }
+                                },
                             ],
-                        }
-                    ]
-                }
+                        },
+                    ],
+                },
             ],
             [],
             {},
@@ -154,15 +154,17 @@ class QueryTestCases:
                                     "value": "sub-value",
                                     "subSubObjects": [
                                         {
-                                            "id": "2b94c631-fca9-4892-a730-03ee529ffe2a",
+                                            "id": (
+                                                "2b94c631-fca9-4892-a730-03ee529ffe2a"
+                                            ),
                                             "value": "sub-sub-value",
-                                        }
+                                        },
                                     ],
-                                }
+                                },
                             ],
                         },
                     ],
-                }
+                },
             ],
             ["t", "tcatalog", "t__sub_objects"],
             {
@@ -177,7 +179,7 @@ class QueryTestCases:
                             "sub-value",
                         ),
                     ],
-                )
+                ),
             },
         )
 
@@ -198,15 +200,17 @@ class QueryTestCases:
                                     "value": "sub-value",
                                     "subSubObjects": [
                                         {
-                                            "id": "2b94c631-fca9-4892-a730-03ee529ffe2a",
+                                            "id": (
+                                                "2b94c631-fca9-4892-a730-03ee529ffe2a"
+                                            ),
                                             "value": "sub-sub-value",
-                                        }
+                                        },
                                     ],
-                                }
+                                },
                             ],
-                        }
-                    ]
-                }
+                        },
+                    ],
+                },
             ],
             ["t", "tcatalog", "t__sub_objects", "t__sub_objects__sub_sub_objects"],
             {
@@ -225,7 +229,7 @@ class QueryTestCases:
                             "sub-sub-value",
                         ),
                     ],
-                )
+                ),
             },
         )
 
@@ -243,9 +247,9 @@ class QueryTestCases:
                                 "id": "2b94c631-fca9-4892-a730-03ee529ffe2a",
                                 "value": "sub-value",
                             },
-                        }
-                    ]
-                }
+                        },
+                    ],
+                },
             ],
             ["t", "tcatalog"],
             {
@@ -257,9 +261,9 @@ class QueryTestCases:
                             "value",
                             "2b94c631-fca9-4892-a730-03ee529ffe2a",
                             "sub-value",
-                        )
+                        ),
                     ],
-                )
+                ),
             },
         )
 
@@ -281,9 +285,9 @@ class QueryTestCases:
                                     "value": "sub-sub-value",
                                 },
                             },
-                        }
-                    ]
-                }
+                        },
+                    ],
+                },
             ],
             ["t", "tcatalog"],
             {
@@ -302,9 +306,9 @@ class QueryTestCases:
                             "2b94c631-fca9-4892-a730-03ee529ffe2a",
                             "2b94c631-fca9-4892-a730-03ee529ffe2a",
                             "sub-sub-value",
-                        )
+                        ),
                     ],
-                )
+                ),
             },
         )
 
@@ -322,9 +326,9 @@ class QueryTestCases:
                                 "id": "2b94c631-fca9-4892-a730-03ee529ffe2a",
                                 "value": "sub-value",
                             },
-                        }
-                    ]
-                }
+                        },
+                    ],
+                },
             ],
             ["t", "tcatalog"],
             {
@@ -341,9 +345,9 @@ class QueryTestCases:
                                 },
                                 indent=4,
                             ),
-                        )
+                        ),
                     ],
-                )
+                ),
             },
         )
 
@@ -361,10 +365,14 @@ class QueryTestCases:
                                     "id": "2b94c631-fca9-4892-a730-03ee529ffe2a",
                                     "subSubObjects": [
                                         {
-                                            "id": "2b94c631-fca9-4892-a730-03ee529ffe2a",
+                                            "id": (
+                                                "2b94c631-fca9-4892-a730-03ee529ffe2a"
+                                            ),
                                         },
                                         {
-                                            "id": "8516a913-8bf7-55a4-ab71-417aba9171c9",
+                                            "id": (
+                                                "8516a913-8bf7-55a4-ab71-417aba9171c9"
+                                            ),
                                         },
                                     ],
                                 },
@@ -372,17 +380,21 @@ class QueryTestCases:
                                     "id": "b5d8cdc4-9441-487c-90cf-0c7ec97728eb",
                                     "subSubObjects": [
                                         {
-                                            "id": "13a24cc8-a15c-4158-abbd-4abf25c8815a",
+                                            "id": (
+                                                "13a24cc8-a15c-4158-abbd-4abf25c8815a"
+                                            ),
                                         },
                                         {
-                                            "id": "37344879-09ce-4cd8-976f-bf1a57c0cfa6",
+                                            "id": (
+                                                "37344879-09ce-4cd8-976f-bf1a57c0cfa6"
+                                            ),
                                         },
                                     ],
                                 },
                             ],
-                        }
-                    ]
-                }
+                        },
+                    ],
+                },
             ],
             ["t", "tcatalog", "t__sub_objects", "t__sub_objects__sub_sub_objects"],
             {
