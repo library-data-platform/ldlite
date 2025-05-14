@@ -10,11 +10,11 @@ from .expansion_cases import QueryCase, QueryTestCases
 
 @mock.patch("ldlite._request_get")
 @parametrize_with_cases("tc", cases=QueryTestCases)
-def test_sqlite(_request_get_mock: MagicMock, tc: QueryCase) -> None:
+def test_sqlite(request_get_mock: MagicMock, tc: QueryCase) -> None:
     from ldlite import LDLite as uut
 
     dsn = f"file:{tc.db}?mode=memory&cache=shared"
-    tc.patch__request_get(_request_get_mock)
+    tc.patch__request_get(request_get_mock)
 
     ld = uut()
     # _check_okapi() hack

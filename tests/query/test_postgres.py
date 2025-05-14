@@ -1,7 +1,8 @@
+from __future__ import annotations
+
 import contextlib
-from typing import Callable, Union
+from typing import TYPE_CHECKING, Callable
 from unittest import mock
-from unittest.mock import MagicMock
 
 import psycopg2
 import pytest
@@ -9,9 +10,12 @@ from pytest_cases import parametrize_with_cases
 
 from .expansion_cases import QueryCase, QueryTestCases
 
+if TYPE_CHECKING:
+    from unittest.mock import MagicMock
+
 
 @pytest.fixture(scope="session")
-def pg_dsn(pytestconfig) -> Union[None, Callable[[str], str]]:
+def pg_dsn(pytestconfig: pytest.Config) -> None | Callable[[str], str]:
     host =  pytestconfig.getoption("pg_host")
     if host is None:
         return None
@@ -29,14 +33,14 @@ def pg_dsn(pytestconfig) -> Union[None, Callable[[str], str]]:
 
 @mock.patch("ldlite._request_get")
 @parametrize_with_cases("tc", cases=QueryTestCases)
-def test_postgres(_request_get_mock: MagicMock, pg_dsn: Union[None, Callable[[str], str]], tc: QueryCase) -> None:
+def test_postgres(request_get_mock: MagicMock, pg_dsn: None | Callable[[str], str], tc: QueryCase) -> None:
     if pg_dsn is None:
         pytest.skip("Specify the pg host using --pg-host to run")
 
     from ldlite import LDLite as uut
 
     dsn = pg_dsn(tc.db)
-    tc.patch__request_get(_request_get_mock)
+    tc.patch__request_get(request_get_mock)
 
     ld = uut()
 

@@ -9,11 +9,11 @@ from .expansion_cases import QueryCase, QueryTestCases
 
 @mock.patch("ldlite._request_get")
 @parametrize_with_cases("tc", cases=QueryTestCases)
-def test_duckdb(_request_get_mock: MagicMock, tc: QueryCase) -> None:
+def test_duckdb(request_get_mock: MagicMock, tc: QueryCase) -> None:
     from ldlite import LDLite as uut
 
     dsn = f":memory:{tc.db}"
-    tc.patch__request_get(_request_get_mock)
+    tc.patch__request_get(request_get_mock)
 
     ld = uut()
 
