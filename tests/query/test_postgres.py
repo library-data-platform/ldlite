@@ -16,7 +16,7 @@ if TYPE_CHECKING:
 
 @pytest.fixture(scope="session")
 def pg_dsn(pytestconfig: pytest.Config) -> None | Callable[[str], str]:
-    host =  pytestconfig.getoption("pg_host")
+    host = pytestconfig.getoption("pg_host")
     if host is None:
         return None
 
@@ -31,9 +31,12 @@ def pg_dsn(pytestconfig: pytest.Config) -> None | Callable[[str], str]:
 
     return setup
 
+
 @mock.patch("ldlite._request_get")
 @parametrize_with_cases("tc", cases=QueryTestCases)
-def test_postgres(request_get_mock: MagicMock, pg_dsn: None | Callable[[str], str], tc: QueryCase) -> None:
+def test_postgres(
+    request_get_mock: MagicMock, pg_dsn: None | Callable[[str], str], tc: QueryCase
+) -> None:
     if pg_dsn is None:
         pytest.skip("Specify the pg host using --pg-host to run")
 
@@ -57,8 +60,12 @@ def test_postgres(request_get_mock: MagicMock, pg_dsn: None | Callable[[str], st
 
     with psycopg2.connect(dsn) as conn:
         with conn.cursor() as res:
-            res.execute("SELECT table_name FROM information_schema.tables WHERE table_schema='public'")
-            assert sorted([r[0] for r in res.fetchall()]) == sorted([prefix, *[f"{prefix}__{t}" for t in tc.expected_tables]])
+            res.execute(
+                "SELECT table_name FROM information_schema.tables WHERE table_schema='public'"
+            )
+            assert sorted([r[0] for r in res.fetchall()]) == sorted(
+                [prefix, *[f"{prefix}__{t}" for t in tc.expected_tables]]
+            )
 
         for table, (cols, values) in tc.expected_values.items():
             with conn.cursor() as res:

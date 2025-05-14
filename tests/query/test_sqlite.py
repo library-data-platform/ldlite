@@ -31,7 +31,9 @@ def test_sqlite(request_get_mock: MagicMock, tc: QueryCase) -> None:
     with sqlite3.connect(dsn) as conn:
         with contextlib.closing(conn.cursor()) as res:
             res.execute("SELECT name FROM sqlite_master WHERE type='table';")
-            assert sorted([r[0] for r in res.fetchall()]) == sorted([prefix, *[f"{prefix}__{t}" for t in tc.expected_tables]])
+            assert sorted([r[0] for r in res.fetchall()]) == sorted(
+                [prefix, *[f"{prefix}__{t}" for t in tc.expected_tables]]
+            )
 
         for table, (cols, values) in tc.expected_values.items():
             with contextlib.closing(conn.cursor()) as res:
