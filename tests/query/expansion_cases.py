@@ -38,7 +38,7 @@ class QueryTestCases:
     @classmethod
     def _db(cls) -> str:
         db = "db" + str(uuid4()).split("-")[0]
-        print(db)
+        print(db)  # noqa: T201
         return db
 
     @parametrize(json_depth=range(1,2))

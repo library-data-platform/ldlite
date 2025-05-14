@@ -4,7 +4,7 @@ from ldlite import LDLite
 
 
 class TestLDLite(TestCase):
-    def test_connect_db(self):
+    def test_connect_db(self) -> None:
         ld = LDLite()
         ld.connect_folio(url="https://folio-etesting-snapshot-kong.ci.folio.org",
                          tenant="diku",
