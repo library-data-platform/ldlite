@@ -1,7 +1,7 @@
 import requests
 
 
-def _request_get(
+def request_get(
     url: str,
     params: dict[str, str],
     headers: dict[str, str],

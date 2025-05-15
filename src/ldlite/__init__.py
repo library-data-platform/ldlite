@@ -51,7 +51,7 @@ from ._jsonx import _drop_json_tables
 from ._jsonx import _transform_json
 from ._query import query_dict
 # from ._camelcase import _decode_camel_case
-from ._request import _request_get
+from ._request import request_get
 from ._select import _select
 from ._sqlx import _DBType
 from ._sqlx import _autocommit
@@ -381,7 +381,7 @@ class LDLite:
             hdr = {'X-Okapi-Tenant': self.okapi_tenant, 'X-Okapi-Token': self.login_token}
             querycopy['offset'] = '0'
             querycopy['limit'] = '1'
-            resp = _request_get(self.okapi_url + path, params=querycopy, headers=hdr, timeout=self._okapi_timeout,
+            resp = request_get(self.okapi_url + path, params=querycopy, headers=hdr, timeout=self._okapi_timeout,
                                 max_retries=self._okapi_max_retries)
             if resp.status_code == 401:
                 # Retry
@@ -391,7 +391,7 @@ class LDLite:
                 # This will be cleaned up in future releases after tests are added allow for bigger internal changes.
                 self._login()
                 hdr = {'X-Okapi-Tenant': self.okapi_tenant, 'X-Okapi-Token': self.login_token}
-                resp = _request_get(self.okapi_url + path, params=querycopy, headers=hdr, timeout=self._okapi_timeout,
+                resp = request_get(self.okapi_url + path, params=querycopy, headers=hdr, timeout=self._okapi_timeout,
                                     max_retries=self._okapi_max_retries)
             if resp.status_code != 200:
                 raise RuntimeError('HTTP response status code: ' + str(resp.status_code))
@@ -425,13 +425,13 @@ class LDLite:
                     lim = self.page_size
                     querycopy['offset'] = str(offset)
                     querycopy['limit'] = str(lim)
-                    resp = _request_get(self.okapi_url + path, params=querycopy, headers=hdr,
+                    resp = request_get(self.okapi_url + path, params=querycopy, headers=hdr,
                                         timeout=self._okapi_timeout, max_retries=self._okapi_max_retries)
                     if resp.status_code == 401:
                         # See warning above for retries
                         self._login()
                         hdr = {'X-Okapi-Tenant': self.okapi_tenant, 'X-Okapi-Token': self.login_token}
-                        resp = _request_get(self.okapi_url + path, params=querycopy, headers=hdr,
+                        resp = request_get(self.okapi_url + path, params=querycopy, headers=hdr,
                             timeout=self._okapi_timeout, max_retries=self._okapi_max_retries)
                     if resp.status_code != 200:
                         raise RuntimeError('HTTP response status code: ' + str(resp.status_code))
