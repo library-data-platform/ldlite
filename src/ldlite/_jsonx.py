@@ -7,11 +7,11 @@ import psycopg2
 from tqdm import tqdm
 
 from ._camelcase import decode_camel_case
-from ._sqlx import _cast_to_varchar
-from ._sqlx import _encode_sql
-from ._sqlx import _server_cursor
-from ._sqlx import _sqlid
-from ._sqlx import _varchar_type
+from ._sqlx import cast_to_varchar
+from ._sqlx import encode_sql
+from ._sqlx import server_cursor
+from ._sqlx import sqlid
+from ._sqlx import varchar_type
 
 
 def _is_uuid(val):
@@ -30,7 +30,7 @@ class Attr:
         self.data = data
 
     def sqlattr(self, dbtype):
-        return _sqlid(self.name) + ' ' + (_varchar_type(dbtype) if self.datatype == 'varchar' else self.datatype)
+        return sqlid(self.name) + ' ' + (varchar_type(dbtype) if self.datatype == 'varchar' else self.datatype)
 
     def __repr__(self):
         if self.data is None:
@@ -50,7 +50,7 @@ def _tcatalog(table):
 
 # noinspection DuplicatedCode
 def _old_drop_json_tables(db, table):
-    jtable_sql = _sqlid(_old_jtable(table))
+    jtable_sql = sqlid(_old_jtable(table))
     cur = db.cursor()
     try:
         cur.execute('SELECT table_name FROM ' + jtable_sql)
@@ -61,7 +61,7 @@ def _old_drop_json_tables(db, table):
             t = row[0]
             cur2 = db.cursor()
             try:
-                cur2.execute('DROP TABLE IF EXISTS ' + _sqlid(t))
+                cur2.execute('DROP TABLE IF EXISTS ' + sqlid(t))
             except (RuntimeError, psycopg2.Error):
                 pass
             finally:
@@ -81,7 +81,7 @@ def _old_drop_json_tables(db, table):
 
 # noinspection DuplicatedCode
 def _drop_json_tables(db, table):
-    tcatalog_sql = _sqlid(_tcatalog(table))
+    tcatalog_sql = sqlid(_tcatalog(table))
     cur = db.cursor()
     try:
         cur.execute('SELECT table_name FROM ' + tcatalog_sql)
@@ -92,7 +92,7 @@ def _drop_json_tables(db, table):
             t = row[0]
             cur2 = db.cursor()
             try:
-                cur2.execute('DROP TABLE IF EXISTS ' + _sqlid(t))
+                cur2.execute('DROP TABLE IF EXISTS ' + sqlid(t))
             except (duckdb.CatalogException, RuntimeError, psycopg2.Error):
                 pass
             finally:
@@ -224,12 +224,12 @@ def _transform_array_data(dbtype, prefix, cur, parents, jarray, newattrs, depth,
             value = v
         else:
             value = v
-        q = 'INSERT INTO ' + _sqlid(table) + '(__id'
-        q += '' if len(quasikey) == 0 else ',' + ','.join([_sqlid(kv[1].name) for kv in quasikey.items()])
-        q += ',' + prefix + 'o,' + _sqlid(a.name)
+        q = 'INSERT INTO ' + sqlid(table) + '(__id'
+        q += '' if len(quasikey) == 0 else ',' + ','.join([sqlid(kv[1].name) for kv in quasikey.items()])
+        q += ',' + prefix + 'o,' + sqlid(a.name)
         q += ')VALUES(' + str(row_ids[table])
-        q += '' if len(quasikey) == 0 else ',' + ','.join([_encode_sql(dbtype, kv[1].data) for kv in quasikey.items()])
-        q += ',' + str(i + 1) + ',' + _encode_sql(dbtype, value) + ')'
+        q += '' if len(quasikey) == 0 else ',' + ','.join([encode_sql(dbtype, kv[1].data) for kv in quasikey.items()])
+        q += ',' + str(i + 1) + ',' + encode_sql(dbtype, value) + ')'
         try:
             cur.execute(q)
         except (RuntimeError, psycopg2.Error) as e:
@@ -293,10 +293,10 @@ def _transform_data(dbtype, prefix, cur, parents, jdict, newattrs, depth, row_id
     for k, a in quasikey.items():
         row.append((a.name, a.data))
     row += _compile_data(dbtype, prefix, cur, parents, jdict, newattrs, depth, row_ids, max_depth, quasikey)
-    q = 'INSERT INTO ' + _sqlid(table) + '(__id,'
-    q += ','.join([_sqlid(kv[0]) for kv in row])
+    q = 'INSERT INTO ' + sqlid(table) + '(__id,'
+    q += ','.join([sqlid(kv[0]) for kv in row])
     q += ')VALUES(' + str(row_ids[table]) + ','
-    q += ','.join([_encode_sql(dbtype, kv[1]) for kv in row])
+    q += ','.join([encode_sql(dbtype, kv[1]) for kv in row])
     q += ')'
     try:
         cur.execute(q)
@@ -311,7 +311,7 @@ def _transform_json(db, dbtype, table, total, quiet, max_depth):
     str_attrs = []
     cur = db.cursor()
     try:
-        cur.execute('SELECT * FROM ' + _sqlid(table) + ' LIMIT 1')
+        cur.execute('SELECT * FROM ' + sqlid(table) + ' LIMIT 1')
         for a in cur.description:
             str_attrs.append(a[0])
             # if a[1] == 3802 or a[1] == 'STRING' or a[1] == 1043:
@@ -324,10 +324,10 @@ def _transform_json(db, dbtype, table, total, quiet, max_depth):
     json_attrs = []
     json_attrs_set = set()
     newattrs = {}
-    cur = _server_cursor(db, dbtype)
+    cur = server_cursor(db, dbtype)
     try:
-        cur.execute('SELECT ' + ','.join([_cast_to_varchar(_sqlid(a), dbtype) for a in str_attrs]) + ' FROM ' +
-                    _sqlid(table))
+        cur.execute('SELECT ' + ','.join([cast_to_varchar(sqlid(a), dbtype) for a in str_attrs]) + ' FROM ' +
+                    sqlid(table))
         pbar = None
         pbartotal = 0
         if not quiet:
@@ -367,17 +367,17 @@ def _transform_json(db, dbtype, table, total, quiet, max_depth):
     cur = db.cursor()
     try:
         for t, attrs in newattrs.items():
-            cur.execute('DROP TABLE IF EXISTS ' + _sqlid(t))
-            cur.execute('CREATE TABLE ' + _sqlid(t) + '(__id bigint)')
+            cur.execute('DROP TABLE IF EXISTS ' + sqlid(t))
+            cur.execute('CREATE TABLE ' + sqlid(t) + '(__id bigint)')
             for k, a in attrs.items():
                 if a.order == 1:
-                    cur.execute('ALTER TABLE ' + _sqlid(t) + ' ADD COLUMN ' + a.sqlattr(dbtype))
+                    cur.execute('ALTER TABLE ' + sqlid(t) + ' ADD COLUMN ' + a.sqlattr(dbtype))
             for k, a in attrs.items():
                 if a.order == 2:
-                    cur.execute('ALTER TABLE ' + _sqlid(t) + ' ADD COLUMN ' + a.sqlattr(dbtype))
+                    cur.execute('ALTER TABLE ' + sqlid(t) + ' ADD COLUMN ' + a.sqlattr(dbtype))
             for k, a in attrs.items():
                 if a.order == 3:
-                    cur.execute('ALTER TABLE ' + _sqlid(t) + ' ADD COLUMN ' + a.sqlattr(dbtype))
+                    cur.execute('ALTER TABLE ' + sqlid(t) + ' ADD COLUMN ' + a.sqlattr(dbtype))
     finally:
         cur.close()
     db.commit()
@@ -389,10 +389,10 @@ def _transform_json(db, dbtype, table, total, quiet, max_depth):
     # Select only JSON columns
     if len(json_attrs) == 0:
         return [], {}
-    cur = _server_cursor(db, dbtype)
+    cur = server_cursor(db, dbtype)
     try:
-        cur.execute('SELECT ' + ','.join([_cast_to_varchar(_sqlid(a), dbtype) for a in json_attrs]) + ' FROM ' +
-                    _sqlid(table))
+        cur.execute('SELECT ' + ','.join([cast_to_varchar(sqlid(a), dbtype) for a in json_attrs]) + ' FROM ' +
+                    sqlid(table))
         pbar = None
         pbartotal = 0
         if not quiet:
@@ -428,9 +428,9 @@ def _transform_json(db, dbtype, table, total, quiet, max_depth):
     tcatalog = _tcatalog(table)
     cur = db.cursor()
     try:
-        cur.execute('CREATE TABLE ' + _sqlid(tcatalog) + '(table_name ' + _varchar_type(dbtype) + ' NOT NULL)')
+        cur.execute('CREATE TABLE ' + sqlid(tcatalog) + '(table_name ' + varchar_type(dbtype) + ' NOT NULL)')
         for t in newattrs.keys():
-            cur.execute('INSERT INTO ' + _sqlid(tcatalog) + ' VALUES(' + _encode_sql(dbtype, t) + ')')
+            cur.execute('INSERT INTO ' + sqlid(tcatalog) + ' VALUES(' + encode_sql(dbtype, t) + ')')
     except (RuntimeError, psycopg2.Error, sqlite3.OperationalError, duckdb.CatalogException) as e:
         raise RuntimeError('writing table catalog for JSON transform: ' + str(e))
     finally:

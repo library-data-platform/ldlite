@@ -53,12 +53,12 @@ from ._query import query_dict
 # from ._camelcase import _decode_camel_case
 from ._request import request_get
 from ._select import _select
-from ._sqlx import _DBType
-from ._sqlx import _autocommit
-from ._sqlx import _encode_sql_str
-from ._sqlx import _json_type
-from ._sqlx import _sqlid
-from ._sqlx import _strip_schema
+from ._sqlx import DBType
+from ._sqlx import autocommit
+from ._sqlx import encode_sql_str
+from ._sqlx import json_type
+from ._sqlx import sqlid
+from ._sqlx import strip_schema
 # from src.ldlite._csv import *
 from ._xlsx import _to_xlsx
 
@@ -90,7 +90,7 @@ class LDLite:
         self.page_size = 1000
         self._verbose = False
         self._quiet = False
-        self.dbtype: _DBType = _DBType.UNDEFINED
+        self.dbtype: DBType = DBType.UNDEFINED
         self.db = None
         self.login_token = None
         self.legacy_auth = True
@@ -138,7 +138,7 @@ class LDLite:
             db = ld.connect_db_duckdb(filename='ldlite.db')
 
         """
-        self.dbtype = _DBType.DUCKDB
+        self.dbtype = DBType.DUCKDB
         fn = filename if filename is not None else ':memory:'
         self.db = duckdb.connect(database=fn)
         return self.db
@@ -155,9 +155,9 @@ class LDLite:
             db = ld.connect_db_postgresql(dsn='dbname=ldlite host=localhost user=ldlite')
 
         """
-        self.dbtype = _DBType.POSTGRES
+        self.dbtype = DBType.POSTGRES
         self.db = psycopg2.connect(dsn)
-        _autocommit(self.db, self.dbtype, True)
+        autocommit(self.db, self.dbtype, True)
         return self.db
 
     def experimental_connect_db_sqlite(self, filename=None):
@@ -178,10 +178,10 @@ class LDLite:
             db = ld.connect_db_sqlite(filename='ldlite.db')
 
         """
-        self.dbtype = _DBType.SQLITE
+        self.dbtype = DBType.SQLITE
         fn = filename if filename is not None else ':memory:'
         self.db = sqlite3.connect(fn)
-        _autocommit(self.db, self.dbtype, True)
+        autocommit(self.db, self.dbtype, True)
         return self.db
 
     def _login(self):
@@ -257,14 +257,14 @@ class LDLite:
             ld.drop_tables('g')
 
         """
-        _autocommit(self.db, self.dbtype, True)
+        autocommit(self.db, self.dbtype, True)
         schema_table = table.strip().split('.')
         if len(schema_table) < 1 or len(schema_table) > 2:
             raise ValueError('invalid table name: ' + table)
         self._check_db()
         cur = self.db.cursor()
         try:
-            cur.execute('DROP TABLE IF EXISTS ' + _sqlid(table))
+            cur.execute('DROP TABLE IF EXISTS ' + sqlid(table))
         except (RuntimeError, psycopg2.Error):
             pass
         finally:
@@ -358,22 +358,22 @@ class LDLite:
             raise ValueError('invalid value for json_depth: ' + str(json_depth))
         self._check_okapi()
         self._check_db()
-        if len(schema_table) == 2 and self.dbtype == _DBType.SQLITE:
+        if len(schema_table) == 2 and self.dbtype == DBType.SQLITE:
             table = schema_table[0] + '_' + schema_table[1]
             schema_table = [table]
         if not self._quiet:
             print('ldlite: querying: ' + path, file=sys.stderr)
         querycopy = query_dict(query)
         _drop_json_tables(self.db, table)
-        _autocommit(self.db, self.dbtype, False)
+        autocommit(self.db, self.dbtype, False)
         try:
             cur = self.db.cursor()
             try:
                 if len(schema_table) == 2:
-                    cur.execute('CREATE SCHEMA IF NOT EXISTS ' + _sqlid(schema_table[0]))
-                cur.execute('DROP TABLE IF EXISTS ' + _sqlid(table))
+                    cur.execute('CREATE SCHEMA IF NOT EXISTS ' + sqlid(schema_table[0]))
+                cur.execute('DROP TABLE IF EXISTS ' + sqlid(table))
                 cur.execute(
-                    'CREATE TABLE ' + _sqlid(table) + '(__id integer, jsonb ' + _json_type(self.dbtype) + ')')
+                    'CREATE TABLE ' + sqlid(table) + '(__id integer, jsonb ' + json_type(self.dbtype) + ')')
             finally:
                 cur.close()
             self.db.commit()
@@ -448,7 +448,7 @@ class LDLite:
                         break
                     for d in data:
                         cur.execute(
-                            'INSERT INTO ' + _sqlid(table) + ' VALUES(' + str(count + 1) + ',' + _encode_sql_str(
+                            'INSERT INTO ' + sqlid(table) + ' VALUES(' + str(count + 1) + ',' + encode_sql_str(
                                 self.dbtype, json.dumps(d, indent=4)) + ')')
                         count += 1
                         if not self._quiet:
@@ -478,7 +478,7 @@ class LDLite:
                     newattrs[t]['__id'] = Attr('__id', 'bigint')
                 newattrs[table] = {'__id': Attr('__id', 'bigint')}
         finally:
-            _autocommit(self.db, self.dbtype, True)
+            autocommit(self.db, self.dbtype, True)
         # Create indexes
         if self.dbtype == 2:
             index_total = sum(map(len, newattrs.values()))
@@ -490,7 +490,7 @@ class LDLite:
                 for attr in attrs.values():
                     cur = self.db.cursor()
                     try:
-                        cur.execute('CREATE INDEX ON ' + _sqlid(t) + ' (' + _sqlid(attr.name) + ')')
+                        cur.execute('CREATE INDEX ON ' + sqlid(t) + ' (' + sqlid(attr.name) + ')')
                     except (RuntimeError, psycopg2.Error):
                         pass
                     finally:
@@ -541,13 +541,13 @@ class LDLite:
         f = sys.stdout
         if self._verbose:
             print('ldlite: reading from table: ' + table, file=sys.stderr)
-        _autocommit(self.db, self.dbtype, False)
+        autocommit(self.db, self.dbtype, False)
         try:
             _select(self.db, self.dbtype, table, columns, limit, f)
-            if self.dbtype == _DBType.POSTGRES:
+            if self.dbtype == DBType.POSTGRES:
                 self.db.rollback()
         finally:
-            _autocommit(self.db, self.dbtype, True)
+            autocommit(self.db, self.dbtype, True)
 
     def export_csv(self, filename, table, header=True):
         """Export a table in the reporting database to a CSV file.
@@ -564,13 +564,13 @@ class LDLite:
 
         """
         self._check_db()
-        _autocommit(self.db, self.dbtype, False)
+        autocommit(self.db, self.dbtype, False)
         try:
             _to_csv(self.db, self.dbtype, table, filename, header)
-            if self.dbtype == _DBType.POSTGRES:
+            if self.dbtype == DBType.POSTGRES:
                 self.db.rollback()
         finally:
-            _autocommit(self.db, self.dbtype, True)
+            autocommit(self.db, self.dbtype, True)
 
     def to_csv(self, filename, table, header=True):
         """Deprecated; use export_csv()."""
@@ -591,13 +591,13 @@ class LDLite:
 
         """
         self._check_db()
-        _autocommit(self.db, self.dbtype, False)
+        autocommit(self.db, self.dbtype, False)
         try:
             _to_xlsx(self.db, self.dbtype, table, filename, header)
-            if self.dbtype == _DBType.POSTGRES:
+            if self.dbtype == DBType.POSTGRES:
                 self.db.rollback()
         finally:
-            _autocommit(self.db, self.dbtype, True)
+            autocommit(self.db, self.dbtype, True)
 
     def to_xlsx(self, filename, table, header=True):
         """Deprecated; use export_excel()."""

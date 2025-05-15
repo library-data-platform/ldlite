@@ -1,7 +1,7 @@
 import xlsxwriter
 
-from ._sqlx import _server_cursor
-from ._sqlx import _sqlid
+from ._sqlx import server_cursor
+from ._sqlx import sqlid
 
 
 def _to_xlsx(db, dbtype, table, filename, header):
@@ -10,17 +10,17 @@ def _to_xlsx(db, dbtype, table, filename, header):
     width = []
     cur = db.cursor()
     try:
-        cur.execute('SELECT * FROM ' + _sqlid(table) + ' LIMIT 1')
+        cur.execute('SELECT * FROM ' + sqlid(table) + ' LIMIT 1')
         for a in cur.description:
             attrs.append((a[0], a[1]))
             width.append(len(a[0]))
     finally:
         cur.close()
-    cols = ','.join([_sqlid(a[0]) for a in attrs])
-    query = 'SELECT ' + cols + ' FROM ' + _sqlid(table) + ' ORDER BY ' + ','.join(
+    cols = ','.join([sqlid(a[0]) for a in attrs])
+    query = 'SELECT ' + cols + ' FROM ' + sqlid(table) + ' ORDER BY ' + ','.join(
         [str(i + 1) for i in range(len(attrs))])
     # Scan
-    cur = _server_cursor(db, dbtype)
+    cur = server_cursor(db, dbtype)
     try:
         cur.execute(query)
         while True:
@@ -38,7 +38,7 @@ def _to_xlsx(db, dbtype, table, filename, header):
     finally:
         cur.close()
     # Write data
-    cur = _server_cursor(db, dbtype)
+    cur = server_cursor(db, dbtype)
     try:
         cur.execute(query)
         fn = filename if '.' in filename else filename + '.xlsx'

@@ -1,15 +1,18 @@
+from __future__ import annotations
+
 import secrets
 from enum import Enum
+from typing import Any
 
 
-class _DBType(Enum):
+class DBType(Enum):
     UNDEFINED = 0
     DUCKDB = 1
     POSTGRES = 2
     SQLITE = 4
 
 
-def _strip_schema(table):
+def strip_schema(table: str) -> str:
     st = table.split(".")
     if len(st) == 1:
         return table
@@ -18,11 +21,11 @@ def _strip_schema(table):
     raise ValueError("invalid table name: " + table)
 
 
-def _autocommit(db, dbtype, enable) -> None:
-    if dbtype == _DBType.POSTGRES:
+def autocommit(db: Any, dbtype: DBType, enable: bool) -> None:
+    if dbtype == DBType.POSTGRES:
         db.rollback()
         db.set_session(autocommit=enable)
-    if dbtype == _DBType.SQLITE:
+    if dbtype == DBType.SQLITE:
         db.rollback()
         if enable:
             db.isolation_level = None
@@ -30,48 +33,48 @@ def _autocommit(db, dbtype, enable) -> None:
             db.isolation_level = "DEFERRED"
 
 
-def _server_cursor(db, dbtype):
-    if dbtype == _DBType.POSTGRES:
+def server_cursor(db: Any, dbtype: DBType) -> Any:
+    if dbtype == DBType.POSTGRES:
         return db.cursor(name=("ldlite" + secrets.token_hex(4)))
     return db.cursor()
 
 
-def _sqlid(ident):
+def sqlid(ident: str) -> str:
     sp = ident.split(".")
     if len(sp) == 1:
         return '"' + ident + '"'
     return ".".join(['"' + s + '"' for s in sp])
 
 
-def _cast_to_varchar(ident: str, dbtype: _DBType):
-    if dbtype == _DBType.SQLITE:
+def cast_to_varchar(ident: str, dbtype: DBType) -> str:
+    if dbtype == DBType.SQLITE:
         return "CAST(" + ident + " as TEXT)"
     return ident + "::varchar"
 
 
-def _varchar_type(dbtype) -> str:
-    if dbtype == _DBType.POSTGRES or _DBType.SQLITE:
+def varchar_type(dbtype: DBType) -> str:
+    if dbtype == DBType.POSTGRES or DBType.SQLITE:
         return "text"
     return "varchar"
 
 
-def _json_type(dbtype) -> str:
-    if dbtype == _DBType.POSTGRES:
+def json_type(dbtype: DBType) -> str:
+    if dbtype == DBType.POSTGRES:
         return "jsonb"
-    if dbtype == _DBType.SQLITE:
+    if dbtype == DBType.SQLITE:
         return "text"
     return "varchar"
 
 
-def _encode_sql_str(dbtype, s):
-    b = "E'" if dbtype == _DBType.POSTGRES else "'"
-    if dbtype in (_DBType.SQLITE, _DBType.DUCKDB):
+def encode_sql_str(dbtype: DBType, s: str) -> str:  # noqa: C901, PLR0912
+    b = "E'" if dbtype == DBType.POSTGRES else "'"
+    if dbtype in (DBType.SQLITE, DBType.DUCKDB):
         for c in s:
             if c == "'":
                 b += "''"
             else:
                 b += c
-    if dbtype == _DBType.POSTGRES:
+    if dbtype == DBType.POSTGRES:
         for c in s:
             if c == "'":
                 b += "''"
@@ -93,13 +96,13 @@ def _encode_sql_str(dbtype, s):
     return b
 
 
-def _encode_sql(dbtype, data):
+def encode_sql(dbtype: DBType, data: None | str | int | bool | Any) -> str:
     if data is None:
         return "NULL"
     if isinstance(data, str):
-        return _encode_sql_str(dbtype, data)
+        return encode_sql_str(dbtype, data)
     if isinstance(data, int):
         return str(data)
     if isinstance(data, bool):
         return "TRUE" if data else "FALSE"
-    return _encode_sql_str(dbtype, str(data))
+    return encode_sql_str(dbtype, str(data))

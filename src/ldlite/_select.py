@@ -1,7 +1,7 @@
 import sys
 
-from ._sqlx import _server_cursor
-from ._sqlx import _sqlid
+from ._sqlx import server_cursor
+from ._sqlx import sqlid
 
 
 def _format_attr(attr, width):
@@ -81,22 +81,22 @@ def _select(db, dbtype, table, columns, limit, file=sys.stdout):
     if columns is None or columns == []:
         colspec = '*'
     else:
-        colspec = ','.join([_sqlid(c) for c in columns])
+        colspec = ','.join([sqlid(c) for c in columns])
     # Get attributes
     attrs = []
     width = []
     cur = db.cursor()
     try:
-        cur.execute('SELECT ' + colspec + ' FROM ' + _sqlid(table) + ' LIMIT 1')
+        cur.execute('SELECT ' + colspec + ' FROM ' + sqlid(table) + ' LIMIT 1')
         for a in cur.description:
             attrs.append((a[0], a[1]))
             width.append(len(a[0]))
     finally:
         cur.close()
     # Scan
-    cur = _server_cursor(db, dbtype)
+    cur = server_cursor(db, dbtype)
     try:
-        cur.execute('SELECT ' + ','.join([_sqlid(a[0]) for a in attrs]) + ' FROM ' + _sqlid(table))
+        cur.execute('SELECT ' + ','.join([sqlid(a[0]) for a in attrs]) + ' FROM ' + sqlid(table))
         while True:
             row = cur.fetchone()
             if row is None:
@@ -111,9 +111,9 @@ def _select(db, dbtype, table, columns, limit, file=sys.stdout):
                         width[i] = len_l
     finally:
         cur.close()
-    cur = _server_cursor(db, dbtype)
+    cur = server_cursor(db, dbtype)
     try:
-        q = 'SELECT ' + ','.join([_sqlid(a[0]) for a in attrs]) + ' FROM ' + _sqlid(table)
+        q = 'SELECT ' + ','.join([sqlid(a[0]) for a in attrs]) + ' FROM ' + sqlid(table)
         if limit is not None:
             q += ' LIMIT ' + str(limit)
         cur.execute(q)
