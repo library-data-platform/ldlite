@@ -1,7 +1,10 @@
-from ._sqlx import server_cursor, sqlid
+from pathlib import Path
+from typing import Any
+
+from ._sqlx import DBType, server_cursor, sqlid
 
 
-def _escape_csv(field):
+def _escape_csv(field: str) -> str:
     b = ""
     for f in field:
         if f == '"':
@@ -11,14 +14,14 @@ def _escape_csv(field):
     return b
 
 
-def _to_csv(db, dbtype, table, filename, header):
+def to_csv(db: Any, dbtype: DBType, table: str, filename: str, header: list[str]) -> None:
     # Read attributes
     attrs = []
     cur = db.cursor()
     try:
         cur.execute("SELECT * FROM " + sqlid(table) + " LIMIT 1")
         for a in cur.description:
-            attrs.append((a[0], a[1]))
+            attrs.extend((a[0], a[1]))
     finally:
         cur.close()
     # Write data
@@ -27,8 +30,8 @@ def _to_csv(db, dbtype, table, filename, header):
         cols = ",".join([sqlid(a[0]) for a in attrs])
         cur.execute("SELECT " + cols + " FROM " + sqlid(table) + " ORDER BY " + ",".join(
             [str(i + 1) for i in range(len(attrs))]))
-        fn = filename if "." in filename else filename + ".csv"
-        with open(fn, "w") as f:
+        fn = Path(filename if "." in filename else filename + ".csv")
+        with fn.open("w") as f:
             if header:
                 print(",".join(['"' + a[0] + '"' for a in attrs]), file=f)
             while True:

@@ -45,7 +45,7 @@ import psycopg2
 import requests
 from tqdm import tqdm
 
-from ._csv import _to_csv
+from ._csv import to_csv
 from ._jsonx import Attr
 from ._jsonx import _drop_json_tables
 from ._jsonx import _transform_json
@@ -566,7 +566,7 @@ class LDLite:
         self._check_db()
         autocommit(self.db, self.dbtype, False)
         try:
-            _to_csv(self.db, self.dbtype, table, filename, header)
+            to_csv(self.db, self.dbtype, table, filename, header)
             if self.dbtype == DBType.POSTGRES:
                 self.db.rollback()
         finally:
