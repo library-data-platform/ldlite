@@ -1,4 +1,4 @@
-def _decode_triple(c1, c2, c3):
+def _decode_triple(c1: str, c2: str, c3: str) -> str:
     """Decodes a sliding window of character triples.
 
     Examines a sequence of three characters c1, c2, and c3; decodes c2; and
@@ -41,7 +41,7 @@ def _decode_triple(c1, c2, c3):
     return b
 
 
-def _decode_camel_case(s):
+def decode_camel_case(s: str) -> str:
     """Parses camel case string into lowercase words separated by underscores.
 
     A sequence of uppercase letters is interpreted as a word, except that the

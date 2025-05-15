@@ -6,7 +6,7 @@ import duckdb
 import psycopg2
 from tqdm import tqdm
 
-from ._camelcase import _decode_camel_case
+from ._camelcase import decode_camel_case
 from ._sqlx import _cast_to_varchar
 from ._sqlx import _encode_sql
 from ._sqlx import _server_cursor
@@ -146,9 +146,9 @@ def _compile_array_attrs(dbtype, parents, prefix, jarray, newattrs, depth, array
             # TODO
             continue
         elif isinstance(v, float) or isinstance(v, int):
-            newattrs[table][arrayattr] = Attr(_decode_camel_case(arrayattr), 'numeric', order=3)
+            newattrs[table][arrayattr] = Attr(decode_camel_case(arrayattr), 'numeric', order=3)
         else:
-            newattrs[table][arrayattr] = Attr(_decode_camel_case(arrayattr), 'varchar', order=3)
+            newattrs[table][arrayattr] = Attr(decode_camel_case(arrayattr), 'varchar', order=3)
 
 
 def _compile_attrs(dbtype, parents, prefix, jdict, newattrs, depth, max_depth, quasikey):
@@ -166,33 +166,33 @@ def _compile_attrs(dbtype, parents, prefix, jdict, newattrs, depth, max_depth, q
         attr = prefix + k
         if isinstance(v, dict):
             if depth == max_depth:
-                newattrs[table][attr] = Attr(_decode_camel_case(attr), 'varchar', order=3)
+                newattrs[table][attr] = Attr(decode_camel_case(attr), 'varchar', order=3)
             else:
                 objects.append((attr, v, k))
         elif isinstance(v, list):
             arrays.append((attr, v, k))
         elif isinstance(v, bool):
-            a = Attr(_decode_camel_case(attr), 'boolean', order=3)
+            a = Attr(decode_camel_case(attr), 'boolean', order=3)
             qkey[attr] = a
             newattrs[table][attr] = a
         elif isinstance(v, float) or isinstance(v, int):
-            a = Attr(_decode_camel_case(attr), 'numeric', order=3)
+            a = Attr(decode_camel_case(attr), 'numeric', order=3)
             qkey[attr] = a
             newattrs[table][attr] = a
         elif dbtype == 2 and _is_uuid(v):
-            a = Attr(_decode_camel_case(attr), 'uuid', order=3)
+            a = Attr(decode_camel_case(attr), 'uuid', order=3)
             qkey[attr] = a
             newattrs[table][attr] = a
         else:
-            a = Attr(_decode_camel_case(attr), 'varchar', order=3)
+            a = Attr(decode_camel_case(attr), 'varchar', order=3)
             qkey[attr] = a
             newattrs[table][attr] = a
     for b in objects:
-        p = [(0, _decode_camel_case(b[2]))]
-        _compile_attrs(dbtype, parents + p, _decode_camel_case(b[0]) + '__', b[1], newattrs, depth + 1, max_depth, qkey)
+        p = [(0, decode_camel_case(b[2]))]
+        _compile_attrs(dbtype, parents + p, decode_camel_case(b[0]) + '__', b[1], newattrs, depth + 1, max_depth, qkey)
     for y in arrays:
-        p = [(1, _decode_camel_case(y[2]))]
-        _compile_array_attrs(dbtype, parents + p, _decode_camel_case(y[0]) + '__', y[1], newattrs, depth + 1, y[0],
+        p = [(1, decode_camel_case(y[2]))]
+        _compile_array_attrs(dbtype, parents + p, decode_camel_case(y[0]) + '__', y[1], newattrs, depth + 1, y[0],
                              max_depth, qkey)
 
 
@@ -275,12 +275,12 @@ def _compile_data(dbtype, prefix, cur, parents, jdict, newattrs, depth, row_ids,
             else:
                 row.append((a.name, v))
     for b in objects:
-        p = [(0, _decode_camel_case(b[2]))]
-        row += _compile_data(dbtype, _decode_camel_case(b[0]) + '__', cur, parents + p, b[1], newattrs, depth + 1,
+        p = [(0, decode_camel_case(b[2]))]
+        row += _compile_data(dbtype, decode_camel_case(b[0]) + '__', cur, parents + p, b[1], newattrs, depth + 1,
                              row_ids, max_depth, qkey)
     for y in arrays:
-        p = [(1, _decode_camel_case(y[2]))]
-        _transform_array_data(dbtype, _decode_camel_case(y[0]) + '__', cur, parents + p, y[1], newattrs, depth + 1,
+        p = [(1, decode_camel_case(y[2]))]
+        _transform_array_data(dbtype, decode_camel_case(y[0]) + '__', cur, parents + p, y[1], newattrs, depth + 1,
                               row_ids, y[0], max_depth, qkey)
     return row
 
