@@ -60,7 +60,7 @@ from ._sqlx import json_type
 from ._sqlx import sqlid
 from ._sqlx import strip_schema
 # from src.ldlite._csv import *
-from ._xlsx import _to_xlsx
+from ._xlsx import to_xlsx
 
 
 # from warnings import warn
@@ -593,7 +593,7 @@ class LDLite:
         self._check_db()
         autocommit(self.db, self.dbtype, False)
         try:
-            _to_xlsx(self.db, self.dbtype, table, filename, header)
+            to_xlsx(self.db, self.dbtype, table, filename, header)
             if self.dbtype == DBType.POSTGRES:
                 self.db.rollback()
         finally:

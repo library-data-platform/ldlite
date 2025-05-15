@@ -1,9 +1,11 @@
+from typing import Any
+
 import xlsxwriter
 
-from ._sqlx import server_cursor, sqlid
+from ._sqlx import DBType, server_cursor, sqlid
 
 
-def _to_xlsx(db, dbtype, table, filename, header):
+def to_xlsx(db: Any, dbtype: DBType, table: str, filename: str, header: list[str]) -> None:  # noqa: C901, PLR0912, PLR0915
     # Read attributes
     attrs = []
     width = []
@@ -30,9 +32,8 @@ def _to_xlsx(db, dbtype, table, filename, header):
                 lines = [""]
                 if data is not None:
                     lines = str(data).splitlines()
-                for j, l in enumerate(lines):
-                    len_l = len(l)
-                    width[i] = max(width[i], len_l)
+                for _, ln in enumerate(lines):
+                    width[i] = max(width[i], len(ln))
     finally:
         cur.close()
     # Write data
