@@ -1,7 +1,6 @@
 import xlsxwriter
 
-from ._sqlx import server_cursor
-from ._sqlx import sqlid
+from ._sqlx import server_cursor, sqlid
 
 
 def _to_xlsx(db, dbtype, table, filename, header):
@@ -10,14 +9,14 @@ def _to_xlsx(db, dbtype, table, filename, header):
     width = []
     cur = db.cursor()
     try:
-        cur.execute('SELECT * FROM ' + sqlid(table) + ' LIMIT 1')
+        cur.execute("SELECT * FROM " + sqlid(table) + " LIMIT 1")
         for a in cur.description:
             attrs.append((a[0], a[1]))
             width.append(len(a[0]))
     finally:
         cur.close()
-    cols = ','.join([sqlid(a[0]) for a in attrs])
-    query = 'SELECT ' + cols + ' FROM ' + sqlid(table) + ' ORDER BY ' + ','.join(
+    cols = ",".join([sqlid(a[0]) for a in attrs])
+    query = "SELECT " + cols + " FROM " + sqlid(table) + " ORDER BY " + ",".join(
         [str(i + 1) for i in range(len(attrs))])
     # Scan
     cur = server_cursor(db, dbtype)
@@ -28,21 +27,20 @@ def _to_xlsx(db, dbtype, table, filename, header):
             if row is None:
                 break
             for i, data in enumerate(row):
-                lines = ['']
+                lines = [""]
                 if data is not None:
                     lines = str(data).splitlines()
                 for j, l in enumerate(lines):
                     len_l = len(l)
-                    if len_l > width[i]:
-                        width[i] = len_l
+                    width[i] = max(width[i], len_l)
     finally:
         cur.close()
     # Write data
     cur = server_cursor(db, dbtype)
     try:
         cur.execute(query)
-        fn = filename if '.' in filename else filename + '.xlsx'
-        workbook = xlsxwriter.Workbook(fn, {'constant_memory': True})
+        fn = filename if "." in filename else filename + ".xlsx"
+        workbook = xlsxwriter.Workbook(fn, {"constant_memory": True})
         try:
             worksheet = workbook.add_worksheet()
             for i, w in enumerate(width):
@@ -52,11 +50,11 @@ def _to_xlsx(db, dbtype, table, filename, header):
                 for i, a in enumerate(attrs):
                     fmt = workbook.add_format()
                     fmt.set_bold()
-                    fmt.set_align('center')
+                    fmt.set_align("center")
                     worksheet.write(0, i, a[0], fmt)
             row_i = 1 if header else 0
             datafmt = workbook.add_format()
-            datafmt.set_align('top')
+            datafmt.set_align("top")
             while True:
                 row = cur.fetchone()
                 if row is None:
