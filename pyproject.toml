@@ -46,7 +46,7 @@ exclude = ["src"]
 
 [tool.ruff]
 target-version = "py39"
-extend-exclude = ["src/ldlite/{__init__.py,_camelcase.py,_csv.py,_jsonx.py,_request.py,_select.py,_sqlx.py,_xlsx.py}"]
+extend-exclude = ["src/ldlite/{__init__.py,_camelcase.py,_csv.py,_jsonx.py,_select.py,_sqlx.py,_xlsx.py}"]
 [tool.ruff.lint]
 select = ["ALL"]
 fixable = ["ALL"]
