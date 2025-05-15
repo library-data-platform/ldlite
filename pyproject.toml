@@ -37,6 +37,13 @@ addopts = [
     "--import-mode=importlib",
 ]
 
+[tool.mypy]
+python_version = "3.9"
+strict = true
+ignore_missing_imports = true
+exclude = ["src"]
+
+
 [tool.ruff]
 target-version = "py39"
 [tool.ruff.lint]
@@ -60,6 +67,7 @@ test = "python -m pytest -vv"
 lint = [
     "mypy>=1.4.1",
     "ruff>=0.11.9",
+    "types-psycopg2>=2.9.21.20",
 ]
 test = [
     "pytest>=7.4.4",

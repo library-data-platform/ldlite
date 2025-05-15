@@ -237,7 +237,8 @@ for q in queries:
         tables += t
     except (ValueError, RuntimeError) as e:
         print(
-            'folio_demo.py: error processing "' + q[1] + '": ' + str(e), file=sys.stderr
+            'folio_demo.py: error processing "' + str(q[1]) + '": ' + str(e),
+            file=sys.stderr,
         )
 print()
 print("Tables:")

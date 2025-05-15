@@ -5,7 +5,7 @@
 groups = ["default", "lint", "test"]
 strategy = ["inherit_metadata"]
 lock_version = "4.5.0"
-content_hash = "sha256:01e904525fffa1de8906da4329e51af58074e1481e3d302c249d82f3e62d024e"
+content_hash = "sha256:a398a565547d7e0347fcfe793eb84d96a8b9a90d14bea6deb41be4cbb27ae9b3"
 
 [[metadata.targets]]
 requires_python = ">=3.7,<3.10"
@@ -520,6 +520,17 @@ files = [
     {file = "typed_ast-1.5.5-cp39-cp39-musllinux_1_1_x86_64.whl", hash = "sha256:429ae404f69dc94b9361bb62291885894b7c6fb4640d561179548c849f8492ba"},
     {file = "typed_ast-1.5.5-cp39-cp39-win_amd64.whl", hash = "sha256:335f22ccb244da2b5c296e6f96b06ee9bed46526db0de38d2f0e5a6597b81155"},
     {file = "typed_ast-1.5.5.tar.gz", hash = "sha256:94282f7a354f36ef5dbce0ef3467ebf6a258e370ab33d5b40c249fa996e590dd"},
+]
+
+[[package]]
+name = "types-psycopg2"
+version = "2.9.21.20"
+requires_python = ">=3.7"
+summary = "Typing stubs for psycopg2"
+groups = ["lint"]
+files = [
+    {file = "types-psycopg2-2.9.21.20.tar.gz", hash = "sha256:73baea689575bf5bb1b915b783fb0524044c6242928aeef1ae5a9e32f0780d3d"},
+    {file = "types_psycopg2-2.9.21.20-py3-none-any.whl", hash = "sha256:5b1e2e1d9478f8a298ea7038f8ea988e0ccc1f0af39f84636d57ef0da6f29e95"},
 ]
 
 [[package]]
