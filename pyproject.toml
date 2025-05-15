@@ -31,17 +31,30 @@ classifiers = [
 Homepage = "https://github.com/library-data-platform/ldlite"
 "Bug Tracker" = "https://github.com/library-data-platform/ldlite/issues"
 
-[project.optional-dependencies]
-test = [
-    "pytest>=7.4.4",
-    "pytest-cases>=3.8.6",
-]
-
 [tool.pytest.ini_options]
 pythonpath = "src"
 addopts = [
     "--import-mode=importlib",
 ]
+
+[tool.mypy]
+python_version = "3.9"
+strict = true
+ignore_missing_imports = true
+exclude = ["src"]
+
+
+[tool.ruff]
+target-version = "py39"
+[tool.ruff.lint]
+select = ["ALL"]
+fixable = ["ALL"]
+ignore = ["FBT", "ANN401", "D105", "FIX002", "PLR2004", "TD002", "TD003", "COM812"]
+pydocstyle.convention = "google"
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = ["D", "S", "INP001", "N813"]
+"examples/*" = ["D", "INP001", "T201", "S106", "ERA001", "PERF203"]
+"src/*" = ["ALL"]
 
 [tool.pdm]
 distribution = true
@@ -49,3 +62,15 @@ package-dir = "src"
 
 [tool.pdm.scripts]
 test = "python -m pytest -vv"
+
+[dependency-groups]
+lint = [
+    "mypy>=1.4.1",
+    "ruff>=0.11.9",
+    "types-psycopg2>=2.9.21.20",
+]
+test = [
+    "pytest>=7.4.4",
+    "pytest-cases>=3.8.6",
+]
+

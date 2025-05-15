@@ -1,19 +1,20 @@
+import contextlib
 import sqlite3
 from unittest import mock
 from unittest.mock import MagicMock
-import contextlib
 
 from pytest_cases import parametrize_with_cases
 
-from .expansion_cases import QueryTestCases, QueryCase
+from .expansion_cases import QueryCase, QueryTestCases
+
 
 @mock.patch("ldlite._request_get")
 @parametrize_with_cases("tc", cases=QueryTestCases)
-def test_sqlite(_request_get_mock: MagicMock, tc: QueryCase) -> None:
+def test_sqlite(request_get_mock: MagicMock, tc: QueryCase) -> None:
     from ldlite import LDLite as uut
 
     dsn = f"file:{tc.db}?mode=memory&cache=shared"
-    tc.patch__request_get(_request_get_mock)
+    tc.patch__request_get(request_get_mock)
 
     ld = uut()
     # _check_okapi() hack
@@ -30,7 +31,9 @@ def test_sqlite(_request_get_mock: MagicMock, tc: QueryCase) -> None:
     with sqlite3.connect(dsn) as conn:
         with contextlib.closing(conn.cursor()) as res:
             res.execute("SELECT name FROM sqlite_master WHERE type='table';")
-            assert sorted([r[0] for r in res.fetchall()]) == sorted([prefix, *[f"{prefix}__{t}" for t in tc.expected_tables]])
+            assert sorted([r[0] for r in res.fetchall()]) == sorted(
+                [prefix, *[f"{prefix}__{t}" for t in tc.expected_tables]]
+            )
 
         for table, (cols, values) in tc.expected_values.items():
             with contextlib.closing(conn.cursor()) as res:

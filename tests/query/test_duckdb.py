@@ -1,17 +1,19 @@
-import duckdb
 from unittest import mock
 from unittest.mock import MagicMock
-from .expansion_cases import QueryTestCases, QueryCase
 
+import duckdb
 from pytest_cases import parametrize_with_cases
+
+from .expansion_cases import QueryCase, QueryTestCases
+
 
 @mock.patch("ldlite._request_get")
 @parametrize_with_cases("tc", cases=QueryTestCases)
-def test_duckdb(_request_get_mock: MagicMock, tc: QueryCase) -> None:
+def test_duckdb(request_get_mock: MagicMock, tc: QueryCase) -> None:
     from ldlite import LDLite as uut
 
     dsn = f":memory:{tc.db}"
-    tc.patch__request_get(_request_get_mock)
+    tc.patch__request_get(request_get_mock)
 
     ld = uut()
 
@@ -28,7 +30,9 @@ def test_duckdb(_request_get_mock: MagicMock, tc: QueryCase) -> None:
 
     with duckdb.connect(dsn) as res:
         res.execute("SHOW TABLES;")
-        assert sorted([r[0] for r in res.fetchall()]) == sorted([prefix, *[f"{prefix}__{t}" for t in tc.expected_tables]])
+        assert sorted([r[0] for r in res.fetchall()]) == sorted(
+            [prefix, *[f"{prefix}__{t}" for t in tc.expected_tables]]
+        )
 
     for table, (cols, values) in tc.expected_values.items():
         with duckdb.connect(dsn) as res:
@@ -37,4 +41,3 @@ def test_duckdb(_request_get_mock: MagicMock, tc: QueryCase) -> None:
                 assert res.fetchone() == v
 
             assert res.fetchone() is None
-
