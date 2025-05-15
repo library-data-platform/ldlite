@@ -1,6 +1,7 @@
 import json
 import sqlite3
 import uuid
+from typing import Optional
 
 import duckdb
 import psycopg2
@@ -10,7 +11,7 @@ from ._camelcase import decode_camel_case
 from ._sqlx import cast_to_varchar, encode_sql, server_cursor, sqlid, varchar_type
 
 
-def _is_uuid(val):
+def _is_uuid(val) -> Optional[bool]:
     try:
         uuid.UUID(val)
         return True
@@ -19,7 +20,7 @@ def _is_uuid(val):
 
 
 class Attr:
-    def __init__(self, name, datatype, order=None, data=None):
+    def __init__(self, name, datatype, order=None, data=None) -> None:
         self.name = name
         self.datatype = datatype
         self.order = order
@@ -28,7 +29,7 @@ class Attr:
     def sqlattr(self, dbtype):
         return sqlid(self.name) + " " + (varchar_type(dbtype) if self.datatype == "varchar" else self.datatype)
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         if self.data is None:
             return "(name=" + self.name + ", datatype=" + self.datatype + ", order=" + str(self.order) + ")"
         return ("(name=" + self.name + ", datatype=" + self.datatype + ", order=" + str(self.order) + ", data=" +
@@ -44,7 +45,7 @@ def _tcatalog(table):
 
 
 # noinspection DuplicatedCode
-def _old_drop_json_tables(db, table):
+def _old_drop_json_tables(db, table) -> None:
     jtable_sql = sqlid(_old_jtable(table))
     cur = db.cursor()
     try:
@@ -75,7 +76,7 @@ def _old_drop_json_tables(db, table):
 
 
 # noinspection DuplicatedCode
-def _drop_json_tables(db, table):
+def _drop_json_tables(db, table) -> None:
     tcatalog_sql = sqlid(_tcatalog(table))
     cur = db.cursor()
     try:
@@ -120,7 +121,7 @@ def _table_name(parents):
     return table
 
 
-def _compile_array_attrs(dbtype, parents, prefix, jarray, newattrs, depth, arrayattr, max_depth, quasikey):
+def _compile_array_attrs(dbtype, parents, prefix, jarray, newattrs, depth, arrayattr, max_depth, quasikey) -> None:
     if depth > max_depth:
         return
     table = _table_name(parents)
@@ -140,13 +141,13 @@ def _compile_array_attrs(dbtype, parents, prefix, jarray, newattrs, depth, array
         elif isinstance(v, list):
             # TODO
             continue
-        elif isinstance(v, float) or isinstance(v, int):
+        elif isinstance(v, (float, int)):
             newattrs[table][arrayattr] = Attr(decode_camel_case(arrayattr), "numeric", order=3)
         else:
             newattrs[table][arrayattr] = Attr(decode_camel_case(arrayattr), "varchar", order=3)
 
 
-def _compile_attrs(dbtype, parents, prefix, jdict, newattrs, depth, max_depth, quasikey):
+def _compile_attrs(dbtype, parents, prefix, jdict, newattrs, depth, max_depth, quasikey) -> None:
     if depth > max_depth:
         return
     table = _table_name(parents)
@@ -170,7 +171,7 @@ def _compile_attrs(dbtype, parents, prefix, jdict, newattrs, depth, max_depth, q
             a = Attr(decode_camel_case(attr), "boolean", order=3)
             qkey[attr] = a
             newattrs[table][attr] = a
-        elif isinstance(v, float) or isinstance(v, int):
+        elif isinstance(v, (float, int)):
             a = Attr(decode_camel_case(attr), "numeric", order=3)
             qkey[attr] = a
             newattrs[table][attr] = a
@@ -192,7 +193,7 @@ def _compile_attrs(dbtype, parents, prefix, jdict, newattrs, depth, max_depth, q
 
 
 def _transform_array_data(dbtype, prefix, cur, parents, jarray, newattrs, depth, row_ids, arrayattr, max_depth,
-                          quasikey):
+                          quasikey) -> None:
     if depth > max_depth:
         return
     table = _table_name(parents)
@@ -211,10 +212,7 @@ def _transform_array_data(dbtype, prefix, cur, parents, jarray, newattrs, depth,
             continue
         a = newattrs[table][arrayattr]
         a.data = v
-        if a.datatype == "bigint" or a.datatype == "numeric" or a.datatype == "boolean":
-            value = v
-        else:
-            value = v
+        value = v if a.datatype in {"bigint", "numeric", "boolean"} else v
         q = "INSERT INTO " + sqlid(table) + "(__id"
         q += "" if len(quasikey) == 0 else "," + ",".join([sqlid(kv[1].name) for kv in quasikey.items()])
         q += "," + prefix + "o," + sqlid(a.name)
@@ -250,7 +248,7 @@ def _compile_data(dbtype, prefix, cur, parents, jdict, newattrs, depth, row_ids,
             continue
         aa = newattrs[table][attr]
         a = Attr(aa.name, aa.datatype, data=v)
-        if a.datatype == "bigint" or a.datatype == "float" or a.datatype == "boolean":
+        if a.datatype in {"bigint", "float", "boolean"}:
             qkey[attr] = a
             row.append((a.name, v))
         else:
@@ -270,12 +268,12 @@ def _compile_data(dbtype, prefix, cur, parents, jdict, newattrs, depth, row_ids,
     return row
 
 
-def _transform_data(dbtype, prefix, cur, parents, jdict, newattrs, depth, row_ids, max_depth, quasikey):
+def _transform_data(dbtype, prefix, cur, parents, jdict, newattrs, depth, row_ids, max_depth, quasikey) -> None:
     if depth > max_depth:
         return
     table = _table_name(parents)
     row = []
-    for k, a in quasikey.items():
+    for a in quasikey.values():
         row.append((a.name, a.data))
     row += _compile_data(dbtype, prefix, cur, parents, jdict, newattrs, depth, row_ids, max_depth, quasikey)
     q = "INSERT INTO " + sqlid(table) + "(__id,"
@@ -354,13 +352,13 @@ def _transform_json(db, dbtype, table, total, quiet, max_depth):
         for t, attrs in newattrs.items():
             cur.execute("DROP TABLE IF EXISTS " + sqlid(t))
             cur.execute("CREATE TABLE " + sqlid(t) + "(__id bigint)")
-            for k, a in attrs.items():
+            for a in attrs.values():
                 if a.order == 1:
                     cur.execute("ALTER TABLE " + sqlid(t) + " ADD COLUMN " + a.sqlattr(dbtype))
-            for k, a in attrs.items():
+            for a in attrs.values():
                 if a.order == 2:
                     cur.execute("ALTER TABLE " + sqlid(t) + " ADD COLUMN " + a.sqlattr(dbtype))
-            for k, a in attrs.items():
+            for a in attrs.values():
                 if a.order == 3:
                     cur.execute("ALTER TABLE " + sqlid(t) + " ADD COLUMN " + a.sqlattr(dbtype))
     finally:
@@ -421,4 +419,4 @@ def _transform_json(db, dbtype, table, total, quiet, max_depth):
     finally:
         cur.close()
     db.commit()
-    return sorted(list(newattrs.keys()) + [tcatalog]), newattrs
+    return sorted([*list(newattrs.keys()), tcatalog]), newattrs
