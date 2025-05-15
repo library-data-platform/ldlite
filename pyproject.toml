@@ -46,6 +46,7 @@ exclude = ["src"]
 
 [tool.ruff]
 target-version = "py39"
+extend-exclude = ["src/ldlite/{__init__.py,_camelcase.py,_csv.py,_jsonx.py,_query.py,_request.py,_select.py,_sqlx.py,_xlsx.py}"]
 [tool.ruff.lint]
 select = ["ALL"]
 fixable = ["ALL"]
@@ -54,7 +55,6 @@ pydocstyle.convention = "google"
 [tool.ruff.lint.per-file-ignores]
 "tests/*" = ["D", "S", "INP001", "N813"]
 "examples/*" = ["D", "INP001", "T201", "S106", "ERA001", "PERF203"]
-"src/*" = ["ALL"]
 
 [tool.pdm]
 distribution = true
