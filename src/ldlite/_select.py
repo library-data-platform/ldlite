@@ -75,7 +75,14 @@ def _format_row(row: list[str], attrs: list[Any], width: list[int]) -> str:
     return s
 
 
-def select(db: Any, dbtype: DBType, table: str, columns: list[str], limit: int, file: TextIO = sys.stdout) -> None:  # noqa: C901, PLR0912, PLR0913, PLR0915
+def select(  # noqa: C901, PLR0912, PLR0913, PLR0915
+    db: Any,
+    dbtype: DBType,
+    table: str,
+    columns: list[str],
+    limit: int,
+    file: TextIO = sys.stdout,
+) -> None:
     if columns is None or columns == []:
         colspec = "*"
     else:
@@ -94,7 +101,9 @@ def select(db: Any, dbtype: DBType, table: str, columns: list[str], limit: int, 
     # Scan
     cur = server_cursor(db, dbtype)
     try:
-        cur.execute("SELECT " + ",".join([sqlid(a[0]) for a in attrs]) + " FROM " + sqlid(table))
+        cur.execute(
+            "SELECT " + ",".join([sqlid(a[0]) for a in attrs]) + " FROM " + sqlid(table)
+        )
         while True:
             row = cur.fetchone()
             if row is None:
@@ -138,7 +147,9 @@ def select(db: Any, dbtype: DBType, table: str, columns: list[str], limit: int, 
             s = _format_row(row, attrs, width)
             print(s, end="", file=file)
             row_i += 1
-        print("(" + str(row_i) + " " + ("row" if row_i == 1 else "rows") + ")", file=file)
+        print(
+            "(" + str(row_i) + " " + ("row" if row_i == 1 else "rows") + ")", file=file
+        )
         print(file=file)
     finally:
         cur.close()
