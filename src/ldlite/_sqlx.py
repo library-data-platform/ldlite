@@ -18,7 +18,7 @@ def _strip_schema(table):
     raise ValueError("invalid table name: " + table)
 
 
-def _autocommit(db, dbtype, enable):
+def _autocommit(db, dbtype, enable) -> None:
     if dbtype == _DBType.POSTGRES:
         db.rollback()
         db.set_session(autocommit=enable)
@@ -49,13 +49,13 @@ def _cast_to_varchar(ident: str, dbtype: _DBType):
     return ident + "::varchar"
 
 
-def _varchar_type(dbtype):
+def _varchar_type(dbtype) -> str:
     if dbtype == _DBType.POSTGRES or _DBType.SQLITE:
         return "text"
     return "varchar"
 
 
-def _json_type(dbtype):
+def _json_type(dbtype) -> str:
     if dbtype == _DBType.POSTGRES:
         return "jsonb"
     if dbtype == _DBType.SQLITE:
@@ -64,11 +64,8 @@ def _json_type(dbtype):
 
 
 def _encode_sql_str(dbtype, s):
-    if dbtype == _DBType.POSTGRES:
-        b = "E'"
-    else:
-        b = "'"
-    if dbtype == _DBType.SQLITE or dbtype == _DBType.DUCKDB:
+    b = "E'" if dbtype == _DBType.POSTGRES else "'"
+    if dbtype in (_DBType.SQLITE, _DBType.DUCKDB):
         for c in s:
             if c == "'":
                 b += "''"
