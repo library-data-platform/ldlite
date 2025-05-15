@@ -52,7 +52,7 @@ from ._jsonx import _transform_json
 from ._query import query_dict
 # from ._camelcase import _decode_camel_case
 from ._request import request_get
-from ._select import _select
+from ._select import select
 from ._sqlx import DBType
 from ._sqlx import autocommit
 from ._sqlx import encode_sql_str
@@ -543,7 +543,7 @@ class LDLite:
             print('ldlite: reading from table: ' + table, file=sys.stderr)
         autocommit(self.db, self.dbtype, False)
         try:
-            _select(self.db, self.dbtype, table, columns, limit, f)
+            select(self.db, self.dbtype, table, columns, limit, f)
             if self.dbtype == DBType.POSTGRES:
                 self.db.rollback()
         finally:

@@ -1,46 +1,48 @@
+from __future__ import annotations
+
 import sys
+from typing import Any, TextIO
 
-from ._sqlx import server_cursor, sqlid
+from ._sqlx import DBType, server_cursor, sqlid
 
 
-def _format_attr(attr, width):
+def _format_attr(attr: str, width: int) -> str:
     s = ""
     a = attr[0]
     len_a = len(a)
     shift_left = 1 if (len_a % 2 == 1 and width % 2 == 0 and len_a < width) else 0
     start = int(width / 2) - int(len_a / 2) - shift_left
-    for i in range(start):
+    for _ in range(start):
         s += " "
     s += a
-    for i in range(width - start - len_a):
+    for _ in range(width - start - len_a):
         s += " "
     return s
 
 
-def _maxlen(lines):
+def _maxlen(lines: list[str]) -> int:
     m = 0
     for s in lines:
-        len_l = len(s)
-        m = max(m, len_l)
+        m = max(m, len(s))
     return m
 
 
-def _rstrip_lines(lines):
+def _rstrip_lines(lines: list[str]) -> list[str]:
     newlines = []
     for s in lines:
-        newlines.append(s.rstrip())
+        newlines.extend(s.rstrip())
     return newlines
 
 
-def _format_value(value, dtype):
+def _format_value(value: list[str], dtype: str | int | Any) -> list[str]:
     if len(value) > 1:
         return value
-    if dtype == "bool" or dtype == 16:
+    if dtype in {"bool", 16}:
         return ["t"] if value[0] == "True" else ["f"]
     return value
 
 
-def _format_row(row, attrs, width):
+def _format_row(row: list[str], attrs: list[Any], width: list[int]) -> str:
     s = ""
     # Count number of lines
     rowlines = []
@@ -63,17 +65,17 @@ def _format_row(row, attrs, width):
                 start = width[j] - len(lines_i)
             else:
                 start = 0
-            for k in range(start):
+            for _ in range(start):
                 s += " "
             s += lines_i
-            for k in range(width[j] - start - len(lines_i)):
+            for _ in range(width[j] - start - len(lines_i)):
                 s += " "
             s += " "
         s += "\n"
     return s
 
 
-def _select(db, dbtype, table, columns, limit, file=sys.stdout):
+def select(db: Any, dbtype: DBType, table: str, columns: list[str], limit: int, file: TextIO = sys.stdout) -> None:  # noqa: C901, PLR0912, PLR0913, PLR0915
     if columns is None or columns == []:
         colspec = "*"
     else:
@@ -101,9 +103,8 @@ def _select(db, dbtype, table, columns, limit, file=sys.stdout):
                 lines = [""]
                 if v is not None:
                     lines = str(v).splitlines()
-                for j, l in enumerate(lines):
-                    len_l = len(l.rstrip())
-                    width[i] = max(width[i], len_l)
+                for _, ln in enumerate(lines):
+                    width[i] = max(width[i], len(ln.rstrip()))
     finally:
         cur.close()
     cur = server_cursor(db, dbtype)
@@ -124,7 +125,7 @@ def _select(db, dbtype, table, columns, limit, file=sys.stdout):
         for i in range(len(attrs)):
             s += "" if i == 0 else "+"
             s += "-"
-            for j in range(width[i]):
+            for _ in range(width[i]):
                 s += "-"
             s += "-"
         print(s, file=file)
