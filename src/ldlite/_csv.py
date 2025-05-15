@@ -14,9 +14,7 @@ def _escape_csv(field: str) -> str:
     return b
 
 
-def to_csv(
-    db: Any, dbtype: DBType, table: str, filename: str, header: bool
-) -> None:
+def to_csv(db: Any, dbtype: DBType, table: str, filename: str, header: bool) -> None:
     # Read attributes
     attrs = []
     cur = db.cursor()

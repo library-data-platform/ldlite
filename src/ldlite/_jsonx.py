@@ -38,9 +38,9 @@ class Attr:
         data: Any = None,
     ):
         self.name = name
-        self.datatype: Literal["varchar", "integer", "numeric", "boolean", "uuid", "bigint"] = (
-            datatype
-        )
+        self.datatype: Literal[
+            "varchar", "integer", "numeric", "boolean", "uuid", "bigint"
+        ] = datatype
         self.order: None | Literal[1, 2, 3] = order
         self.data = data
 
