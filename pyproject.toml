@@ -52,9 +52,10 @@ fixable = ["ALL"]
 ignore = ["FBT", "ANN401", "D105", "FIX002", "PLR2004", "TD002", "TD003", "COM812"]
 pydocstyle.convention = "google"
 [tool.ruff.lint.per-file-ignores]
+"examples/*" = ["D", "INP001", "T201", "S106", "ERA001", "PERF203"]
 "tests/*" = ["D", "S", "INP001", "N813"]
 "src/ldlite/{_csv.py,_jsonx.py,_select.py,_xlsx.py}" = ["S608"]
-"examples/*" = ["D", "INP001", "T201", "S106", "ERA001", "PERF203"]
+"src/ldlite/__init__.py" = ["T201"]
 [tool.ruff.lint.flake8-annotations]
 mypy-init-return = true
 
