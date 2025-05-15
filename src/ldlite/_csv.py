@@ -14,7 +14,9 @@ def _escape_csv(field: str) -> str:
     return b
 
 
-def to_csv(db: Any, dbtype: DBType, table: str, filename: str, header: list[str]) -> None:
+def to_csv(
+    db: Any, dbtype: DBType, table: str, filename: str, header: list[str]
+) -> None:
     # Read attributes
     attrs = []
     cur = db.cursor()
@@ -28,8 +30,14 @@ def to_csv(db: Any, dbtype: DBType, table: str, filename: str, header: list[str]
     cur = server_cursor(db, dbtype)
     try:
         cols = ",".join([sqlid(a[0]) for a in attrs])
-        cur.execute("SELECT " + cols + " FROM " + sqlid(table) + " ORDER BY " + ",".join(
-            [str(i + 1) for i in range(len(attrs))]))
+        cur.execute(
+            "SELECT "
+            + cols
+            + " FROM "
+            + sqlid(table)
+            + " ORDER BY "
+            + ",".join([str(i + 1) for i in range(len(attrs))])
+        )
         fn = Path(filename if "." in filename else filename + ".csv")
         with fn.open("w") as f:
             if header:
@@ -43,7 +51,11 @@ def to_csv(db: Any, dbtype: DBType, table: str, filename: str, header: list[str]
                     d = "" if data is None else data
                     if i != 0:
                         s += ","
-                    if attrs[i][1] == "NUMBER" or attrs[i][1] == 20 or attrs[i][1] == 23:
+                    if (
+                        attrs[i][1] == "NUMBER"
+                        or attrs[i][1] == 20
+                        or attrs[i][1] == 23
+                    ):
                         s += str(d)
                     else:
                         s += '"' + _escape_csv(str(d)) + '"'
