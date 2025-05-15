@@ -47,8 +47,8 @@ from tqdm import tqdm
 
 from ._csv import to_csv
 from ._jsonx import Attr
-from ._jsonx import _drop_json_tables
-from ._jsonx import _transform_json
+from ._jsonx import drop_json_tables
+from ._jsonx import transform_json
 from ._query import query_dict
 # from ._camelcase import _decode_camel_case
 from ._request import request_get
@@ -269,7 +269,7 @@ class LDLite:
             pass
         finally:
             cur.close()
-        _drop_json_tables(self.db, self.dbtype, table)
+        drop_json_tables(self.db, self.dbtype, table)
 
     def set_folio_max_retries(self, max_retries):
         """Sets the maximum number of retries for FOLIO requests.
@@ -364,7 +364,7 @@ class LDLite:
         if not self._quiet:
             print('ldlite: querying: ' + path, file=sys.stderr)
         querycopy = query_dict(query)
-        _drop_json_tables(self.db, table)
+        drop_json_tables(self.db, table)
         autocommit(self.db, self.dbtype, False)
         try:
             cur = self.db.cursor()
@@ -471,7 +471,7 @@ class LDLite:
             newtables = [table]
             newattrs = {}
             if json_depth > 0:
-                jsontables, jsonattrs = _transform_json(self.db, self.dbtype, table, count, self._quiet, json_depth)
+                jsontables, jsonattrs = transform_json(self.db, self.dbtype, table, count, self._quiet, json_depth)
                 newtables += jsontables
                 newattrs = jsonattrs
                 for t, attrs in newattrs.items():

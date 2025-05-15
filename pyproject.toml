@@ -54,8 +54,10 @@ ignore = ["FBT", "ANN401", "D105", "FIX002", "PLR2004", "TD002", "TD003", "COM81
 pydocstyle.convention = "google"
 [tool.ruff.lint.per-file-ignores]
 "tests/*" = ["D", "S", "INP001", "N813"]
-"src/ldlite/{_csv.py,_select.py,_xlsx.py}" = ["S608"]
+"src/ldlite/{_csv.py,_jsonx.py,_select.py,_xlsx.py}" = ["S608"]
 "examples/*" = ["D", "INP001", "T201", "S106", "ERA001", "PERF203"]
+[tool.ruff.lint.flake8-annotations]
+mypy-init-return = true
 
 [tool.pdm]
 distribution = true
