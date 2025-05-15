@@ -1,4 +1,4 @@
-def _decode_triple(c1: str, c2: str, c3: str) -> str:
+def _decode_triple(c1: str, c2: str, c3: str) -> str:  # noqa: C901
     """Decodes a sliding window of character triples.
 
     Examines a sequence of three characters c1, c2, and c3; decodes c2; and
@@ -24,9 +24,18 @@ def _decode_triple(c1: str, c2: str, c3: str) -> str:
         elif (not c1u and not c2u) or (c1u and not c2u):
             write = c2
     # Check triples having no zeros
-    elif (not c1u and not c2u and not c3u) or (c1u and not c2u and not c3u) or (not c1u and not c2u and c3u) or (c1u and not c2u and c3u):
+    elif (
+        (not c1u and not c2u and not c3u)
+        or (c1u and not c2u and not c3u)
+        or (not c1u and not c2u and c3u)
+        or (c1u and not c2u and c3u)
+    ):
         write = c2
-    elif (not c1u and c2u and not c3u) or (c1u and c2u and not c3u) or (not c1u and c2u and c3u):
+    elif (
+        (not c1u and c2u and not c3u)
+        or (c1u and c2u and not c3u)
+        or (not c1u and c2u and c3u)
+    ):
         write_break = True
         write = c2.lower()
     elif c1u and c2u and c3u:
