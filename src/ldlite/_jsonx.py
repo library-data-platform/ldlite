@@ -7,11 +7,7 @@ import psycopg2
 from tqdm import tqdm
 
 from ._camelcase import decode_camel_case
-from ._sqlx import cast_to_varchar
-from ._sqlx import encode_sql
-from ._sqlx import server_cursor
-from ._sqlx import sqlid
-from ._sqlx import varchar_type
+from ._sqlx import cast_to_varchar, encode_sql, server_cursor, sqlid, varchar_type
 
 
 def _is_uuid(val):
@@ -30,22 +26,21 @@ class Attr:
         self.data = data
 
     def sqlattr(self, dbtype):
-        return sqlid(self.name) + ' ' + (varchar_type(dbtype) if self.datatype == 'varchar' else self.datatype)
+        return sqlid(self.name) + " " + (varchar_type(dbtype) if self.datatype == "varchar" else self.datatype)
 
     def __repr__(self):
         if self.data is None:
-            return '(name=' + self.name + ', datatype=' + self.datatype + ', order=' + str(self.order) + ')'
-        else:
-            return ('(name=' + self.name + ', datatype=' + self.datatype + ', order=' + str(self.order) + ', data=' +
-                    str(self.data) + ')')
+            return "(name=" + self.name + ", datatype=" + self.datatype + ", order=" + str(self.order) + ")"
+        return ("(name=" + self.name + ", datatype=" + self.datatype + ", order=" + str(self.order) + ", data=" +
+                str(self.data) + ")")
 
 
 def _old_jtable(table):
-    return table + '_jtable'
+    return table + "_jtable"
 
 
 def _tcatalog(table):
-    return table + '__tcatalog'
+    return table + "__tcatalog"
 
 
 # noinspection DuplicatedCode
@@ -53,7 +48,7 @@ def _old_drop_json_tables(db, table):
     jtable_sql = sqlid(_old_jtable(table))
     cur = db.cursor()
     try:
-        cur.execute('SELECT table_name FROM ' + jtable_sql)
+        cur.execute("SELECT table_name FROM " + jtable_sql)
         while True:
             row = cur.fetchone()
             if row is None:
@@ -61,7 +56,7 @@ def _old_drop_json_tables(db, table):
             t = row[0]
             cur2 = db.cursor()
             try:
-                cur2.execute('DROP TABLE IF EXISTS ' + sqlid(t))
+                cur2.execute("DROP TABLE IF EXISTS " + sqlid(t))
             except (RuntimeError, psycopg2.Error):
                 pass
             finally:
@@ -72,7 +67,7 @@ def _old_drop_json_tables(db, table):
         cur.close()
     cur = db.cursor()
     try:
-        cur.execute('DROP TABLE IF EXISTS ' + jtable_sql)
+        cur.execute("DROP TABLE IF EXISTS " + jtable_sql)
     except (duckdb.CatalogException, RuntimeError, psycopg2.Error):
         pass
     finally:
@@ -84,7 +79,7 @@ def _drop_json_tables(db, table):
     tcatalog_sql = sqlid(_tcatalog(table))
     cur = db.cursor()
     try:
-        cur.execute('SELECT table_name FROM ' + tcatalog_sql)
+        cur.execute("SELECT table_name FROM " + tcatalog_sql)
         while True:
             row = cur.fetchone()
             if row is None:
@@ -92,7 +87,7 @@ def _drop_json_tables(db, table):
             t = row[0]
             cur2 = db.cursor()
             try:
-                cur2.execute('DROP TABLE IF EXISTS ' + sqlid(t))
+                cur2.execute("DROP TABLE IF EXISTS " + sqlid(t))
             except (duckdb.CatalogException, RuntimeError, psycopg2.Error):
                 pass
             finally:
@@ -103,7 +98,7 @@ def _drop_json_tables(db, table):
         cur.close()
     cur = db.cursor()
     try:
-        cur.execute('DROP TABLE IF EXISTS ' + tcatalog_sql)
+        cur.execute("DROP TABLE IF EXISTS " + tcatalog_sql)
     except (RuntimeError, psycopg2.Error):
         pass
     finally:
@@ -115,11 +110,11 @@ def _table_name(parents):
     j = len(parents)
     while j > 0 and parents[j - 1][0] == 0:
         j -= 1
-    table = ''
+    table = ""
     i = 0
     while i < j:
         if i != 0:
-            table += '__'
+            table += "__"
         table += parents[i][1]
         i += 1
     return table
@@ -136,9 +131,9 @@ def _compile_array_attrs(dbtype, parents, prefix, jarray, newattrs, depth, array
         newattrs[table] = {}
     for k, a in quasikey.items():
         newattrs[table][k] = Attr(a.name, a.datatype, order=1)
-    j_ord = Attr(prefix + 'o', 'integer', order=2)
-    qkey[prefix + 'o'] = j_ord
-    newattrs[table][prefix + 'o'] = j_ord
+    j_ord = Attr(prefix + "o", "integer", order=2)
+    qkey[prefix + "o"] = j_ord
+    newattrs[table][prefix + "o"] = j_ord
     for v in jarray:
         if isinstance(v, dict):
             _compile_attrs(dbtype, parents, prefix, v, newattrs, depth, max_depth, qkey)
@@ -146,9 +141,9 @@ def _compile_array_attrs(dbtype, parents, prefix, jarray, newattrs, depth, array
             # TODO
             continue
         elif isinstance(v, float) or isinstance(v, int):
-            newattrs[table][arrayattr] = Attr(decode_camel_case(arrayattr), 'numeric', order=3)
+            newattrs[table][arrayattr] = Attr(decode_camel_case(arrayattr), "numeric", order=3)
         else:
-            newattrs[table][arrayattr] = Attr(decode_camel_case(arrayattr), 'varchar', order=3)
+            newattrs[table][arrayattr] = Attr(decode_camel_case(arrayattr), "varchar", order=3)
 
 
 def _compile_attrs(dbtype, parents, prefix, jdict, newattrs, depth, max_depth, quasikey):
@@ -166,33 +161,33 @@ def _compile_attrs(dbtype, parents, prefix, jdict, newattrs, depth, max_depth, q
         attr = prefix + k
         if isinstance(v, dict):
             if depth == max_depth:
-                newattrs[table][attr] = Attr(decode_camel_case(attr), 'varchar', order=3)
+                newattrs[table][attr] = Attr(decode_camel_case(attr), "varchar", order=3)
             else:
                 objects.append((attr, v, k))
         elif isinstance(v, list):
             arrays.append((attr, v, k))
         elif isinstance(v, bool):
-            a = Attr(decode_camel_case(attr), 'boolean', order=3)
+            a = Attr(decode_camel_case(attr), "boolean", order=3)
             qkey[attr] = a
             newattrs[table][attr] = a
         elif isinstance(v, float) or isinstance(v, int):
-            a = Attr(decode_camel_case(attr), 'numeric', order=3)
+            a = Attr(decode_camel_case(attr), "numeric", order=3)
             qkey[attr] = a
             newattrs[table][attr] = a
         elif dbtype == 2 and _is_uuid(v):
-            a = Attr(decode_camel_case(attr), 'uuid', order=3)
+            a = Attr(decode_camel_case(attr), "uuid", order=3)
             qkey[attr] = a
             newattrs[table][attr] = a
         else:
-            a = Attr(decode_camel_case(attr), 'varchar', order=3)
+            a = Attr(decode_camel_case(attr), "varchar", order=3)
             qkey[attr] = a
             newattrs[table][attr] = a
     for b in objects:
         p = [(0, decode_camel_case(b[2]))]
-        _compile_attrs(dbtype, parents + p, decode_camel_case(b[0]) + '__', b[1], newattrs, depth + 1, max_depth, qkey)
+        _compile_attrs(dbtype, parents + p, decode_camel_case(b[0]) + "__", b[1], newattrs, depth + 1, max_depth, qkey)
     for y in arrays:
         p = [(1, decode_camel_case(y[2]))]
-        _compile_array_attrs(dbtype, parents + p, decode_camel_case(y[0]) + '__', y[1], newattrs, depth + 1, y[0],
+        _compile_array_attrs(dbtype, parents + p, decode_camel_case(y[0]) + "__", y[1], newattrs, depth + 1, y[0],
                              max_depth, qkey)
 
 
@@ -208,38 +203,34 @@ def _transform_array_data(dbtype, prefix, cur, parents, jarray, newattrs, depth,
             qkey = {}
             for k, a in quasikey.items():
                 qkey[k] = a
-            qkey[prefix + 'o'] = Attr(prefix + 'o', 'integer', data=i + 1)
+            qkey[prefix + "o"] = Attr(prefix + "o", "integer", data=i + 1)
             _transform_data(dbtype, prefix, cur, parents, v, newattrs, depth, row_ids, max_depth, qkey)
             continue
-        elif isinstance(v, list):
+        if isinstance(v, list):
             # TODO
             continue
         a = newattrs[table][arrayattr]
         a.data = v
-        if a.datatype == 'bigint':
-            value = v
-        elif a.datatype == 'numeric':
-            value = v
-        elif a.datatype == 'boolean':
+        if a.datatype == "bigint" or a.datatype == "numeric" or a.datatype == "boolean":
             value = v
         else:
             value = v
-        q = 'INSERT INTO ' + sqlid(table) + '(__id'
-        q += '' if len(quasikey) == 0 else ',' + ','.join([sqlid(kv[1].name) for kv in quasikey.items()])
-        q += ',' + prefix + 'o,' + sqlid(a.name)
-        q += ')VALUES(' + str(row_ids[table])
-        q += '' if len(quasikey) == 0 else ',' + ','.join([encode_sql(dbtype, kv[1].data) for kv in quasikey.items()])
-        q += ',' + str(i + 1) + ',' + encode_sql(dbtype, value) + ')'
+        q = "INSERT INTO " + sqlid(table) + "(__id"
+        q += "" if len(quasikey) == 0 else "," + ",".join([sqlid(kv[1].name) for kv in quasikey.items()])
+        q += "," + prefix + "o," + sqlid(a.name)
+        q += ")VALUES(" + str(row_ids[table])
+        q += "" if len(quasikey) == 0 else "," + ",".join([encode_sql(dbtype, kv[1].data) for kv in quasikey.items()])
+        q += "," + str(i + 1) + "," + encode_sql(dbtype, value) + ")"
         try:
             cur.execute(q)
         except (RuntimeError, psycopg2.Error) as e:
-            raise RuntimeError('error executing SQL: ' + q) from e
+            raise RuntimeError("error executing SQL: " + q) from e
         row_ids[table] += 1
 
 
 def _compile_data(dbtype, prefix, cur, parents, jdict, newattrs, depth, row_ids, max_depth, quasikey):
     if depth > max_depth:
-        return
+        return None
     table = _table_name(parents)
     qkey = {}
     for k, a in quasikey.items():
@@ -259,13 +250,7 @@ def _compile_data(dbtype, prefix, cur, parents, jdict, newattrs, depth, row_ids,
             continue
         aa = newattrs[table][attr]
         a = Attr(aa.name, aa.datatype, data=v)
-        if a.datatype == 'bigint':
-            qkey[attr] = a
-            row.append((a.name, v))
-        elif a.datatype == 'float':
-            qkey[attr] = a
-            row.append((a.name, v))
-        elif a.datatype == 'boolean':
+        if a.datatype == "bigint" or a.datatype == "float" or a.datatype == "boolean":
             qkey[attr] = a
             row.append((a.name, v))
         else:
@@ -276,11 +261,11 @@ def _compile_data(dbtype, prefix, cur, parents, jdict, newattrs, depth, row_ids,
                 row.append((a.name, v))
     for b in objects:
         p = [(0, decode_camel_case(b[2]))]
-        row += _compile_data(dbtype, decode_camel_case(b[0]) + '__', cur, parents + p, b[1], newattrs, depth + 1,
+        row += _compile_data(dbtype, decode_camel_case(b[0]) + "__", cur, parents + p, b[1], newattrs, depth + 1,
                              row_ids, max_depth, qkey)
     for y in arrays:
         p = [(1, decode_camel_case(y[2]))]
-        _transform_array_data(dbtype, decode_camel_case(y[0]) + '__', cur, parents + p, y[1], newattrs, depth + 1,
+        _transform_array_data(dbtype, decode_camel_case(y[0]) + "__", cur, parents + p, y[1], newattrs, depth + 1,
                               row_ids, y[0], max_depth, qkey)
     return row
 
@@ -293,15 +278,15 @@ def _transform_data(dbtype, prefix, cur, parents, jdict, newattrs, depth, row_id
     for k, a in quasikey.items():
         row.append((a.name, a.data))
     row += _compile_data(dbtype, prefix, cur, parents, jdict, newattrs, depth, row_ids, max_depth, quasikey)
-    q = 'INSERT INTO ' + sqlid(table) + '(__id,'
-    q += ','.join([sqlid(kv[0]) for kv in row])
-    q += ')VALUES(' + str(row_ids[table]) + ','
-    q += ','.join([encode_sql(dbtype, kv[1]) for kv in row])
-    q += ')'
+    q = "INSERT INTO " + sqlid(table) + "(__id,"
+    q += ",".join([sqlid(kv[0]) for kv in row])
+    q += ")VALUES(" + str(row_ids[table]) + ","
+    q += ",".join([encode_sql(dbtype, kv[1]) for kv in row])
+    q += ")"
     try:
         cur.execute(q)
     except (RuntimeError, psycopg2.Error) as e:
-        raise RuntimeError('error executing SQL: ' + q) from e
+        raise RuntimeError("error executing SQL: " + q) from e
     row_ids[table] += 1
 
 
@@ -311,7 +296,7 @@ def _transform_json(db, dbtype, table, total, quiet, max_depth):
     str_attrs = []
     cur = db.cursor()
     try:
-        cur.execute('SELECT * FROM ' + sqlid(table) + ' LIMIT 1')
+        cur.execute("SELECT * FROM " + sqlid(table) + " LIMIT 1")
         for a in cur.description:
             str_attrs.append(a[0])
             # if a[1] == 3802 or a[1] == 'STRING' or a[1] == 1043:
@@ -326,13 +311,13 @@ def _transform_json(db, dbtype, table, total, quiet, max_depth):
     newattrs = {}
     cur = server_cursor(db, dbtype)
     try:
-        cur.execute('SELECT ' + ','.join([cast_to_varchar(sqlid(a), dbtype) for a in str_attrs]) + ' FROM ' +
+        cur.execute("SELECT " + ",".join([cast_to_varchar(sqlid(a), dbtype) for a in str_attrs]) + " FROM " +
                     sqlid(table))
         pbar = None
         pbartotal = 0
         if not quiet:
-            pbar = tqdm(desc='scanning', total=total, leave=False, mininterval=3, smoothing=0, colour='#A9A9A9',
-                        bar_format='{desc} {bar}{postfix}')
+            pbar = tqdm(desc="scanning", total=total, leave=False, mininterval=3, smoothing=0, colour="#A9A9A9",
+                        bar_format="{desc} {bar}{postfix}")
         while True:
             row = cur.fetchone()
             if row is None:
@@ -341,7 +326,7 @@ def _transform_json(db, dbtype, table, total, quiet, max_depth):
                 if data is None:
                     continue
                 ds = data.strip()
-                if len(ds) == 0 or ds[0] != '{':
+                if len(ds) == 0 or ds[0] != "{":
                     continue
                 try:
                     jdict = json.loads(ds)
@@ -352,10 +337,10 @@ def _transform_json(db, dbtype, table, total, quiet, max_depth):
                     json_attrs.append(attr)
                     json_attrs_set.add(attr)
                 attr_index = json_attrs.index(attr)
-                table_j = table + '__t' if attr_index == 0 else table + '__t' + str(attr_index + 1)
+                table_j = table + "__t" if attr_index == 0 else table + "__t" + str(attr_index + 1)
                 if table_j not in newattrs:
                     newattrs[table_j] = {}
-                _compile_attrs(dbtype, [(1, table_j)], '', jdict, newattrs, 1, max_depth, {})
+                _compile_attrs(dbtype, [(1, table_j)], "", jdict, newattrs, 1, max_depth, {})
             if not quiet:
                 pbartotal += 1
                 pbar.update(1)
@@ -367,23 +352,23 @@ def _transform_json(db, dbtype, table, total, quiet, max_depth):
     cur = db.cursor()
     try:
         for t, attrs in newattrs.items():
-            cur.execute('DROP TABLE IF EXISTS ' + sqlid(t))
-            cur.execute('CREATE TABLE ' + sqlid(t) + '(__id bigint)')
+            cur.execute("DROP TABLE IF EXISTS " + sqlid(t))
+            cur.execute("CREATE TABLE " + sqlid(t) + "(__id bigint)")
             for k, a in attrs.items():
                 if a.order == 1:
-                    cur.execute('ALTER TABLE ' + sqlid(t) + ' ADD COLUMN ' + a.sqlattr(dbtype))
+                    cur.execute("ALTER TABLE " + sqlid(t) + " ADD COLUMN " + a.sqlattr(dbtype))
             for k, a in attrs.items():
                 if a.order == 2:
-                    cur.execute('ALTER TABLE ' + sqlid(t) + ' ADD COLUMN ' + a.sqlattr(dbtype))
+                    cur.execute("ALTER TABLE " + sqlid(t) + " ADD COLUMN " + a.sqlattr(dbtype))
             for k, a in attrs.items():
                 if a.order == 3:
-                    cur.execute('ALTER TABLE ' + sqlid(t) + ' ADD COLUMN ' + a.sqlattr(dbtype))
+                    cur.execute("ALTER TABLE " + sqlid(t) + " ADD COLUMN " + a.sqlattr(dbtype))
     finally:
         cur.close()
     db.commit()
     # Set all row IDs to 1
     row_ids = {}
-    for t in newattrs.keys():
+    for t in newattrs:
         row_ids[t] = 1
     # Run transformation
     # Select only JSON columns
@@ -391,13 +376,13 @@ def _transform_json(db, dbtype, table, total, quiet, max_depth):
         return [], {}
     cur = server_cursor(db, dbtype)
     try:
-        cur.execute('SELECT ' + ','.join([cast_to_varchar(sqlid(a), dbtype) for a in json_attrs]) + ' FROM ' +
+        cur.execute("SELECT " + ",".join([cast_to_varchar(sqlid(a), dbtype) for a in json_attrs]) + " FROM " +
                     sqlid(table))
         pbar = None
         pbartotal = 0
         if not quiet:
-            pbar = tqdm(desc='transforming', total=total, leave=False, mininterval=3, smoothing=0, colour='#A9A9A9',
-                        bar_format='{desc} {bar}{postfix}')
+            pbar = tqdm(desc="transforming", total=total, leave=False, mininterval=3, smoothing=0, colour="#A9A9A9",
+                        bar_format="{desc} {bar}{postfix}")
         cur2 = db.cursor()
         while True:
             row = cur.fetchone()
@@ -407,32 +392,32 @@ def _transform_json(db, dbtype, table, total, quiet, max_depth):
                 if data is None:
                     continue
                 d = data.strip()
-                if len(d) == 0 or d[0] != '{':
+                if len(d) == 0 or d[0] != "{":
                     continue
                 try:
                     jdict = json.loads(d)
                 except ValueError:
                     continue
-                table_j = table + '__t' if i == 0 else table + '__t' + str(i + 1)
-                _transform_data(dbtype, '', cur2, [(1, table_j)], jdict, newattrs, 1, row_ids, max_depth, {})
+                table_j = table + "__t" if i == 0 else table + "__t" + str(i + 1)
+                _transform_data(dbtype, "", cur2, [(1, table_j)], jdict, newattrs, 1, row_ids, max_depth, {})
             if not quiet:
                 pbartotal += 1
                 pbar.update(1)
         if not quiet:
             pbar.close()
     except (RuntimeError, psycopg2.Error, sqlite3.OperationalError, duckdb.CatalogException) as e:
-        raise RuntimeError('running JSON transform: ' + str(e))
+        raise RuntimeError("running JSON transform: " + str(e))
     finally:
         cur.close()
     db.commit()
     tcatalog = _tcatalog(table)
     cur = db.cursor()
     try:
-        cur.execute('CREATE TABLE ' + sqlid(tcatalog) + '(table_name ' + varchar_type(dbtype) + ' NOT NULL)')
-        for t in newattrs.keys():
-            cur.execute('INSERT INTO ' + sqlid(tcatalog) + ' VALUES(' + encode_sql(dbtype, t) + ')')
+        cur.execute("CREATE TABLE " + sqlid(tcatalog) + "(table_name " + varchar_type(dbtype) + " NOT NULL)")
+        for t in newattrs:
+            cur.execute("INSERT INTO " + sqlid(tcatalog) + " VALUES(" + encode_sql(dbtype, t) + ")")
     except (RuntimeError, psycopg2.Error, sqlite3.OperationalError, duckdb.CatalogException) as e:
-        raise RuntimeError('writing table catalog for JSON transform: ' + str(e))
+        raise RuntimeError("writing table catalog for JSON transform: " + str(e))
     finally:
         cur.close()
     db.commit()
