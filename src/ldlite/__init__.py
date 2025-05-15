@@ -1,6 +1,7 @@
-"""LDLite is a lightweight reporting tool for FOLIO services.  It is part of
-the Library Data Platform project and provides basic LDP functions without
-requiring the platform to be installed.
+"""LDLite is a lightweight reporting tool for FOLIO services.
+
+It is part of the Library Data Platform project and provides basic LDP
+functions without requiring the platform to be installed.
 
 LDLite functions include retrieving data from a FOLIO instance, transforming
 the data, and storing the data in a reporting database for further querying.
@@ -33,14 +34,14 @@ Example:
 
 """
 
+from __future__ import annotations
+
 import json
 import sqlite3
 import sys
-from typing import NoReturn
+from typing import Any, NoReturn
 
 import duckdb
-
-# import pandas
 import psycopg2
 import requests
 from tqdm import tqdm
@@ -48,28 +49,14 @@ from tqdm import tqdm
 from ._csv import to_csv
 from ._jsonx import Attr, drop_json_tables, transform_json
 from ._query import query_dict
-
-# from ._camelcase import _decode_camel_case
 from ._request import request_get
 from ._select import select
-from ._sqlx import DBType, autocommit, encode_sql_str, json_type, sqlid, strip_schema
-
-# from src.ldlite._csv import *
+from ._sqlx import DBType, autocommit, encode_sql_str, json_type, sqlid
 from ._xlsx import to_xlsx
 
-# from warnings import warn
-
-
-# def _rename_tables(db, tables):
-#     cur = db.cursor()
-#     try:
-#         for t in tables:
-#             cur.execute('DROP TABLE IF EXISTS ' + _sqlid(t))
-#             cur.execute('ALTER TABLE ' + _sqlid(_stage_table(t)) + ' RENAME TO ' + _sqlid(_strip_schema(t)))
-#     finally:
-#         cur.close()
 
 class LDLite:
+    """LDLite contains the primary functionality for reporting."""
 
     def __init__(self) -> None:
         """Creates an instance of LDLite.
@@ -84,7 +71,7 @@ class LDLite:
         self._verbose = False
         self._quiet = False
         self.dbtype: DBType = DBType.UNDEFINED
-        self.db = None
+        self.db : duckdb.DuckDBPyConnection | psycopg2.extensions.connection | sqlite3.Connection | None = None
         self.login_token = None
         self.legacy_auth = True
         self.okapi_url = None
@@ -94,10 +81,10 @@ class LDLite:
         self._okapi_timeout = 60
         self._okapi_max_retries = 2
 
-    def _set_page_size(self, page_size) -> None:
+    def _set_page_size(self, page_size: int) -> None:
         self.page_size = page_size
 
-    def connect_db(self, filename=None) -> None:
+    def connect_db(self, filename: str | None=None) -> None:
         """Connects to an embedded database for storing data.
 
         The optional *filename* designates a local file containing the
@@ -114,7 +101,7 @@ class LDLite:
         """
         self._connect_db_duckdb(filename)
 
-    def _connect_db_duckdb(self, filename=None):
+    def _connect_db_duckdb(self, filename: str | None=None) -> duckdb.DuckDBPyConnection:
         """Connects to an embedded DuckDB database for storing data.
 
         The optional *filename* designates a local file containing the DuckDB
@@ -134,7 +121,7 @@ class LDLite:
         self.db = duckdb.connect(database=fn)
         return self.db
 
-    def connect_db_postgresql(self, dsn):
+    def connect_db_postgresql(self, dsn: str) -> psycopg2.extensions.connection:
         """Connects to a PostgreSQL database for storing data.
 
         The data source name is specified by *dsn*.  This method returns a
@@ -150,7 +137,7 @@ class LDLite:
         autocommit(self.db, self.dbtype, True)
         return self.db
 
-    def experimental_connect_db_sqlite(self, filename=None):
+    def experimental_connect_db_sqlite(self, filename: str | None=None) -> sqlite3.Connection:
         """Connects to an embedded SQLite database for storing data.
 
         This method is experimental and may not be supported in future versions.
@@ -181,6 +168,9 @@ class LDLite:
         data = {"username": self.okapi_user,
                 "password": self.okapi_password}
 
+        if self.okapi_url is None:
+            msg = "okapi_url is required"
+            raise ValueError(msg)
         authn = self.okapi_url + "/authn/" + ("login" if self.legacy_auth else "login-with-expiry")
         resp = requests.post(authn, headers=hdr, data=json.dumps(data),
                              timeout=self._okapi_timeout)
@@ -205,7 +195,7 @@ class LDLite:
             msg = "database connection not configured: use connect_db() or connect_db_postgresql()"
             raise RuntimeError(msg)
 
-    def connect_folio(self, url, tenant, user, password) -> None:
+    def connect_folio(self, url: str, tenant: str, user: str, password: str) -> None:
         """Connects to a FOLIO instance with a user name and password.
 
         The *url*, *tenant*, *user*, and *password* settings are FOLIO-specific
@@ -220,7 +210,7 @@ class LDLite:
         """
         self.connect_okapi(url, tenant, user, password)
 
-    def connect_okapi(self, url, tenant, user, password, legacy_auth=False) -> None:
+    def connect_okapi(self, url: str, tenant: str, user: str, password: str, legacy_auth: bool=False) -> None:
         """Deprecated; use connect_folio(). This will be removed for the Sunflower release."""
         if not url.startswith("https://"):
             msg = 'url must begin with "https://"'
@@ -232,13 +222,13 @@ class LDLite:
         self.legacy_auth = legacy_auth
         self._login()
 
-    def connect_okapi_token(self, url, tenant, token) -> None:
+    def connect_okapi_token(self, url: str, tenant: str, token: str) -> None:
         """Deprecated; use connect_folio(). This will be removed for the Sunflower release."""
         self.okapi_url = url.rstrip("/")
         self.okapi_tenant = tenant
         self.login_token = token
 
-    def drop_tables(self, table) -> None:
+    def drop_tables(self, table: str) -> None:
         """Drops a specified table and any accompanying tables that were output from JSON transformation.
 
         A table called *table*_jtable is used to retrieve the names of the
@@ -262,7 +252,7 @@ class LDLite:
             cur.close()
         drop_json_tables(self.db, self.dbtype, table)
 
-    def set_folio_max_retries(self, max_retries) -> None:
+    def set_folio_max_retries(self, max_retries: int) -> None:
         """Sets the maximum number of retries for FOLIO requests.
 
         This method changes the configured maximum number of retries which is
@@ -276,11 +266,11 @@ class LDLite:
         """
         self.set_okapi_max_retries(max_retries)
 
-    def set_okapi_max_retries(self, max_retries) -> None:
+    def set_okapi_max_retries(self, max_retries: int) -> None:
         """Deprecated; use set_folio_max_retries(). This will be removed for the Sunflower release."""
         self._okapi_max_retries = max_retries
 
-    def set_folio_timeout(self, timeout) -> None:
+    def set_folio_timeout(self, timeout: int) -> None:
         """Sets the timeout for connections to FOLIO.
 
         This method changes the configured timeout which is initially set to 60
@@ -293,11 +283,11 @@ class LDLite:
         self.set_okapi_timeout(timeout)
 
 
-    def set_okapi_timeout(self, timeout) -> None:
+    def set_okapi_timeout(self, timeout: int) -> None:
         """Deprecated; use set_folio_timeout(). This will be removed for the Sunflower release."""
         self._okapi_timeout = timeout
 
-    def query(self, table, path, query=None, json_depth=3, limit=None, transform=None):
+    def query(self, table: str, path: str, query: str| None=None, json_depth: int=3, limit: int| None=None, transform:Any=None) -> list[str]:  # noqa: C901, PLR0912, PLR0913, PLR0915
         """Submits a query to a FOLIO module, and transforms and stores the result.
 
         The retrieved result is stored in *table* within the reporting
@@ -434,7 +424,7 @@ class LDLite:
                             "INSERT INTO " + sqlid(table) + " VALUES(" + str(count + 1) + "," + encode_sql_str(
                                 self.dbtype, json.dumps(d, indent=4)) + ")")
                         count += 1
-                        if not self._quiet:
+                        if pbar is not None:
                             if pbartotal + 1 > total:
                                 pbartotal = total
                                 pbar.update(total - pbartotal)
@@ -448,7 +438,7 @@ class LDLite:
                     page += 1
             finally:
                 cur.close()
-            if not self._quiet:
+            if pbar is not None:
                 pbar.close()
             self.db.commit()
             newtables = [table]
@@ -457,7 +447,7 @@ class LDLite:
                 jsontables, jsonattrs = transform_json(self.db, self.dbtype, table, count, self._quiet, json_depth)
                 newtables += jsontables
                 newattrs = jsonattrs
-                for t, attrs in newattrs.items():
+                for t in newattrs:
                     newattrs[t]["__id"] = Attr("__id", "bigint")
                 newattrs[table] = {"__id": Attr("__id", "bigint")}
         finally:
@@ -478,17 +468,17 @@ class LDLite:
                         pass
                     finally:
                         cur.close()
-                    if not self._quiet:
+                    if pbar is not None:
                         pbartotal += 1
                         pbar.update(1)
-            if not self._quiet:
+            if pbar is not None:
                 pbar.close()
         # Return table names
         if not self._quiet:
             print("ldlite: created tables: " + ", ".join(newtables), file=sys.stderr)
         return newtables
 
-    def quiet(self, enable) -> None:
+    def quiet(self, enable: bool) -> None:
         """Configures suppression of progress messages.
 
         If *enable* is True, progress messages are suppressed; if False, they
@@ -498,15 +488,12 @@ class LDLite:
             ld.quiet(True)
 
         """
-        if enable is None:
-            msg = "quiet(None) is invalid"
-            raise ValueError(msg)
         if enable and self._verbose:
             msg = '"verbose" and "quiet" modes cannot both be enabled'
             raise ValueError(msg)
         self._quiet = enable
 
-    def select(self, table, columns=None, limit=None) -> None:
+    def select(self, table: str, columns: list[str] | None=None, limit: int| None=None) -> None:
         """Prints rows of a table in the reporting database.
 
         By default all rows and columns of *table* are printed to standard
@@ -520,7 +507,6 @@ class LDLite:
 
         """
         self._check_db()
-        # f = sys.stdout if file is None else file
         f = sys.stdout
         if self._verbose:
             print("ldlite: reading from table: " + table, file=sys.stderr)
@@ -532,7 +518,7 @@ class LDLite:
         finally:
             autocommit(self.db, self.dbtype, True)
 
-    def export_csv(self, filename, table, header=True) -> None:
+    def export_csv(self, filename: str, table: str, header: bool=True) -> None:
         """Export a table in the reporting database to a CSV file.
 
         All rows of *table* are exported to *filename*, or *filename*.csv if
@@ -554,12 +540,12 @@ class LDLite:
         finally:
             autocommit(self.db, self.dbtype, True)
 
-    def to_csv(self, filename, table, header=True) -> NoReturn:
+    def to_csv(self) -> NoReturn:
         """Deprecated; use export_csv()."""
         msg = "to_csv() is no longer supported: use export_csv()"
         raise ValueError(msg)
 
-    def export_excel(self, filename, table, header=True) -> None:
+    def export_excel(self, filename: str, table: str, header: bool=True) -> None:
         """Export a table in the reporting database to an Excel file.
 
         All rows of *table* are exported to *filename*, or *filename*.xlsx if
@@ -581,12 +567,12 @@ class LDLite:
         finally:
             autocommit(self.db, self.dbtype, True)
 
-    def to_xlsx(self, filename, table, header=True) -> NoReturn:
+    def to_xlsx(self) -> NoReturn:
         """Deprecated; use export_excel()."""
         msg = "to_xlsx() is no longer supported: use export_excel()"
         raise ValueError(msg)
 
-    def __verbose(self, enable) -> None:
+    def verbose(self, enable:bool) -> None:
         """Configures verbose output.
 
         If *enable* is True, verbose output is enabled; if False, it is
@@ -596,9 +582,6 @@ class LDLite:
             ld.verbose(True)
 
         """
-        if enable is None:
-            msg = "verbose(None) is invalid"
-            raise ValueError(msg)
         if enable and self._quiet:
             msg = '"verbose" and "quiet" modes cannot both be enabled'
             raise ValueError(msg)

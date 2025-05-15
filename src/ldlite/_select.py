@@ -79,8 +79,8 @@ def select(  # noqa: C901, PLR0912, PLR0913, PLR0915
     db: Any,
     dbtype: DBType,
     table: str,
-    columns: list[str],
-    limit: int,
+    columns: list[str] | None,
+    limit: int | None,
     file: TextIO = sys.stdout,
 ) -> None:
     if columns is None or columns == []:

@@ -33,12 +33,12 @@ class Attr:
     def __init__(
         self,
         name: str,
-        datatype: Literal["varchar", "integer", "numeric", "boolean", "uuid"],
+        datatype: Literal["varchar", "integer", "numeric", "boolean", "uuid", "bigint"],
         order: None | Literal[1, 2, 3] = None,
         data: Any = None,
     ):
         self.name = name
-        self.datatype: Literal["varchar", "integer", "numeric", "boolean", "uuid"] = (
+        self.datatype: Literal["varchar", "integer", "numeric", "boolean", "uuid", "bigint"] = (
             datatype
         )
         self.order: None | Literal[1, 2, 3] = order

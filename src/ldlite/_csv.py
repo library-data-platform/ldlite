@@ -15,7 +15,7 @@ def _escape_csv(field: str) -> str:
 
 
 def to_csv(
-    db: Any, dbtype: DBType, table: str, filename: str, header: list[str]
+    db: Any, dbtype: DBType, table: str, filename: str, header: bool
 ) -> None:
     # Read attributes
     attrs = []

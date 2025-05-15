@@ -6,7 +6,7 @@ from ._sqlx import DBType, server_cursor, sqlid
 
 
 def to_xlsx(  # noqa: C901, PLR0912, PLR0915
-    db: Any, dbtype: DBType, table: str, filename: str, header: list[str]
+    db: Any, dbtype: DBType, table: str, filename: str, header: bool
 ) -> None:
     # Read attributes
     attrs = []
