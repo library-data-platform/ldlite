@@ -49,7 +49,7 @@ from ._csv import _to_csv
 from ._jsonx import Attr
 from ._jsonx import _drop_json_tables
 from ._jsonx import _transform_json
-from ._query import _query_dict
+from ._query import query_dict
 # from ._camelcase import _decode_camel_case
 from ._request import _request_get
 from ._select import _select
@@ -363,7 +363,7 @@ class LDLite:
             schema_table = [table]
         if not self._quiet:
             print('ldlite: querying: ' + path, file=sys.stderr)
-        querycopy = _query_dict(query)
+        querycopy = query_dict(query)
         _drop_json_tables(self.db, table)
         _autocommit(self.db, self.dbtype, False)
         try:

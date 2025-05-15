@@ -1,11 +1,12 @@
+from __future__ import annotations
+
 import copy
 
 
-def _query_dict(query):
-    if query is None:
-        return {}
+def query_dict(query: None | str | dict[str, str]) -> dict[str, str]:
     if isinstance(query, str):
         return {"query": query}
     if isinstance(query, dict):
         return copy.deepcopy(query)
-    raise ValueError('invalid query "' + str(query) + '"')
+
+    return {}
