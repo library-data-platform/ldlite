@@ -5,7 +5,9 @@ import xlsxwriter
 from ._sqlx import DBType, server_cursor, sqlid
 
 
-def to_xlsx(db: Any, dbtype: DBType, table: str, filename: str, header: list[str]) -> None:  # noqa: C901, PLR0912, PLR0915
+def to_xlsx(  # noqa: C901, PLR0912, PLR0915
+    db: Any, dbtype: DBType, table: str, filename: str, header: list[str]
+) -> None:
     # Read attributes
     attrs = []
     width = []
@@ -18,8 +20,14 @@ def to_xlsx(db: Any, dbtype: DBType, table: str, filename: str, header: list[str
     finally:
         cur.close()
     cols = ",".join([sqlid(a[0]) for a in attrs])
-    query = "SELECT " + cols + " FROM " + sqlid(table) + " ORDER BY " + ",".join(
-        [str(i + 1) for i in range(len(attrs))])
+    query = (
+        "SELECT "
+        + cols
+        + " FROM "
+        + sqlid(table)
+        + " ORDER BY "
+        + ",".join([str(i + 1) for i in range(len(attrs))])
+    )
     # Scan
     cur = server_cursor(db, dbtype)
     try:
