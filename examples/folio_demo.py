@@ -1,4 +1,5 @@
 # This script uses LDLite to extract sample data from the FOLIO demo sites.
+from __future__ import annotations
 
 import sys
 
@@ -24,20 +25,20 @@ selected_site = okapi_snapshot
 ld = ldlite.LDLite()
 if selected_site == okapi_snapshot:
     ld.connect_okapi(
-        url=selected_site, tenant="diku", user="diku_admin", password="admin"
+        url=selected_site, tenant="diku", user="diku_admin", password="admin",
     )
 else:
     ld.connect_folio(
-        url=selected_site, tenant="diku", user="diku_admin", password="admin"
+        url=selected_site, tenant="diku", user="diku_admin", password="admin",
     )
 
-db = ld.connect_db(filename="ldlite.db")
+ld.connect_db(filename="ldlite.db")
 # For PostgreSQL, use connect_db_postgresql() instead of connect_db():
-# db = ld.connect_db_postgresql(dsn='dbname=ldlite host=localhost user=ldlite')
+# ld.connect_db_postgresql(dsn='dbname=ldlite host=localhost user=ldlite')
 
 allrec = "cql.allRecords=1 sortby id"
 
-queries = [
+queries: list[tuple[str, ...] | tuple[str, str, object, int]] = [
     ("folio_agreements.entitlement", "/erm/entitlements", allrec),
     ("folio_agreements.erm_resource", "/erm/resource", allrec),
     ("folio_agreements.org", "/erm/org", allrec),
@@ -227,14 +228,15 @@ queries = [
     ("folio_users.users", "/users", allrec),
 ]
 
-tables = []
+tables: list[str] = []
 for q in queries:
     try:
         if len(q) == 4:
-            t = ld.query(table=q[0], path=q[1], query=q[2], json_depth=q[3])
+            tables += ld.query(
+                table=q[0], path=q[1], query=str(q[2]), json_depth=int(q[3]),
+            )
         else:
-            t = ld.query(table=q[0], path=q[1], query=q[2])
-        tables += t
+            tables += ld.query(table=q[0], path=q[1], query=str(q[2]))
     except (ValueError, RuntimeError) as e:
         print(
             'folio_demo.py: error processing "' + str(q[1]) + '": ' + str(e),
