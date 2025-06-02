@@ -39,7 +39,12 @@ class Attr:
     ):
         self.name = name
         self.datatype: Literal[
-            "varchar", "integer", "numeric", "boolean", "uuid", "bigint"
+            "varchar",
+            "integer",
+            "numeric",
+            "boolean",
+            "uuid",
+            "bigint",
         ] = datatype
         self.order: None | Literal[1, 2, 3] = order
         self.data = data
@@ -483,8 +488,7 @@ def transform_json(  # noqa: C901, PLR0912, PLR0913, PLR0915
     cur = db.cursor()
     try:
         cur.execute("SELECT * FROM " + sqlid(table) + " LIMIT 1")
-        for a in cur.description:
-            str_attrs.extend(a[0])
+        str_attrs.extend([a[0] for a in cur.description])
     finally:
         cur.close()
     # Scan data for JSON objects

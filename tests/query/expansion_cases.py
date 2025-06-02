@@ -15,7 +15,7 @@ class QueryCase:
     expected_tables: list[str]
     expected_values: dict[str, tuple[list[str], list[tuple[Any, ...]]]]
 
-    def patch__request_get(self, _request_get_mock: MagicMock) -> None:
+    def patch_request_get(self, _request_get_mock: MagicMock) -> None:
         total_mock = MagicMock()
         total_mock.status_code = 200
         total_mock.json.return_value = {}

@@ -32,7 +32,7 @@ def pg_dsn(pytestconfig: pytest.Config) -> None | Callable[[str], str]:
     return setup
 
 
-@mock.patch("ldlite._request_get")
+@mock.patch("ldlite.request_get")
 @parametrize_with_cases("tc", cases=QueryTestCases)
 def test_postgres(
     request_get_mock: MagicMock, pg_dsn: None | Callable[[str], str], tc: QueryCase
@@ -43,7 +43,7 @@ def test_postgres(
     from ldlite import LDLite as uut
 
     dsn = pg_dsn(tc.db)
-    tc.patch__request_get(request_get_mock)
+    tc.patch_request_get(request_get_mock)
 
     ld = uut()
 
