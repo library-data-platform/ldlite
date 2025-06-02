@@ -1,9 +1,11 @@
-from ._sqlx import _server_cursor
-from ._sqlx import _sqlid
+from pathlib import Path
+from typing import Any
+
+from ._sqlx import DBType, server_cursor, sqlid
 
 
-def _escape_csv(field):
-    b = ''
+def _escape_csv(field: str) -> str:
+    b = ""
     for f in field:
         if f == '"':
             b += '""'
@@ -12,36 +14,46 @@ def _escape_csv(field):
     return b
 
 
-def _to_csv(db, dbtype, table, filename, header):
+def to_csv(db: Any, dbtype: DBType, table: str, filename: str, header: bool) -> None:
     # Read attributes
     attrs = []
     cur = db.cursor()
     try:
-        cur.execute('SELECT * FROM ' + _sqlid(table) + ' LIMIT 1')
+        cur.execute("SELECT * FROM " + sqlid(table) + " LIMIT 1")
         for a in cur.description:
-            attrs.append((a[0], a[1]))
+            attrs.extend((a[0], a[1]))
     finally:
         cur.close()
     # Write data
-    cur = _server_cursor(db, dbtype)
+    cur = server_cursor(db, dbtype)
     try:
-        cols = ','.join([_sqlid(a[0]) for a in attrs])
-        cur.execute('SELECT ' + cols + ' FROM ' + _sqlid(table) + ' ORDER BY ' + ','.join(
-            [str(i + 1) for i in range(len(attrs))]))
-        fn = filename if '.' in filename else filename + '.csv'
-        with open(fn, 'w') as f:
+        cols = ",".join([sqlid(a[0]) for a in attrs])
+        cur.execute(
+            "SELECT "
+            + cols
+            + " FROM "
+            + sqlid(table)
+            + " ORDER BY "
+            + ",".join([str(i + 1) for i in range(len(attrs))])
+        )
+        fn = Path(filename if "." in filename else filename + ".csv")
+        with fn.open("w") as f:
             if header:
-                print(','.join(['"' + a[0] + '"' for a in attrs]), file=f)
+                print(",".join(['"' + a[0] + '"' for a in attrs]), file=f)
             while True:
                 row = cur.fetchone()
                 if row is None:
                     break
-                s = ''
+                s = ""
                 for i, data in enumerate(row):
-                    d = '' if data is None else data
+                    d = "" if data is None else data
                     if i != 0:
-                        s += ','
-                    if attrs[i][1] == 'NUMBER' or attrs[i][1] == 20 or attrs[i][1] == 23:
+                        s += ","
+                    if (
+                        attrs[i][1] == "NUMBER"
+                        or attrs[i][1] == 20
+                        or attrs[i][1] == 23
+                    ):
                         s += str(d)
                     else:
                         s += '"' + _escape_csv(str(d)) + '"'
