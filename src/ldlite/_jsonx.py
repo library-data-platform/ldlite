@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 import sqlite3
 import uuid
-from typing import Any, Literal
+from typing import Any, Literal, Union
 
 import duckdb
 import psycopg2
@@ -18,6 +18,9 @@ from ._sqlx import (
     sqlid,
     varchar_type,
 )
+
+JsonValue = Union[float, int, str, bool, "Json", list["JsonValue"], None]
+Json = dict[str, JsonValue]
 
 
 def _is_uuid(val: str) -> bool:
@@ -179,7 +182,7 @@ def _compile_array_attrs(  # noqa: PLR0913
     dbtype: DBType,
     parents: list[tuple[int, str]],
     prefix: str,
-    jarray: list[dict | list | float | int | Any],
+    jarray: list[JsonValue],
     newattrs: dict[str, dict[str, Attr]],
     depth: int,
     arrayattr: str,
@@ -223,7 +226,7 @@ def _compile_attrs(  # noqa: C901, PLR0912, PLR0913
     dbtype: DBType,
     parents: list[tuple[int, str]],
     prefix: str,
-    jdict: dict[str | None, dict | list | float | int | None | Any],
+    jdict: Json,
     newattrs: dict[str, dict[str, Attr]],
     depth: int,
     max_depth: int,
@@ -235,8 +238,8 @@ def _compile_attrs(  # noqa: C901, PLR0912, PLR0913
     qkey = {}
     for k, a in quasikey.items():
         qkey[k] = Attr(a.name, a.datatype, order=1)
-    arrays = []
-    objects = []
+    arrays: list[tuple[str, list[JsonValue], str]] = []
+    objects: list[tuple[str, Json, str]] = []
     for k, v in jdict.items():
         if k is None or v is None:
             continue
@@ -260,7 +263,7 @@ def _compile_attrs(  # noqa: C901, PLR0912, PLR0913
             a = Attr(decode_camel_case(attr), "numeric", order=3)
             qkey[attr] = a
             newattrs[table][attr] = a
-        elif dbtype == 2 and _is_uuid(v):
+        elif dbtype == DBType.POSTGRES and _is_uuid(v):
             a = Attr(decode_camel_case(attr), "uuid", order=3)
             qkey[attr] = a
             newattrs[table][attr] = a
@@ -300,7 +303,7 @@ def _transform_array_data(  # noqa: PLR0913
     prefix: str,
     cur: Any,
     parents: list[tuple[int, str]],
-    jarray: list[dict | list | float | int | Any],
+    jarray: list[JsonValue],
     newattrs: dict[str, dict[str, Attr]],
     depth: int,
     row_ids: dict[str, int],
@@ -363,7 +366,7 @@ def _compile_data(  # noqa: C901, PLR0912, PLR0913
     prefix: str,
     cur: Any,
     parents: list[tuple[int, str]],
-    jdict: dict[str | None, dict | list | float | int | None | Any],
+    jdict: Json,
     newattrs: dict[str, dict[str, Attr]],
     depth: int,
     row_ids: dict[str, int],
@@ -437,7 +440,7 @@ def _transform_data(  # noqa: PLR0913
     prefix: str,
     cur: Any,
     parents: list[tuple[int, str]],
-    jdict: dict[str | None, dict | list | float | int | None | Any],
+    jdict: Json,
     newattrs: dict[str, dict[str, Attr]],
     depth: int,
     row_ids: dict[str, int],
@@ -496,7 +499,7 @@ def transform_json(  # noqa: C901, PLR0912, PLR0913, PLR0915
         return [], {}
     json_attrs = []
     json_attrs_set = set()
-    newattrs = {}
+    newattrs: dict[str, dict[str, Attr]] = {}
     cur = server_cursor(db, dbtype)
     try:
         cur.execute(
