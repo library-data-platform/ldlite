@@ -1,5 +1,7 @@
+from __future__ import annotations
+
 from pathlib import Path
-from typing import Any
+from typing import Any, Literal
 
 from ._sqlx import DBType, server_cursor, sqlid
 
@@ -16,12 +18,11 @@ def _escape_csv(field: str) -> str:
 
 def to_csv(db: Any, dbtype: DBType, table: str, filename: str, header: bool) -> None:
     # Read attributes
-    attrs = []
+    attrs: list[tuple[str, str | Literal[20, 23]]] = []
     cur = db.cursor()
     try:
         cur.execute("SELECT * FROM " + sqlid(table) + " LIMIT 1")
-        for a in cur.description:
-            attrs.extend((a[0], a[1]))
+        attrs.extend([(a[0], a[1]) for a in cur.description])
     finally:
         cur.close()
     # Write data

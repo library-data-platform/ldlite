@@ -77,9 +77,9 @@ class LDLite:
             | sqlite3.Connection
             | None
         ) = None
-        self.login_token = None
+        self.login_token: str | None = None
         self.legacy_auth = True
-        self.okapi_url = None
+        self.okapi_url: str | None = None
         self.okapi_tenant = None
         self.okapi_user = None
         self.okapi_password = None

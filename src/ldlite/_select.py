@@ -28,7 +28,7 @@ def _maxlen(lines: list[str]) -> int:
 
 
 def _rstrip_lines(lines: list[str]) -> list[str]:
-    newlines = []
+    newlines: list[str] = []
     for s in lines:
         newlines.extend(s.rstrip())
     return newlines
