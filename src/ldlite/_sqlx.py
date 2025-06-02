@@ -1,8 +1,12 @@
 from __future__ import annotations
 
 import secrets
+import sqlite3
 from enum import Enum
-from typing import Any
+from typing import Any, Union, cast
+
+import duckdb
+import psycopg2
 
 
 class DBType(Enum):
@@ -11,6 +15,42 @@ class DBType(Enum):
     POSTGRES = 2
     SQLITE = 4
 
+
+DbConn = Union[
+    duckdb.DuckDBPyConnection,
+    psycopg2.extensions.connection,
+    sqlite3.Connection,
+]
+
+DbCursor = Union[
+    duckdb.DuckDBPyConnection,
+    psycopg2.extensions.cursor,
+    sqlite3.Cursor,
+]
+
+def as_duckdb(
+    db: DbConn, dbtype: DBType,
+) -> duckdb.DuckDBPyConnection | None:
+    if dbtype != DBType.DUCKDB:
+        return None
+
+    return cast("duckdb.DuckDBPyConnection", db)
+
+def as_postgres(
+    db: DbConn, dbtype: DBType,
+) -> psycopg2.extensions.connection | None:
+    if dbtype != DBType.POSTGRES:
+        return None
+
+    return cast("psycopg2.extensions.connection", db)
+
+def as_sqlite(
+    db: DbConn, dbtype: DBType,
+) -> sqlite3.Connection | None:
+    if dbtype != DBType.SQLITE:
+        return None
+
+    return cast("sqlite3.Connection", db)
 
 def strip_schema(table: str) -> str:
     st = table.split(".")
@@ -21,21 +61,22 @@ def strip_schema(table: str) -> str:
     raise ValueError("invalid table name: " + table)
 
 
-def autocommit(db: Any, dbtype: DBType, enable: bool) -> None:
-    if dbtype == DBType.POSTGRES:
-        db.rollback()
-        db.set_session(autocommit=enable)
-    if dbtype == DBType.SQLITE:
-        db.rollback()
+def autocommit(db: DbConn, dbtype: DBType, enable: bool) -> None:
+    if (pgdb := as_postgres(db, dbtype)) is not None:
+        pgdb.rollback()
+        pgdb.set_session(autocommit=enable)
+
+    if (sql3db := as_sqlite(db, dbtype)) is not None:
+        sql3db.rollback()
         if enable:
-            db.isolation_level = None
+            sql3db.isolation_level = None
         else:
-            db.isolation_level = "DEFERRED"
+            sql3db.isolation_level = "DEFERRED"
 
 
-def server_cursor(db: Any, dbtype: DBType) -> Any:
-    if dbtype == DBType.POSTGRES:
-        return db.cursor(name=("ldlite" + secrets.token_hex(4)))
+def server_cursor(db: DbConn, dbtype: DBType) -> DbCursor:
+    if (pgdb := as_postgres(db, dbtype)) is not None:
+        return pgdb.cursor(name=("ldlite" + secrets.token_hex(4)))
     return db.cursor()
 
 
