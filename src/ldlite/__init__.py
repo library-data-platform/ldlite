@@ -51,7 +51,7 @@ from ._jsonx import Attr, drop_json_tables, transform_json
 from ._query import query_dict
 from ._request import request_get
 from ._select import select
-from ._sqlx import DBType, autocommit, encode_sql_str, json_type, sqlid
+from ._sqlx import DBType, DbConn, autocommit, encode_sql_str, json_type, sqlid
 from ._xlsx import to_xlsx
 
 
@@ -71,12 +71,7 @@ class LDLite:
         self._verbose = False
         self._quiet = False
         self.dbtype: DBType = DBType.UNDEFINED
-        self.db: (
-            duckdb.DuckDBPyConnection
-            | psycopg2.extensions.connection
-            | sqlite3.Connection
-            | None
-        ) = None
+        self.db: DbConn | None = None
         self.login_token: str | None = None
         self.legacy_auth = True
         self.okapi_url: str | None = None
@@ -210,10 +205,11 @@ class LDLite:
             msg = "connection to folio not configured: use connect_folio()"
             raise RuntimeError(msg)
 
-    def _check_db(self) -> None:
+    def _check_db(self) -> bool:
         if self.db is None:
             msg = "no database connection: use connect_db() or connect_db_postgresql()"
             raise RuntimeError(msg)
+        return True
 
     def connect_folio(self, url: str, tenant: str, user: str, password: str) -> None:
         """Connects to a FOLIO instance with a user name and password.
@@ -265,6 +261,9 @@ class LDLite:
             ld.drop_tables('g')
 
         """
+        if self.db is None:
+            self._check_db()
+            return
         autocommit(self.db, self.dbtype, True)
         schema_table = table.strip().split(".")
         if len(schema_table) < 1 or len(schema_table) > 2:
@@ -373,7 +372,9 @@ class LDLite:
         if json_depth is None or json_depth < 0 or json_depth > 4:
             raise ValueError("invalid value for json_depth: " + str(json_depth))
         self._check_okapi()
-        self._check_db()
+        if self.db is None:
+            self._check_db()
+            return []
         if len(schema_table) == 2 and self.dbtype == DBType.SQLITE:
             table = schema_table[0] + "_" + schema_table[1]
             schema_table = [table]
@@ -556,8 +557,9 @@ class LDLite:
                 newattrs[table] = {"__id": Attr("__id", "bigint")}
         finally:
             autocommit(self.db, self.dbtype, True)
-        # Create indexes
-        if self.dbtype == 2:
+        # Create indexes (for postgres)
+        # This broke in the 0.34.0 release but is probably better broken
+        if False:
             index_total = sum(map(len, newattrs.values()))
             if not self._quiet:
                 pbar = tqdm(
@@ -628,7 +630,10 @@ class LDLite:
             ld.select(table='loans', columns=['id', 'item_id', 'loan_date'])
 
         """
-        self._check_db()
+        if self.db is None:
+            self._check_db()
+            return
+
         f = sys.stdout
         if self._verbose:
             print("ldlite: reading from table: " + table, file=sys.stderr)
@@ -653,7 +658,10 @@ class LDLite:
             ld.to_csv(table='g', filename='g.csv')
 
         """
-        self._check_db()
+        if self.db is None:
+            self._check_db()
+            return
+
         autocommit(self.db, self.dbtype, False)
         try:
             to_csv(self.db, self.dbtype, table, filename, header)
@@ -680,7 +688,10 @@ class LDLite:
             ld.export_excel(table='g', filename='g')
 
         """
-        self._check_db()
+        if self.db is None:
+            self._check_db()
+            return
+
         autocommit(self.db, self.dbtype, False)
         try:
             to_xlsx(self.db, self.dbtype, table, filename, header)
