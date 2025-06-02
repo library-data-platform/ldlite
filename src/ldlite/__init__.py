@@ -276,7 +276,7 @@ class LDLite:
             pass
         finally:
             cur.close()
-        drop_json_tables(self.db, self.dbtype, table)
+        drop_json_tables(self.db, table)
 
     def set_folio_max_retries(self, max_retries: int) -> None:
         """Sets the maximum number of retries for FOLIO requests.
