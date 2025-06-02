@@ -80,9 +80,9 @@ class LDLite:
         self.login_token: str | None = None
         self.legacy_auth = True
         self.okapi_url: str | None = None
-        self.okapi_tenant = None
-        self.okapi_user = None
-        self.okapi_password = None
+        self.okapi_tenant: str | None = None
+        self.okapi_user: str | None = None
+        self.okapi_password: str | None = None
         self._okapi_timeout = 60
         self._okapi_max_retries = 2
 
@@ -174,7 +174,10 @@ class LDLite:
     def _login(self) -> None:
         if self._verbose:
             print("ldlite: logging in to folio", file=sys.stderr)
-        hdr = {"X-Okapi-Tenant": self.okapi_tenant, "Content-Type": "application/json"}
+        hdr = {
+            "X-Okapi-Tenant": str(self.okapi_tenant),
+            "Content-Type": "application/json",
+        }
         data = {"username": self.okapi_user, "password": self.okapi_password}
 
         if self.okapi_url is None:
@@ -397,13 +400,13 @@ class LDLite:
             self.db.commit()
             # First get total number of records
             hdr = {
-                "X-Okapi-Tenant": self.okapi_tenant,
-                "X-Okapi-Token": self.login_token,
+                "X-Okapi-Tenant": str(self.okapi_tenant),
+                "X-Okapi-Token": str(self.login_token),
             }
             querycopy["offset"] = "0"
             querycopy["limit"] = "1"
             resp = request_get(
-                self.okapi_url + path,
+                str(self.okapi_url) + path,
                 params=querycopy,
                 headers=hdr,
                 timeout=self._okapi_timeout,
@@ -418,11 +421,11 @@ class LDLite:
                 # to allow for bigger internal changes.
                 self._login()
                 hdr = {
-                    "X-Okapi-Tenant": self.okapi_tenant,
-                    "X-Okapi-Token": self.login_token,
+                    "X-Okapi-Tenant": str(self.okapi_tenant),
+                    "X-Okapi-Token": str(self.login_token),
                 }
                 resp = request_get(
-                    self.okapi_url + path,
+                    str(self.okapi_url) + path,
                     params=querycopy,
                     headers=hdr,
                     timeout=self._okapi_timeout,
@@ -473,7 +476,7 @@ class LDLite:
                     querycopy["offset"] = str(offset)
                     querycopy["limit"] = str(lim)
                     resp = request_get(
-                        self.okapi_url + path,
+                        str(self.okapi_url) + path,
                         params=querycopy,
                         headers=hdr,
                         timeout=self._okapi_timeout,
@@ -483,11 +486,11 @@ class LDLite:
                         # See warning above for retries
                         self._login()
                         hdr = {
-                            "X-Okapi-Tenant": self.okapi_tenant,
-                            "X-Okapi-Token": self.login_token,
+                            "X-Okapi-Tenant": str(self.okapi_tenant),
+                            "X-Okapi-Token": str(self.login_token),
                         }
                         resp = request_get(
-                            self.okapi_url + path,
+                            str(self.okapi_url) + path,
                             params=querycopy,
                             headers=hdr,
                             timeout=self._okapi_timeout,
