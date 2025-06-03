@@ -1,7 +1,12 @@
+from __future__ import annotations
+
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING
 
 from ._sqlx import DBType, server_cursor, sqlid
+
+if TYPE_CHECKING:
+    from _typeshed import dbapi
 
 
 def _escape_csv(field: str) -> str:
@@ -14,14 +19,20 @@ def _escape_csv(field: str) -> str:
     return b
 
 
-def to_csv(db: Any, dbtype: DBType, table: str, filename: str, header: bool) -> None:
+def to_csv(
+    db: dbapi.DBAPIConnection,
+    dbtype: DBType,
+    table: str,
+    filename: str,
+    header: bool,
+) -> None:
     # Read attributes
-    attrs = []
+    attrs: list[tuple[str, dbapi.DBAPITypeCode]] = []
     cur = db.cursor()
     try:
         cur.execute("SELECT * FROM " + sqlid(table) + " LIMIT 1")
-        for a in cur.description:
-            attrs.extend((a[0], a[1]))
+        if cur.description is not None:
+            attrs.extend([(a[0], a[1]) for a in cur.description])
     finally:
         cur.close()
     # Write data
@@ -34,7 +45,7 @@ def to_csv(db: Any, dbtype: DBType, table: str, filename: str, header: bool) -> 
             + " FROM "
             + sqlid(table)
             + " ORDER BY "
-            + ",".join([str(i + 1) for i in range(len(attrs))])
+            + ",".join([str(i + 1) for i in range(len(attrs))]),
         )
         fn = Path(filename if "." in filename else filename + ".csv")
         with fn.open("w") as f:

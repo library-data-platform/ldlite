@@ -39,7 +39,7 @@ from __future__ import annotations
 import json
 import sqlite3
 import sys
-from typing import Any, NoReturn
+from typing import TYPE_CHECKING, NoReturn, cast
 
 import duckdb
 import psycopg2
@@ -51,8 +51,11 @@ from ._jsonx import Attr, drop_json_tables, transform_json
 from ._query import query_dict
 from ._request import request_get
 from ._select import select
-from ._sqlx import DBType, autocommit, encode_sql_str, json_type, sqlid
+from ._sqlx import DBType, as_postgres, autocommit, encode_sql_str, json_type, sqlid
 from ._xlsx import to_xlsx
+
+if TYPE_CHECKING:
+    from _typeshed import dbapi
 
 
 class LDLite:
@@ -71,18 +74,13 @@ class LDLite:
         self._verbose = False
         self._quiet = False
         self.dbtype: DBType = DBType.UNDEFINED
-        self.db: (
-            duckdb.DuckDBPyConnection
-            | psycopg2.extensions.connection
-            | sqlite3.Connection
-            | None
-        ) = None
-        self.login_token = None
+        self.db: dbapi.DBAPIConnection | None = None
+        self.login_token: str | None = None
         self.legacy_auth = True
-        self.okapi_url = None
-        self.okapi_tenant = None
-        self.okapi_user = None
-        self.okapi_password = None
+        self.okapi_url: str | None = None
+        self.okapi_tenant: str | None = None
+        self.okapi_user: str | None = None
+        self.okapi_password: str | None = None
         self._okapi_timeout = 60
         self._okapi_max_retries = 2
 
@@ -126,8 +124,9 @@ class LDLite:
         """
         self.dbtype = DBType.DUCKDB
         fn = filename if filename is not None else ":memory:"
-        self.db = duckdb.connect(database=fn)
-        return self.db
+        db = duckdb.connect(database=fn)
+        self.db = cast("dbapi.DBAPIConnection", duckdb.connect(database=fn))
+        return db
 
     def connect_db_postgresql(self, dsn: str) -> psycopg2.extensions.connection:
         """Connects to a PostgreSQL database for storing data.
@@ -141,9 +140,10 @@ class LDLite:
 
         """
         self.dbtype = DBType.POSTGRES
-        self.db = psycopg2.connect(dsn)
+        db = psycopg2.connect(dsn)
+        self.db = cast("dbapi.DBAPIConnection", db)
         autocommit(self.db, self.dbtype, True)
-        return self.db
+        return db
 
     def experimental_connect_db_sqlite(
         self,
@@ -174,7 +174,10 @@ class LDLite:
     def _login(self) -> None:
         if self._verbose:
             print("ldlite: logging in to folio", file=sys.stderr)
-        hdr = {"X-Okapi-Tenant": self.okapi_tenant, "Content-Type": "application/json"}
+        hdr = {
+            "X-Okapi-Tenant": str(self.okapi_tenant),
+            "Content-Type": "application/json",
+        }
         data = {"username": self.okapi_user, "password": self.okapi_password}
 
         if self.okapi_url is None:
@@ -262,6 +265,9 @@ class LDLite:
             ld.drop_tables('g')
 
         """
+        if self.db is None:
+            self._check_db()
+            return
         autocommit(self.db, self.dbtype, True)
         schema_table = table.strip().split(".")
         if len(schema_table) < 1 or len(schema_table) > 2:
@@ -274,7 +280,7 @@ class LDLite:
             pass
         finally:
             cur.close()
-        drop_json_tables(self.db, self.dbtype, table)
+        drop_json_tables(self.db, table)
 
     def set_folio_max_retries(self, max_retries: int) -> None:
         """Sets the maximum number of retries for FOLIO requests.
@@ -317,7 +323,7 @@ class LDLite:
         query: str | None = None,
         json_depth: int = 3,
         limit: int | None = None,
-        transform: Any = None,
+        transform: bool | None = None,
     ) -> list[str]:
         """Submits a query to a FOLIO module, and transforms and stores the result.
 
@@ -370,7 +376,9 @@ class LDLite:
         if json_depth is None or json_depth < 0 or json_depth > 4:
             raise ValueError("invalid value for json_depth: " + str(json_depth))
         self._check_okapi()
-        self._check_db()
+        if self.db is None:
+            self._check_db()
+            return []
         if len(schema_table) == 2 and self.dbtype == DBType.SQLITE:
             table = schema_table[0] + "_" + schema_table[1]
             schema_table = [table]
@@ -397,13 +405,13 @@ class LDLite:
             self.db.commit()
             # First get total number of records
             hdr = {
-                "X-Okapi-Tenant": self.okapi_tenant,
-                "X-Okapi-Token": self.login_token,
+                "X-Okapi-Tenant": str(self.okapi_tenant),
+                "X-Okapi-Token": str(self.login_token),
             }
             querycopy["offset"] = "0"
             querycopy["limit"] = "1"
             resp = request_get(
-                self.okapi_url + path,
+                str(self.okapi_url) + path,
                 params=querycopy,
                 headers=hdr,
                 timeout=self._okapi_timeout,
@@ -418,11 +426,11 @@ class LDLite:
                 # to allow for bigger internal changes.
                 self._login()
                 hdr = {
-                    "X-Okapi-Tenant": self.okapi_tenant,
-                    "X-Okapi-Token": self.login_token,
+                    "X-Okapi-Tenant": str(self.okapi_tenant),
+                    "X-Okapi-Token": str(self.login_token),
                 }
                 resp = request_get(
-                    self.okapi_url + path,
+                    str(self.okapi_url) + path,
                     params=querycopy,
                     headers=hdr,
                     timeout=self._okapi_timeout,
@@ -473,7 +481,7 @@ class LDLite:
                     querycopy["offset"] = str(offset)
                     querycopy["limit"] = str(lim)
                     resp = request_get(
-                        self.okapi_url + path,
+                        str(self.okapi_url) + path,
                         params=querycopy,
                         headers=hdr,
                         timeout=self._okapi_timeout,
@@ -483,11 +491,11 @@ class LDLite:
                         # See warning above for retries
                         self._login()
                         hdr = {
-                            "X-Okapi-Tenant": self.okapi_tenant,
-                            "X-Okapi-Token": self.login_token,
+                            "X-Okapi-Tenant": str(self.okapi_tenant),
+                            "X-Okapi-Token": str(self.login_token),
                         }
                         resp = request_get(
-                            self.okapi_url + path,
+                            str(self.okapi_url) + path,
                             params=querycopy,
                             headers=hdr,
                             timeout=self._okapi_timeout,
@@ -553,8 +561,9 @@ class LDLite:
                 newattrs[table] = {"__id": Attr("__id", "bigint")}
         finally:
             autocommit(self.db, self.dbtype, True)
-        # Create indexes
-        if self.dbtype == 2:
+        # Create indexes (for postgres)
+        # This broke in the 0.34.0 release but is probably better broken
+        if False:
             index_total = sum(map(len, newattrs.values()))
             if not self._quiet:
                 pbar = tqdm(
@@ -625,15 +634,18 @@ class LDLite:
             ld.select(table='loans', columns=['id', 'item_id', 'loan_date'])
 
         """
-        self._check_db()
+        if self.db is None:
+            self._check_db()
+            return
+
         f = sys.stdout
         if self._verbose:
             print("ldlite: reading from table: " + table, file=sys.stderr)
         autocommit(self.db, self.dbtype, False)
         try:
             select(self.db, self.dbtype, table, columns, limit, f)
-            if self.dbtype == DBType.POSTGRES:
-                self.db.rollback()
+            if (pgdb := as_postgres(self.db, self.dbtype)) is not None:
+                pgdb.rollback()
         finally:
             autocommit(self.db, self.dbtype, True)
 
@@ -650,12 +662,15 @@ class LDLite:
             ld.to_csv(table='g', filename='g.csv')
 
         """
-        self._check_db()
+        if self.db is None:
+            self._check_db()
+            return
+
         autocommit(self.db, self.dbtype, False)
         try:
             to_csv(self.db, self.dbtype, table, filename, header)
-            if self.dbtype == DBType.POSTGRES:
-                self.db.rollback()
+            if (pgdb := as_postgres(self.db, self.dbtype)) is not None:
+                pgdb.rollback()
         finally:
             autocommit(self.db, self.dbtype, True)
 
@@ -677,12 +692,15 @@ class LDLite:
             ld.export_excel(table='g', filename='g')
 
         """
-        self._check_db()
+        if self.db is None:
+            self._check_db()
+            return
+
         autocommit(self.db, self.dbtype, False)
         try:
             to_xlsx(self.db, self.dbtype, table, filename, header)
-            if self.dbtype == DBType.POSTGRES:
-                self.db.rollback()
+            if (pgdb := as_postgres(self.db, self.dbtype)) is not None:
+                pgdb.rollback()
         finally:
             autocommit(self.db, self.dbtype, True)
 

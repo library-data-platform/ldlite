@@ -12,6 +12,6 @@ class TestLDLite(TestCase):
             user="diku_admin",
             password="admin",
         )
-        _ = ld.connect_db()
-        _ = ld.query(table="g", path="/groups", query="cql.allRecords=1 sortby id")
+        ld.connect_db()
+        ld.query(table="g", path="/groups", query="cql.allRecords=1 sortby id")
         ld.select(table="g__t")

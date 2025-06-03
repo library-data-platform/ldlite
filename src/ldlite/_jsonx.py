@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 import sqlite3
 import uuid
-from typing import Any, Literal
+from typing import TYPE_CHECKING, Literal, Union
 
 import duckdb
 import psycopg2
@@ -18,6 +18,12 @@ from ._sqlx import (
     sqlid,
     varchar_type,
 )
+
+if TYPE_CHECKING:
+    from _typeshed import dbapi
+
+JsonValue = Union[float, int, str, bool, "Json", list["JsonValue"], None]
+Json = dict[str, JsonValue]
 
 
 def _is_uuid(val: str) -> bool:
@@ -35,7 +41,7 @@ class Attr:
         name: str,
         datatype: Literal["varchar", "integer", "numeric", "boolean", "uuid", "bigint"],
         order: None | Literal[1, 2, 3] = None,
-        data: Any = None,
+        data: JsonValue = None,
     ):
         self.name = name
         self.datatype: Literal[
@@ -89,7 +95,7 @@ def _tcatalog(table: str) -> str:
 
 
 # noinspection DuplicatedCode
-def _old_drop_json_tables(db: Any, table: str) -> None:
+def _old_drop_json_tables(db: dbapi.DBAPIConnection, table: str) -> None:
     jtable_sql = sqlid(_old_jtable(table))
     cur = db.cursor()
     try:
@@ -125,7 +131,7 @@ def _old_drop_json_tables(db: Any, table: str) -> None:
 
 
 # noinspection DuplicatedCode
-def drop_json_tables(db: Any, table: str) -> None:
+def drop_json_tables(db: dbapi.DBAPIConnection, table: str) -> None:
     tcatalog_sql = sqlid(_tcatalog(table))
     cur = db.cursor()
     try:
@@ -179,7 +185,7 @@ def _compile_array_attrs(  # noqa: PLR0913
     dbtype: DBType,
     parents: list[tuple[int, str]],
     prefix: str,
-    jarray: list[dict | list | float | int | Any],
+    jarray: list[JsonValue],
     newattrs: dict[str, dict[str, Attr]],
     depth: int,
     arrayattr: str,
@@ -223,7 +229,7 @@ def _compile_attrs(  # noqa: C901, PLR0912, PLR0913
     dbtype: DBType,
     parents: list[tuple[int, str]],
     prefix: str,
-    jdict: dict[str | None, dict | list | float | int | None | Any],
+    jdict: Json,
     newattrs: dict[str, dict[str, Attr]],
     depth: int,
     max_depth: int,
@@ -235,8 +241,8 @@ def _compile_attrs(  # noqa: C901, PLR0912, PLR0913
     qkey = {}
     for k, a in quasikey.items():
         qkey[k] = Attr(a.name, a.datatype, order=1)
-    arrays = []
-    objects = []
+    arrays: list[tuple[str, list[JsonValue], str]] = []
+    objects: list[tuple[str, Json, str]] = []
     for k, v in jdict.items():
         if k is None or v is None:
             continue
@@ -260,7 +266,7 @@ def _compile_attrs(  # noqa: C901, PLR0912, PLR0913
             a = Attr(decode_camel_case(attr), "numeric", order=3)
             qkey[attr] = a
             newattrs[table][attr] = a
-        elif dbtype == 2 and _is_uuid(v):
+        elif dbtype == DBType.POSTGRES and _is_uuid(v):
             a = Attr(decode_camel_case(attr), "uuid", order=3)
             qkey[attr] = a
             newattrs[table][attr] = a
@@ -298,9 +304,9 @@ def _compile_attrs(  # noqa: C901, PLR0912, PLR0913
 def _transform_array_data(  # noqa: PLR0913
     dbtype: DBType,
     prefix: str,
-    cur: Any,
+    cur: dbapi.DBAPICursor,
     parents: list[tuple[int, str]],
-    jarray: list[dict | list | float | int | Any],
+    jarray: list[JsonValue],
     newattrs: dict[str, dict[str, Attr]],
     depth: int,
     row_ids: dict[str, int],
@@ -361,20 +367,20 @@ def _transform_array_data(  # noqa: PLR0913
 def _compile_data(  # noqa: C901, PLR0912, PLR0913
     dbtype: DBType,
     prefix: str,
-    cur: Any,
+    cur: dbapi.DBAPICursor,
     parents: list[tuple[int, str]],
-    jdict: dict[str | None, dict | list | float | int | None | Any],
+    jdict: Json,
     newattrs: dict[str, dict[str, Attr]],
     depth: int,
     row_ids: dict[str, int],
     max_depth: int,
     quasikey: dict[str, Attr],
-) -> None | list[tuple[str, Any]]:
+) -> None | list[tuple[str, JsonValue]]:
     if depth > max_depth:
         return None
     table = _table_name(parents)
     qkey = {k: quasikey[k] for k in quasikey}
-    row: list[tuple[str, Any]] = []
+    row: list[tuple[str, JsonValue]] = []
     arrays = []
     objects = []
     for k, v in jdict.items():
@@ -435,9 +441,9 @@ def _compile_data(  # noqa: C901, PLR0912, PLR0913
 def _transform_data(  # noqa: PLR0913
     dbtype: DBType,
     prefix: str,
-    cur: Any,
+    cur: dbapi.DBAPICursor,
     parents: list[tuple[int, str]],
-    jdict: dict[str | None, dict | list | float | int | None | Any],
+    jdict: Json,
     newattrs: dict[str, dict[str, Attr]],
     depth: int,
     row_ids: dict[str, int],
@@ -475,7 +481,7 @@ def _transform_data(  # noqa: PLR0913
 
 
 def transform_json(  # noqa: C901, PLR0912, PLR0913, PLR0915
-    db: Any,
+    db: dbapi.DBAPIConnection,
     dbtype: DBType,
     table: str,
     total: int,
@@ -484,19 +490,20 @@ def transform_json(  # noqa: C901, PLR0912, PLR0913, PLR0915
 ) -> tuple[list[str], dict[str, dict[str, Attr]]]:
     # Scan all fields for JSON data
     # First get a list of the string attributes
-    str_attrs = []
+    str_attrs: list[str] = []
     cur = db.cursor()
     try:
         cur.execute("SELECT * FROM " + sqlid(table) + " LIMIT 1")
-        str_attrs.extend([a[0] for a in cur.description])
+        if cur.description is not None:
+            str_attrs.extend([a[0] for a in cur.description])
     finally:
         cur.close()
     # Scan data for JSON objects
     if len(str_attrs) == 0:
         return [], {}
-    json_attrs = []
-    json_attrs_set = set()
-    newattrs = {}
+    json_attrs: list[str] = []
+    json_attrs_set: set[str] = set()
+    newattrs: dict[str, dict[str, Attr]] = {}
     cur = server_cursor(db, dbtype)
     try:
         cur.execute(

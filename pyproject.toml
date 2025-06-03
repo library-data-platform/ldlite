@@ -40,16 +40,16 @@ addopts = [
 [tool.mypy]
 python_version = "3.9"
 strict = true
+[[tool.mypy.overrides]]
+module = ["xlsxwriter.*"]
 ignore_missing_imports = true
-exclude = ["src"]
-
 
 [tool.ruff]
 target-version = "py39"
 [tool.ruff.lint]
 select = ["ALL"]
 fixable = ["ALL"]
-ignore = ["FBT", "ANN401", "D105", "FIX002", "PLR2004", "TD002", "TD003", "COM812"]
+ignore = ["FBT", "D105", "FIX002", "PLR2004", "TD002", "TD003", "COM812"]
 pydocstyle.convention = "google"
 [tool.ruff.lint.per-file-ignores]
 "examples/*" = ["D", "INP001", "T201", "S106", "ERA001", "PERF203"]
@@ -70,10 +70,14 @@ test = "python -m pytest -vv"
 lint = [
     "mypy>=1.4.1",
     "ruff>=0.11.9",
-    "types-psycopg2>=2.9.21.20",
 ]
 test = [
     "pytest>=7.4.4",
     "pytest-cases>=3.8.6",
+]
+types = [
+    "types-requests>=2.31.0.6",
+    "types-psycopg2>=2.9.21.20",
+    "types-tqdm>=4.66.0.5",
 ]
 
