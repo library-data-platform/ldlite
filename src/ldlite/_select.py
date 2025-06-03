@@ -1,12 +1,17 @@
 from __future__ import annotations
 
 import sys
-from typing import Any, TextIO
+from typing import TYPE_CHECKING, TextIO
 
 from ._sqlx import DBType, server_cursor, sqlid
 
+if TYPE_CHECKING:
+    from collections.abc import Sequence
 
-def _format_attr(attr: str, width: int) -> str:
+    from _typeshed import dbapi
+
+
+def _format_attr(attr: tuple[str, dbapi.DBAPITypeCode], width: int) -> str:
     s = ""
     a = attr[0]
     len_a = len(a)
@@ -34,7 +39,7 @@ def _rstrip_lines(lines: list[str]) -> list[str]:
     return newlines
 
 
-def _format_value(value: list[str], dtype: str | int | Any) -> list[str]:
+def _format_value(value: list[str], dtype: dbapi.DBAPITypeCode) -> list[str]:
     if len(value) > 1:
         return value
     if dtype in {"bool", 16}:
@@ -42,7 +47,11 @@ def _format_value(value: list[str], dtype: str | int | Any) -> list[str]:
     return value
 
 
-def _format_row(row: list[str], attrs: list[Any], width: list[int]) -> str:
+def _format_row(
+    row: Sequence[str],
+    attrs: list[tuple[str, dbapi.DBAPITypeCode]],
+    width: list[int],
+) -> str:
     s = ""
     # Count number of lines
     rowlines = []
@@ -76,7 +85,7 @@ def _format_row(row: list[str], attrs: list[Any], width: list[int]) -> str:
 
 
 def select(  # noqa: C901, PLR0912, PLR0913, PLR0915
-    db: Any,
+    db: dbapi.DBAPIConnection,
     dbtype: DBType,
     table: str,
     columns: list[str] | None,
@@ -88,21 +97,25 @@ def select(  # noqa: C901, PLR0912, PLR0913, PLR0915
     else:
         colspec = ",".join([sqlid(c) for c in columns])
     # Get attributes
-    attrs = []
-    width = []
+    attrs: list[tuple[str, dbapi.DBAPITypeCode]] = []
+    width: list[int] = []
     cur = db.cursor()
     try:
         cur.execute("SELECT " + colspec + " FROM " + sqlid(table) + " LIMIT 1")
-        for a in cur.description:
-            attrs.append((a[0], a[1]))
-            width.append(len(a[0]))
+        if cur.description is not None:
+            for a in cur.description:
+                attrs.append((a[0], a[1]))
+                width.append(len(a[0]))
     finally:
         cur.close()
     # Scan
     cur = server_cursor(db, dbtype)
     try:
         cur.execute(
-            "SELECT " + ",".join([sqlid(a[0]) for a in attrs]) + " FROM " + sqlid(table)
+            "SELECT "
+            + ",".join([sqlid(a[0]) for a in attrs])
+            + " FROM "
+            + sqlid(table),
         )
         while True:
             row = cur.fetchone()
@@ -148,7 +161,8 @@ def select(  # noqa: C901, PLR0912, PLR0913, PLR0915
             print(s, end="", file=file)
             row_i += 1
         print(
-            "(" + str(row_i) + " " + ("row" if row_i == 1 else "rows") + ")", file=file
+            "(" + str(row_i) + " " + ("row" if row_i == 1 else "rows") + ")",
+            file=file,
         )
         print(file=file)
     finally:
