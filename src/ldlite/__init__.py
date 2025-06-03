@@ -39,7 +39,7 @@ from __future__ import annotations
 import json
 import sqlite3
 import sys
-from typing import Any, NoReturn
+from typing import TYPE_CHECKING, Any, NoReturn, cast
 
 import duckdb
 import psycopg2
@@ -51,8 +51,11 @@ from ._jsonx import Attr, drop_json_tables, transform_json
 from ._query import query_dict
 from ._request import request_get
 from ._select import select
-from ._sqlx import DbConn, DBType, autocommit, encode_sql_str, json_type, sqlid
+from ._sqlx import DBType, as_postgres, autocommit, encode_sql_str, json_type, sqlid
 from ._xlsx import to_xlsx
+
+if TYPE_CHECKING:
+    from _typeshed import dbapi
 
 
 class LDLite:
@@ -71,7 +74,7 @@ class LDLite:
         self._verbose = False
         self._quiet = False
         self.dbtype: DBType = DBType.UNDEFINED
-        self.db: DbConn | None = None
+        self.db: dbapi.DBAPIConnection | None = None
         self.login_token: str | None = None
         self.legacy_auth = True
         self.okapi_url: str | None = None
@@ -121,8 +124,9 @@ class LDLite:
         """
         self.dbtype = DBType.DUCKDB
         fn = filename if filename is not None else ":memory:"
-        self.db = duckdb.connect(database=fn)
-        return self.db
+        db = duckdb.connect(database=fn)
+        self.db = cast("dbapi.DBAPIConnection", duckdb.connect(database=fn))
+        return db
 
     def connect_db_postgresql(self, dsn: str) -> psycopg2.extensions.connection:
         """Connects to a PostgreSQL database for storing data.
@@ -136,9 +140,10 @@ class LDLite:
 
         """
         self.dbtype = DBType.POSTGRES
-        self.db = psycopg2.connect(dsn)
+        db = psycopg2.connect(dsn)
+        self.db = cast("dbapi.DBAPIConnection", db)
         autocommit(self.db, self.dbtype, True)
-        return self.db
+        return db
 
     def experimental_connect_db_sqlite(
         self,
@@ -640,8 +645,8 @@ class LDLite:
         autocommit(self.db, self.dbtype, False)
         try:
             select(self.db, self.dbtype, table, columns, limit, f)
-            if self.dbtype == DBType.POSTGRES:
-                self.db.rollback()
+            if (pgdb := as_postgres(self.db, self.dbtype)) is not None:
+                pgdb.rollback()
         finally:
             autocommit(self.db, self.dbtype, True)
 
@@ -665,8 +670,8 @@ class LDLite:
         autocommit(self.db, self.dbtype, False)
         try:
             to_csv(self.db, self.dbtype, table, filename, header)
-            if self.dbtype == DBType.POSTGRES:
-                self.db.rollback()
+            if (pgdb := as_postgres(self.db, self.dbtype)) is not None:
+                pgdb.rollback()
         finally:
             autocommit(self.db, self.dbtype, True)
 
@@ -695,8 +700,8 @@ class LDLite:
         autocommit(self.db, self.dbtype, False)
         try:
             to_xlsx(self.db, self.dbtype, table, filename, header)
-            if self.dbtype == DBType.POSTGRES:
-                self.db.rollback()
+            if (pgdb := as_postgres(self.db, self.dbtype)) is not None:
+                pgdb.rollback()
         finally:
             autocommit(self.db, self.dbtype, True)
 

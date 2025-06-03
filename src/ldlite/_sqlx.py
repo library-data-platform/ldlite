@@ -1,12 +1,17 @@
 from __future__ import annotations
 
 import secrets
-import sqlite3
 from enum import Enum
-from typing import Any, Union, cast
+from typing import TYPE_CHECKING, cast
 
-import duckdb
-import psycopg2
+if TYPE_CHECKING:
+    import sqlite3
+
+    import duckdb
+    import psycopg2
+    from _typeshed import dbapi
+
+    from ._jsonx import JsonValue
 
 
 class DBType(Enum):
@@ -16,21 +21,8 @@ class DBType(Enum):
     SQLITE = 4
 
 
-DbConn = Union[
-    duckdb.DuckDBPyConnection,
-    psycopg2.extensions.connection,
-    sqlite3.Connection,
-]
-
-DbCursor = Union[
-    duckdb.DuckDBPyConnection,
-    psycopg2.extensions.cursor,
-    sqlite3.Cursor,
-]
-
-
 def as_duckdb(
-    db: DbConn,
+    db: dbapi.DBAPIConnection,
     dbtype: DBType,
 ) -> duckdb.DuckDBPyConnection | None:
     if dbtype != DBType.DUCKDB:
@@ -40,7 +32,7 @@ def as_duckdb(
 
 
 def as_postgres(
-    db: DbConn,
+    db: dbapi.DBAPIConnection,
     dbtype: DBType,
 ) -> psycopg2.extensions.connection | None:
     if dbtype != DBType.POSTGRES:
@@ -50,7 +42,7 @@ def as_postgres(
 
 
 def as_sqlite(
-    db: DbConn,
+    db: dbapi.DBAPIConnection,
     dbtype: DBType,
 ) -> sqlite3.Connection | None:
     if dbtype != DBType.SQLITE:
@@ -68,7 +60,7 @@ def strip_schema(table: str) -> str:
     raise ValueError("invalid table name: " + table)
 
 
-def autocommit(db: DbConn, dbtype: DBType, enable: bool) -> None:
+def autocommit(db: dbapi.DBAPIConnection, dbtype: DBType, enable: bool) -> None:
     if (pgdb := as_postgres(db, dbtype)) is not None:
         pgdb.rollback()
         pgdb.set_session(autocommit=enable)
@@ -81,9 +73,12 @@ def autocommit(db: DbConn, dbtype: DBType, enable: bool) -> None:
             sql3db.isolation_level = "DEFERRED"
 
 
-def server_cursor(db: DbConn, dbtype: DBType) -> DbCursor:
+def server_cursor(db: dbapi.DBAPIConnection, dbtype: DBType) -> dbapi.DBAPICursor:
     if (pgdb := as_postgres(db, dbtype)) is not None:
-        return pgdb.cursor(name=("ldlite" + secrets.token_hex(4)))
+        return cast(
+            "dbapi.DBAPICursor",
+            pgdb.cursor(name=("ldlite" + secrets.token_hex(4))),
+        )
     return db.cursor()
 
 
@@ -144,7 +139,7 @@ def encode_sql_str(dbtype: DBType, s: str) -> str:  # noqa: C901, PLR0912
     return b
 
 
-def encode_sql(dbtype: DBType, data: None | str | int | bool | Any) -> str:
+def encode_sql(dbtype: DBType, data: JsonValue) -> str:
     if data is None:
         return "NULL"
     if isinstance(data, str):
