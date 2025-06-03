@@ -51,7 +51,7 @@ from ._jsonx import Attr, drop_json_tables, transform_json
 from ._query import query_dict
 from ._request import request_get
 from ._select import select
-from ._sqlx import DBType, DbConn, autocommit, encode_sql_str, json_type, sqlid
+from ._sqlx import DbConn, DBType, autocommit, encode_sql_str, json_type, sqlid
 from ._xlsx import to_xlsx
 
 

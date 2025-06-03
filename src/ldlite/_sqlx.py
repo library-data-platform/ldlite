@@ -28,29 +28,36 @@ DbCursor = Union[
     sqlite3.Cursor,
 ]
 
+
 def as_duckdb(
-    db: DbConn, dbtype: DBType,
+    db: DbConn,
+    dbtype: DBType,
 ) -> duckdb.DuckDBPyConnection | None:
     if dbtype != DBType.DUCKDB:
         return None
 
     return cast("duckdb.DuckDBPyConnection", db)
 
+
 def as_postgres(
-    db: DbConn, dbtype: DBType,
+    db: DbConn,
+    dbtype: DBType,
 ) -> psycopg2.extensions.connection | None:
     if dbtype != DBType.POSTGRES:
         return None
 
     return cast("psycopg2.extensions.connection", db)
 
+
 def as_sqlite(
-    db: DbConn, dbtype: DBType,
+    db: DbConn,
+    dbtype: DBType,
 ) -> sqlite3.Connection | None:
     if dbtype != DBType.SQLITE:
         return None
 
     return cast("sqlite3.Connection", db)
+
 
 def strip_schema(table: str) -> str:
     st = table.split(".")

@@ -25,11 +25,17 @@ selected_site = okapi_snapshot
 ld = ldlite.LDLite()
 if selected_site == okapi_snapshot:
     ld.connect_okapi(
-        url=selected_site, tenant="diku", user="diku_admin", password="admin",
+        url=selected_site,
+        tenant="diku",
+        user="diku_admin",
+        password="admin",
     )
 else:
     ld.connect_folio(
-        url=selected_site, tenant="diku", user="diku_admin", password="admin",
+        url=selected_site,
+        tenant="diku",
+        user="diku_admin",
+        password="admin",
     )
 
 ld.connect_db(filename="ldlite.db")
@@ -233,7 +239,10 @@ for q in queries:
     try:
         if len(q) == 4:
             tables += ld.query(
-                table=q[0], path=q[1], query=str(q[2]), json_depth=int(q[3]),
+                table=q[0],
+                path=q[1],
+                query=str(q[2]),
+                json_depth=int(q[3]),
             )
         else:
             tables += ld.query(table=q[0], path=q[1], query=str(q[2]))
