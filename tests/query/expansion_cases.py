@@ -56,7 +56,7 @@ class QueryTestCases:
                     ],
                 },
             ],
-            ["t", "tcatalog"],
+            ["t"],
             {
                 "t": (
                     ["id", "value"],
@@ -90,7 +90,7 @@ class QueryTestCases:
                     ],
                 },
             ],
-            ["t", "tcatalog", "t__sub_objects"],
+            ["t", "t__sub_objects"],
             {
                 "t": (
                     ["id", "value"],
@@ -166,7 +166,7 @@ class QueryTestCases:
                     ],
                 },
             ],
-            ["t", "tcatalog", "t__sub_objects"],
+            ["t", "t__sub_objects"],
             {
                 "t__sub_objects": (
                     ["*"],
@@ -212,7 +212,7 @@ class QueryTestCases:
                     ],
                 },
             ],
-            ["t", "tcatalog", "t__sub_objects", "t__sub_objects__sub_sub_objects"],
+            ["t", "t__sub_objects", "t__sub_objects__sub_sub_objects"],
             {
                 "t__sub_objects__sub_sub_objects": (
                     [
@@ -251,7 +251,7 @@ class QueryTestCases:
                     ],
                 },
             ],
-            ["t", "tcatalog"],
+            ["t"],
             {
                 "t": (
                     ["id", "value", "sub_object__id", "sub_object__value"],
@@ -289,7 +289,7 @@ class QueryTestCases:
                     ],
                 },
             ],
-            ["t", "tcatalog"],
+            ["t"],
             {
                 "t": (
                     [
@@ -330,7 +330,7 @@ class QueryTestCases:
                     ],
                 },
             ],
-            ["t", "tcatalog"],
+            ["t"],
             {
                 "t": (
                     ["id", "value", "sub_object"],
@@ -396,7 +396,7 @@ class QueryTestCases:
                     ],
                 },
             ],
-            ["t", "tcatalog", "t__sub_objects", "t__sub_objects__sub_sub_objects"],
+            ["t", "t__sub_objects", "t__sub_objects__sub_sub_objects"],
             {
                 "t__sub_objects": (
                     ["__id", "id", "sub_objects__o", "sub_objects__id"],
