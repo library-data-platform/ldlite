@@ -1,0 +1,42 @@
+[commands."common.EOF"]
+type = "tidy"
+include = ["*"]
+exclude = ["*.png"]
+cmd = ["end-of-file-fixer"]
+ok_exit_codes = [0, 1]
+[commands."common.whitespace"]
+type = "tidy"
+include = ["*"]
+exclude = ["*.png"]
+cmd = ["trailing-whitespace-fixer", "--markdown-linebreak-ext=md"]
+ok_exit_codes = [0, 1]
+[commands."common.large-files"]
+type = "lint"
+include = ["*"]
+cmd = ["check-added-large-files"]
+ok_exit_codes = [0]
+[commands."common.case"]
+type = "lint"
+include = ["*"]
+cmd = ["check-case-conflict"]
+ok_exit_codes = [0]
+
+[commands."ruff.lint"]
+type = "both"
+include = ["*.py"]
+cmd = ["ruff", "check", "--quiet"]
+tidy_flags = ["--fix-only"]
+ok_exit_codes = [0]
+[commands."ruff.format"]
+type = "both"
+include = ["*.py"]
+cmd = ["ruff", "format", "--quiet"]
+lint_flags = ["--diff"]
+ok_exit_codes = [0]
+[commands.mypy]
+type = "lint"
+include = ["*.py"]
+invoke = "once"
+path_args = "none"
+cmd = ["mypy", "src/ldlite/", "tests/"]
+ok_exit_codes = [0]
