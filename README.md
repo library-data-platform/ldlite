@@ -46,12 +46,12 @@ tables: g, g__t, g__tcatalog
 ```
 
 ```
- __id |                  id                  |         desc          | expiration_offset_in_days |   group   
+ __id |                  id                  |         desc          | expiration_offset_in_days |   group  
 ------+--------------------------------------+-----------------------+---------------------------+-----------
-    1 | 3684a786-6671-4268-8ed0-9db82ebca60b | Staff Member          |                       730 | staff     
-    2 | 503a81cd-6c26-400f-b620-14c08943697c | Faculty Member        |                       365 | faculty   
+    1 | 3684a786-6671-4268-8ed0-9db82ebca60b | Staff Member          |                       730 | staff  
+    2 | 503a81cd-6c26-400f-b620-14c08943697c | Faculty Member        |                       365 | faculty  
     3 | ad0bc554-d5bc-463c-85d1-5562127ae91b | Graduate Student      |                           | graduate  
-    4 | bdc2b6d4-5ceb-4a12-ab46-249b9a68473e | Undergraduate Student |                           | undergrad 
+    4 | bdc2b6d4-5ceb-4a12-ab46-249b9a68473e | Undergraduate Student |                           | undergrad
 (4 rows)
 ```
 
@@ -114,4 +114,3 @@ Other resources
 * [FOLIO API documentation](https://dev.folio.org/reference/api/)
 
 * [Python learning resources](https://www.python.org/about/gettingstarted/)
-

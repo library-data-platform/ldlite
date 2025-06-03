@@ -48,46 +48,46 @@ _ = ld.query(table='g', path='/groups', query='cql.allRecords=1 sortby id')
 ld.select(table='g', limit=10)
 ```
 
-     __id |                          jsonb                          
+     __id |                          jsonb  
     ------+---------------------------------------------------------
-        1 | { 
-          |     "group": "staff", 
-          |     "desc": "Staff Member", 
-          |     "id": "3684a786-6671-4268-8ed0-9db82ebca60b", 
-          |     "expirationOffsetInDays": 730, 
-          |     "metadata": { 
-          |         "createdDate": "2021-09-20T01:53:31.055+00:00", 
-          |         "updatedDate": "2021-09-20T01:53:31.055+00:00" 
-          |     } 
-          | } 
-        2 | { 
-          |     "group": "faculty", 
-          |     "desc": "Faculty Member", 
-          |     "id": "503a81cd-6c26-400f-b620-14c08943697c", 
-          |     "expirationOffsetInDays": 365, 
-          |     "metadata": { 
-          |         "createdDate": "2021-09-20T01:53:31.084+00:00", 
-          |         "updatedDate": "2021-09-20T01:53:31.084+00:00" 
-          |     } 
-          | } 
-        3 | { 
-          |     "group": "graduate", 
-          |     "desc": "Graduate Student", 
-          |     "id": "ad0bc554-d5bc-463c-85d1-5562127ae91b", 
-          |     "metadata": { 
-          |         "createdDate": "2021-09-20T01:53:31.108+00:00", 
-          |         "updatedDate": "2021-09-20T01:53:31.108+00:00" 
-          |     } 
-          | } 
-        4 | { 
-          |     "group": "undergrad", 
-          |     "desc": "Undergraduate Student", 
-          |     "id": "bdc2b6d4-5ceb-4a12-ab46-249b9a68473e", 
-          |     "metadata": { 
-          |         "createdDate": "2021-09-20T01:53:31.123+00:00", 
-          |         "updatedDate": "2021-09-20T01:53:31.123+00:00" 
-          |     } 
-          | } 
+        1 | {
+          |     "group": "staff",
+          |     "desc": "Staff Member",
+          |     "id": "3684a786-6671-4268-8ed0-9db82ebca60b",
+          |     "expirationOffsetInDays": 730,
+          |     "metadata": {
+          |         "createdDate": "2021-09-20T01:53:31.055+00:00",
+          |         "updatedDate": "2021-09-20T01:53:31.055+00:00"
+          |     }
+          | }
+        2 | {
+          |     "group": "faculty",
+          |     "desc": "Faculty Member",
+          |     "id": "503a81cd-6c26-400f-b620-14c08943697c",
+          |     "expirationOffsetInDays": 365,
+          |     "metadata": {
+          |         "createdDate": "2021-09-20T01:53:31.084+00:00",
+          |         "updatedDate": "2021-09-20T01:53:31.084+00:00"
+          |     }
+          | }
+        3 | {
+          |     "group": "graduate",
+          |     "desc": "Graduate Student",
+          |     "id": "ad0bc554-d5bc-463c-85d1-5562127ae91b",
+          |     "metadata": {
+          |         "createdDate": "2021-09-20T01:53:31.108+00:00",
+          |         "updatedDate": "2021-09-20T01:53:31.108+00:00"
+          |     }
+          | }
+        4 | {
+          |     "group": "undergrad",
+          |     "desc": "Undergraduate Student",
+          |     "id": "bdc2b6d4-5ceb-4a12-ab46-249b9a68473e",
+          |     "metadata": {
+          |         "createdDate": "2021-09-20T01:53:31.123+00:00",
+          |         "updatedDate": "2021-09-20T01:53:31.123+00:00"
+          |     }
+          | }
     (4 rows)
 
 ```python
@@ -97,12 +97,12 @@ ld.select(table='g', limit=10)
 ld.select(table='g__t', limit=10)
 ```
 
-     __id |                  id                  |         desc          | expiration_offset_in_days |   group   
+     __id |                  id                  |         desc          | expiration_offset_in_days |   group  
     ------+--------------------------------------+-----------------------+---------------------------+-----------
-        1 | 3684a786-6671-4268-8ed0-9db82ebca60b | Staff Member          |                       730 | staff     
-        2 | 503a81cd-6c26-400f-b620-14c08943697c | Faculty Member        |                       365 | faculty   
+        1 | 3684a786-6671-4268-8ed0-9db82ebca60b | Staff Member          |                       730 | staff  
+        2 | 503a81cd-6c26-400f-b620-14c08943697c | Faculty Member        |                       365 | faculty  
         3 | ad0bc554-d5bc-463c-85d1-5562127ae91b | Graduate Student      |                           | graduate  
-        4 | bdc2b6d4-5ceb-4a12-ab46-249b9a68473e | Undergraduate Student |                           | undergrad 
+        4 | bdc2b6d4-5ceb-4a12-ab46-249b9a68473e | Undergraduate Student |                           | undergrad
     (4 rows)
 
 ```python
@@ -131,18 +131,18 @@ cur.execute("""
 ld.select(table='user_groups', limit=10)
 ```
 
-                      id                  | username |   group   
+                      id                  | username |   group  
     --------------------------------------+----------+-----------
-     00bc2807-4d5b-4a27-a2b5-b7b1ba431cc4 | sallie   | faculty   
-     011dc219-6b7f-4d93-ae7f-f512ed651493 | elmer    | staff     
+     00bc2807-4d5b-4a27-a2b5-b7b1ba431cc4 | sallie   | faculty  
+     011dc219-6b7f-4d93-ae7f-f512ed651493 | elmer    | staff  
      01b9d72b-9aab-4efd-97a4-d03c1667bf0d | rick1    | graduate  
-     0414af69-f89c-40f2-bea9-a9b5d0a179d4 | diana    | faculty   
-     046353cf-3963-482c-9792-32ade0a33afa | jorge    | faculty   
-     04e1cda1-a049-463b-97af-98c59a8fd806 | nicola   | undergrad 
+     0414af69-f89c-40f2-bea9-a9b5d0a179d4 | diana    | faculty  
+     046353cf-3963-482c-9792-32ade0a33afa | jorge    | faculty  
+     04e1cda1-a049-463b-97af-98c59a8fd806 | nicola   | undergrad
      066795ce-4938-48f2-9411-f3f922b51e1c | arlo     | graduate  
-     07066a1f-1fb7-4793-bbca-7cd8d1ea90ab | vergie   | faculty   
-     08522da4-668a-4450-a769-3abfae5678ad | johan    | staff     
-     0a246f61-d85f-42b6-8dcc-48d25a46690b | maxine   | staff     
+     07066a1f-1fb7-4793-bbca-7cd8d1ea90ab | vergie   | faculty  
+     08522da4-668a-4450-a769-3abfae5678ad | johan    | staff  
+     0a246f61-d85f-42b6-8dcc-48d25a46690b | maxine   | staff  
     (10 rows)
 
 ```python
@@ -190,5 +190,3 @@ _ = df.plot(kind='pie', x='user_group', y='count')
 ```
 
 ![png](output_14_1.png)
-    
-
