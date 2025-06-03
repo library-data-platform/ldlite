@@ -1,0 +1,38 @@
+# yaml-language-server: $schema: https://raw.githubusercontent.com/SchemaStore/schemastore/refs/heads/master/src/schemas/json/github-workflow.json
+---
+name: Lint
+
+on:
+  workflow_dispatch:
+  pull_request:
+    types:
+      - opened
+      - review_requested
+      - ready_for_review
+      - auto_merge_enabled
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # install dependencies
+      - uses: pdm-project/setup-pdm@v4
+        with:
+          cache: true
+      - run: pdm install -G:all
+      - uses: jaxxstorm/action-install-gh-release@v1.10.0
+        with:
+          repo: houseabsolute/precious
+          tag: v0.9.0
+          cache: enable
+
+      # lint
+      - run: pdm run precious lint --all
+      - run: |
+          set -eoux pipefail
+
+          pdm run precious tidy --all
+          git diff --exit-code
+        if: success() || failure()
