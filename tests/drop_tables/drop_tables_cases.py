@@ -55,7 +55,14 @@ class DropTablesCases:
             "prefix",
             {
                 "prefix": [
-                    {"purchaseOrders": [{"id": "1", "subObjects": [{"id": "2"}]}]},
+                    {
+                        "purchaseOrders": [
+                            {
+                                "id": "1",
+                                "subObjects": [{"id": "2"}, {"id": "3"}],
+                            },
+                        ],
+                    },
                 ],
             },
             [],
