@@ -39,7 +39,7 @@ from __future__ import annotations
 import json
 import sqlite3
 import sys
-from typing import TYPE_CHECKING, Any, NoReturn, cast
+from typing import TYPE_CHECKING, NoReturn, cast
 
 import duckdb
 import psycopg2
@@ -324,7 +324,7 @@ class LDLite:
         query: str | None = None,
         json_depth: int = 3,
         limit: int | None = None,
-        transform: Any = None,
+        transform: bool | None = None,
     ) -> list[str]:
         """Submits a query to a FOLIO module, and transforms and stores the result.
 
