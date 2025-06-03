@@ -70,6 +70,7 @@ test = "python -m pytest -vv"
 lint = [
     "mypy>=1.4.1",
     "ruff>=0.11.9",
+    "pre-commit-hooks>=4.4.0",
 ]
 test = [
     "pytest>=7.4.4",
@@ -80,4 +81,3 @@ types = [
     "types-psycopg2>=2.9.21.20",
     "types-tqdm>=4.66.0.5",
 ]
-

@@ -7,3 +7,4 @@ dependencies:
   - python>=3.7,<3.10
   - pdm==2.24.1
   - postgresql==17.5
+  - precious==0.9.0

@@ -1,3 +1,4 @@
+!precious.toml
 ldlite.db
 ldlite.db.wal
 
@@ -6,4 +7,3 @@ dist
 ldlite.egg-info
 tmp
 .idea
-
