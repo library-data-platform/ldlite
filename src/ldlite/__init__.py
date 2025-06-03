@@ -210,11 +210,10 @@ class LDLite:
             msg = "connection to folio not configured: use connect_folio()"
             raise RuntimeError(msg)
 
-    def _check_db(self) -> bool:
+    def _check_db(self) -> None:
         if self.db is None:
             msg = "no database connection: use connect_db() or connect_db_postgresql()"
             raise RuntimeError(msg)
-        return True
 
     def connect_folio(self, url: str, tenant: str, user: str, password: str) -> None:
         """Connects to a FOLIO instance with a user name and password.
