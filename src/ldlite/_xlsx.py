@@ -1,22 +1,32 @@
-from typing import Any
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
 
 import xlsxwriter
 
 from ._sqlx import DBType, server_cursor, sqlid
 
+if TYPE_CHECKING:
+    from _typeshed import dbapi
+
 
 def to_xlsx(  # noqa: C901, PLR0912, PLR0915
-    db: Any, dbtype: DBType, table: str, filename: str, header: bool
+    db: dbapi.DBAPIConnection,
+    dbtype: DBType,
+    table: str,
+    filename: str,
+    header: bool,
 ) -> None:
     # Read attributes
-    attrs = []
-    width = []
+    attrs: list[tuple[str, dbapi.DBAPITypeCode]] = []
+    width: list[int] = []
     cur = db.cursor()
     try:
         cur.execute("SELECT * FROM " + sqlid(table) + " LIMIT 1")
-        for a in cur.description:
-            attrs.append((a[0], a[1]))
-            width.append(len(a[0]))
+        if cur.description is not None:
+            for a in cur.description:
+                attrs.append((a[0], a[1]))
+                width.append(len(a[0]))
     finally:
         cur.close()
     cols = ",".join([sqlid(a[0]) for a in attrs])
@@ -56,11 +66,11 @@ def to_xlsx(  # noqa: C901, PLR0912, PLR0915
                 worksheet.set_column(i, i, w + 2)
             if header:
                 worksheet.freeze_panes(1, 0)
-                for i, a in enumerate(attrs):
+                for i, attr in enumerate(attrs):
                     fmt = workbook.add_format()
                     fmt.set_bold()
                     fmt.set_align("center")
-                    worksheet.write(0, i, a[0], fmt)
+                    worksheet.write(0, i, attr[0], fmt)
             row_i = 1 if header else 0
             datafmt = workbook.add_format()
             datafmt.set_align("top")
