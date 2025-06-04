@@ -3,7 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from ._sqlx import DBType, server_cursor, sqlid
+from ._sqlx import DBType, as_sqlite, server_cursor, sqlid
 
 if TYPE_CHECKING:
     from _typeshed import dbapi
@@ -19,7 +19,7 @@ def _escape_csv(field: str) -> str:
     return b
 
 
-def to_csv(
+def to_csv(  # noqa: PLR0912
     db: dbapi.DBAPIConnection,
     dbtype: DBType,
     table: str,
@@ -28,13 +28,25 @@ def to_csv(
 ) -> None:
     # Read attributes
     attrs: list[tuple[str, dbapi.DBAPITypeCode]] = []
-    cur = db.cursor()
-    try:
-        cur.execute("SELECT * FROM " + sqlid(table) + " LIMIT 1")
-        if cur.description is not None:
-            attrs.extend([(a[0], a[1]) for a in cur.description])
-    finally:
-        cur.close()
+
+    if sql3db := as_sqlite(db, dbtype):
+        sql3cur = sql3db.cursor()
+        try:
+            sql3cur.execute("PRAGMA table_info(" + sqlid(table) + ")")
+            attrs.extend([(a[1], a[2]) for a in sql3cur.fetchall()])
+        finally:
+            sql3cur.close()
+
+    else:
+        cur = server_cursor(db, dbtype)
+        try:
+            cur.execute("SELECT * FROM " + sqlid(table) + " LIMIT 1")
+            cur.fetchall()
+            if cur.description is not None:
+                attrs.extend([(a[0], a[1]) for a in cur.description])
+        finally:
+            cur.close()
+
     # Write data
     cur = server_cursor(db, dbtype)
     try:
@@ -60,11 +72,7 @@ def to_csv(
                     d = "" if data is None else data
                     if i != 0:
                         s += ","
-                    if (
-                        attrs[i][1] == "NUMBER"
-                        or attrs[i][1] == 20
-                        or attrs[i][1] == 23
-                    ):
+                    if attrs[i][1] in ["NUMBER", "bigint", 20, 23]:
                         s += str(d)
                     else:
                         s += '"' + _escape_csv(str(d)) + '"'
