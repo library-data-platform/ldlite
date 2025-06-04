@@ -237,7 +237,7 @@ class LDLite:
         user: str,
         password: str,
         legacy_auth: bool = False,
-    ) -> None:
+    ) -> None:  # pragma: nocover
         """Deprecated; use connect_folio(). This will be removed after Sunflower."""
         if not url.startswith("https://"):
             msg = 'url must begin with "https://"'
@@ -249,7 +249,12 @@ class LDLite:
         self.legacy_auth = legacy_auth
         self._login()
 
-    def connect_okapi_token(self, url: str, tenant: str, token: str) -> None:
+    def connect_okapi_token(
+        self,
+        url: str,
+        tenant: str,
+        token: str,
+    ) -> None:  # pragma: nocover
         """Deprecated; use connect_folio(). This will be removed after Sunflower."""
         self.okapi_url = url.rstrip("/")
         self.okapi_tenant = tenant
@@ -674,12 +679,17 @@ class LDLite:
         finally:
             autocommit(self.db, self.dbtype, True)
 
-    def to_csv(self) -> NoReturn:
+    def to_csv(self) -> NoReturn:  # pragma: nocover
         """Deprecated; use export_csv()."""
         msg = "to_csv() is no longer supported: use export_csv()"
         raise ValueError(msg)
 
-    def export_excel(self, filename: str, table: str, header: bool = True) -> None:
+    def export_excel(
+        self,
+        filename: str,
+        table: str,
+        header: bool = True,
+    ) -> None:  # pragma: nocover
         """Export a table in the reporting database to an Excel file.
 
         All rows of *table* are exported to *filename*, or *filename*.xlsx if
@@ -704,7 +714,7 @@ class LDLite:
         finally:
             autocommit(self.db, self.dbtype, True)
 
-    def to_xlsx(self) -> NoReturn:
+    def to_xlsx(self) -> NoReturn:  # pragma: nocover
         """Deprecated; use export_excel()."""
         msg = "to_xlsx() is no longer supported: use export_excel()"
         raise ValueError(msg)

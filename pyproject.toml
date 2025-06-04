@@ -59,12 +59,18 @@ pydocstyle.convention = "google"
 [tool.ruff.lint.flake8-annotations]
 mypy-init-return = true
 
+[tool.coverage.run]
+branch = true
+include = ["src/**"]
+omit = ["src/ldlite/_xlsx.py"]
+
 [tool.pdm]
 distribution = true
 package-dir = "src"
 
 [tool.pdm.scripts]
-test = "python -m pytest -vv"
+test.composite = ["rm .coverage", "python -m coverage run -m pytest -vv {args}", "python -m coverage report"]
+test.keep_going = true
 
 [dependency-groups]
 lint = [
@@ -75,6 +81,7 @@ lint = [
 test = [
     "pytest>=7.4.4",
     "pytest-cases>=3.8.6",
+    "coverage>=7.2.7",
 ]
 types = [
     "types-requests>=2.31.0.6",
