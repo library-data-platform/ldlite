@@ -6,6 +6,7 @@ from .base import TestCase
 @dataclass(frozen=True)
 class DropTablesCase(TestCase):
     drop: str
+    expected_tables: list[str]
 
 
 class DropTablesCases:

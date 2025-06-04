@@ -10,6 +10,7 @@ from .base import TestCase
 @dataclass(frozen=True)
 class QueryCase(TestCase):
     json_depth: int
+    expected_tables: list[str]
     expected_values: dict[str, tuple[list[str], list[tuple[Any, ...]]]]
 
 

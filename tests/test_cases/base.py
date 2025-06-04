@@ -11,7 +11,6 @@ if TYPE_CHECKING:
 @dataclass(frozen=True)
 class TestCase:
     values: dict[str, list[dict[str, Any]]]
-    expected_tables: list[str]
 
     @cached_property
     def db(self) -> str:
