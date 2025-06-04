@@ -20,6 +20,29 @@ def test_ok() -> None:
     ld.select(table="g__t")
 
 
+def test_no_connect_folio() -> None:
+    from ldlite import LDLite as uut
+
+    ld = uut()
+    ld.connect_db()
+    with pytest.raises(RuntimeError):
+        ld.query(table="g", path="/groups", query="cql.allRecords=1 sortby id")
+
+
+def test_no_connect_db() -> None:
+    from ldlite import LDLite as uut
+
+    ld = uut()
+    ld.connect_folio(
+        url="https://folio-etesting-snapshot-kong.ci.folio.org",
+        tenant="diku",
+        user="diku_admin",
+        password="admin",
+    )
+    with pytest.raises(RuntimeError):
+        ld.query(table="g", path="/groups", query="cql.allRecords=1 sortby id")
+
+
 @dataclass(frozen=True)
 class FolioConnectionCase:
     expected: type[Exception]
