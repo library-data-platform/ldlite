@@ -4,7 +4,7 @@ from .base import TestCase
 
 
 @dataclass(frozen=True)
-class DropTablesCase(TestCase[list[str]]):
+class DropTablesCase(TestCase):
     drop: str
 
 
@@ -13,7 +13,7 @@ class DropTablesCases:
         return DropTablesCase(
             drop="prefix",
             values={"prefix": [{"purchaseOrders": [{"id": "1"}]}]},
-            expected_values=[],
+            expected_tables=[],
         )
 
     def case_two_tables(self) -> DropTablesCase:
@@ -31,7 +31,7 @@ class DropTablesCases:
                     },
                 ],
             },
-            expected_values=[],
+            expected_tables=[],
         )
 
     def case_separate_table(self) -> DropTablesCase:
@@ -41,7 +41,7 @@ class DropTablesCases:
                 "prefix": [{"purchaseOrders": [{"id": "1"}]}],
                 "notdropped": [{"purchaseOrders": [{"id": "1"}]}],
             },
-            expected_values=[
+            expected_tables=[
                 "notdropped",
                 "notdropped__t",
                 "notdropped__tcatalog",

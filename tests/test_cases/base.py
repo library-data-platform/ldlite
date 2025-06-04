@@ -1,19 +1,17 @@
 from dataclasses import dataclass
 from functools import cached_property
-from typing import TYPE_CHECKING, Any, Generic, TypeVar
+from typing import TYPE_CHECKING, Any
 from unittest.mock import MagicMock
 from uuid import uuid4
 
 if TYPE_CHECKING:
     import ldlite
 
-_EV = TypeVar("_EV")
-
 
 @dataclass(frozen=True)
-class TestCase(Generic[_EV]):
+class TestCase:
     values: dict[str, list[dict[str, Any]]]
-    expected_values: _EV
+    expected_tables: list[str]
 
     @cached_property
     def db(self) -> str:
