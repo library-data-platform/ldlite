@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import contextlib
+from difflib import unified_diff
+from pathlib import Path
 from typing import TYPE_CHECKING, Callable
 from unittest import mock
 from unittest.mock import MagicMock
@@ -11,6 +13,7 @@ from pytest_cases import parametrize_with_cases
 
 from .test_cases import drop_tables_cases as dtc
 from .test_cases import query_cases as qc
+from .test_cases import to_csv_cases as csvc
 
 if TYPE_CHECKING:
     from unittest.mock import MagicMock
@@ -104,3 +107,38 @@ def test_query(
                     assert res.fetchone() == v
 
                 assert res.fetchone() is None
+
+
+@mock.patch("ldlite.request_get")
+@parametrize_with_cases("tc", cases=csvc.ToCsvCases)
+def test_to_csv(
+    request_get_mock: MagicMock,
+    pg_dsn: None | Callable[[str], str],
+    tc: csvc.ToCsvCase,
+    tmpdir: str,
+) -> None:
+    if pg_dsn is None:
+        pytest.skip("Specify the pg host using --pg-host to run")
+
+    from ldlite import LDLite as uut
+
+    ld = uut()
+    tc.patch_request_get(ld, request_get_mock)
+    ld.connect_db_postgresql(dsn=pg_dsn(tc.db))
+
+    for prefix in tc.values:
+        ld.query(table=prefix, path="/patched")
+
+    for table, expected in tc.expected_csvs:
+        actual = (Path(tmpdir) / table).with_suffix(".csv")
+
+        ld.export_csv(str(actual), table)
+
+        with expected.open("r") as f:
+            expected_lines = f.readlines()
+        with actual.open("r") as f:
+            actual_lines = f.readlines()
+
+        diff = list(unified_diff(expected_lines, actual_lines))
+        if len(diff) > 0:
+            pytest.fail("".join(diff))
