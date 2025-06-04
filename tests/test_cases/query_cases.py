@@ -30,12 +30,13 @@ class QueryTestCases:
                     },
                 ],
             },
-            expected_tables=["t"],
+            expected_tables=["prefix", "prefix__t", "prefix__tcatalog"],
             expected_values={
-                "t": (
+                "prefix__t": (
                     ["id", "value"],
                     [("b096504a-3d54-4664-9bf5-1b872466fd66", "value")],
                 ),
+                "prefix__tcatalog": (["table_name"], [("prefix__t",)]),
             },
         )
 
@@ -65,13 +66,18 @@ class QueryTestCases:
                     },
                 ],
             },
-            expected_tables=["t", "t__sub_objects"],
+            expected_tables=[
+                "prefix",
+                "prefix__t",
+                "prefix__t__sub_objects",
+                "prefix__tcatalog",
+            ],
             expected_values={
-                "t": (
+                "prefix__t": (
                     ["id", "value"],
                     [("b096504a-3d54-4664-9bf5-1b872466fd66", "value")],
                 ),
-                "t__sub_objects": (
+                "prefix__t__sub_objects": (
                     ["id", "sub_objects__id", "sub_objects__value"],
                     [
                         (
@@ -85,6 +91,10 @@ class QueryTestCases:
                             "sub-value-2",
                         ),
                     ],
+                ),
+                "prefix__tcatalog": (
+                    ["table_name"],
+                    [("prefix__t",), ("prefix__t__sub_objects",)],
                 ),
             },
         )
@@ -111,7 +121,7 @@ class QueryTestCases:
                     },
                 ],
             },
-            expected_tables=[],
+            expected_tables=["prefix"],
             expected_values={},
         )
 
@@ -143,9 +153,14 @@ class QueryTestCases:
                     },
                 ],
             },
-            expected_tables=["t", "t__sub_objects"],
+            expected_tables=[
+                "prefix",
+                "prefix__t",
+                "prefix__t__sub_objects",
+                "prefix__tcatalog",
+            ],
             expected_values={
-                "t__sub_objects": (
+                "prefix__t__sub_objects": (
                     ["*"],
                     [
                         (
@@ -156,6 +171,10 @@ class QueryTestCases:
                             "sub-value",
                         ),
                     ],
+                ),
+                "prefix__tcatalog": (
+                    ["table_name"],
+                    [("prefix__t",), ("prefix__t__sub_objects",)],
                 ),
             },
         )
@@ -191,12 +210,14 @@ class QueryTestCases:
                 ],
             },
             expected_tables=[
-                "t",
-                "t__sub_objects",
-                "t__sub_objects__sub_sub_objects",
+                "prefix",
+                "prefix__t",
+                "prefix__t__sub_objects",
+                "prefix__t__sub_objects__sub_sub_objects",
+                "prefix__tcatalog",
             ],
             expected_values={
-                "t__sub_objects__sub_sub_objects": (
+                "prefix__t__sub_objects__sub_sub_objects": (
                     [
                         "id",
                         "sub_objects__id",
@@ -210,6 +231,14 @@ class QueryTestCases:
                             "2b94c631-fca9-4892-a730-03ee529ffe2a",
                             "sub-sub-value",
                         ),
+                    ],
+                ),
+                "prefix__tcatalog": (
+                    ["table_name"],
+                    [
+                        ("prefix__t",),
+                        ("prefix__t__sub_objects",),
+                        ("prefix__t__sub_objects__sub_sub_objects",),
                     ],
                 ),
             },
@@ -234,9 +263,9 @@ class QueryTestCases:
                     },
                 ],
             },
-            expected_tables=["t"],
+            expected_tables=["prefix", "prefix__t", "prefix__tcatalog"],
             expected_values={
-                "t": (
+                "prefix__t": (
                     ["id", "value", "sub_object__id", "sub_object__value"],
                     [
                         (
@@ -246,6 +275,10 @@ class QueryTestCases:
                             "sub-value",
                         ),
                     ],
+                ),
+                "prefix__tcatalog": (
+                    ["table_name"],
+                    [("prefix__t",)],
                 ),
             },
         )
@@ -273,9 +306,9 @@ class QueryTestCases:
                     },
                 ],
             },
-            expected_tables=["t"],
+            expected_tables=["prefix", "prefix__t", "prefix__tcatalog"],
             expected_values={
-                "t": (
+                "prefix__t": (
                     [
                         "id",
                         "value",
@@ -292,6 +325,10 @@ class QueryTestCases:
                             "sub-sub-value",
                         ),
                     ],
+                ),
+                "prefix__tcatalog": (
+                    ["table_name"],
+                    [("prefix__t",)],
                 ),
             },
         )
@@ -315,9 +352,9 @@ class QueryTestCases:
                     },
                 ],
             },
-            expected_tables=["t"],
+            expected_tables=["prefix", "prefix__t", "prefix__tcatalog"],
             expected_values={
-                "t": (
+                "prefix__t": (
                     ["id", "value", "sub_object"],
                     [
                         (
@@ -332,6 +369,10 @@ class QueryTestCases:
                             ),
                         ),
                     ],
+                ),
+                "prefix__tcatalog": (
+                    ["table_name"],
+                    [("prefix__t",)],
                 ),
             },
         )
@@ -383,12 +424,14 @@ class QueryTestCases:
                 ],
             },
             expected_tables=[
-                "t",
-                "t__sub_objects",
-                "t__sub_objects__sub_sub_objects",
+                "prefix",
+                "prefix__t",
+                "prefix__t__sub_objects",
+                "prefix__t__sub_objects__sub_sub_objects",
+                "prefix__tcatalog",
             ],
             expected_values={
-                "t__sub_objects": (
+                "prefix__t__sub_objects": (
                     ["__id", "id", "sub_objects__o", "sub_objects__id"],
                     [
                         (
@@ -405,7 +448,7 @@ class QueryTestCases:
                         ),
                     ],
                 ),
-                "t__sub_objects__sub_sub_objects": (
+                "prefix__t__sub_objects__sub_sub_objects": (
                     ["__id", "sub_objects__o", "sub_objects__sub_sub_objects__o"],
                     [
                         (1, 1, 1),

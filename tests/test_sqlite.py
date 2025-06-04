@@ -41,29 +41,14 @@ def test_query(request_get_mock: MagicMock, tc: qc.QueryCase) -> None:
     for prefix in tc.values:
         ld.query(table=prefix, path="/patched", json_depth=tc.json_depth)
 
-    catalog = f"{prefix}__tcatalog"
-    fixed_cols = [prefix]
-    # TODO: Clean this edge case up so tcatalog is always created
-    if tc.json_depth > 0:
-        fixed_cols.append(catalog)
-
     with sqlite3.connect(dsn) as conn:
         with contextlib.closing(conn.cursor()) as res:
             res.execute("SELECT name FROM sqlite_master WHERE type='table';")
-            assert sorted([r[0] for r in res.fetchall()]) == sorted(
-                [*fixed_cols, *[f"{prefix}__{t}" for t in tc.expected_tables]]
-            )
-
-        if tc.json_depth > 0:
-            with contextlib.closing(conn.cursor()) as res:
-                res.execute(f"SELECT table_name FROM {catalog};")
-                assert sorted([r[0] for r in res.fetchall()]) == sorted(
-                    [f"{prefix}__{t}" for t in tc.expected_tables]
-                )
+            assert sorted([r[0] for r in res.fetchall()]) == sorted(tc.expected_tables)
 
         for table, (cols, values) in tc.expected_values.items():
             with contextlib.closing(conn.cursor()) as res:
-                res.execute(f"SELECT {','.join(cols)} FROM {prefix}__{table};")
+                res.execute(f"SELECT {','.join(cols)} FROM {table};")
                 for v in values:
                     assert res.fetchone() == v
 
