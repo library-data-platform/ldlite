@@ -9,7 +9,7 @@ import psycopg2
 import pytest
 from pytest_cases import parametrize_with_cases
 
-from .drop_tables_cases import DropTablesCase, DropTablesCases
+from .test_cases import drop_tables_cases as dtc
 
 if TYPE_CHECKING:
     from unittest.mock import MagicMock
@@ -34,32 +34,24 @@ def pg_dsn(pytestconfig: pytest.Config) -> None | Callable[[str], str]:
 
 
 @mock.patch("ldlite.request_get")
-@parametrize_with_cases("tc", cases=DropTablesCases)
-def test_postgres(
+@parametrize_with_cases("tc", cases=dtc.DropTablesCases)
+def test_drop_tables(
     request_get_mock: MagicMock,
     pg_dsn: None | Callable[[str], str],
-    tc: DropTablesCase,
+    tc: dtc.DropTablesCase,
 ) -> None:
     if pg_dsn is None:
         pytest.skip("Specify the pg host using --pg-host to run")
 
     from ldlite import LDLite as uut
 
-    dsn = pg_dsn(tc.db)
-    tc.patch_request_get(request_get_mock)
-
     ld = uut()
-
-    # _check_okapi() hack
-    ld.login_token = "token"
-    ld.okapi_url = "url"
-    # leave tqdm out of it
-    ld.quiet(enable=True)
-
+    tc.patch_request_get(ld, request_get_mock)
+    dsn = pg_dsn(tc.db)
     ld.connect_db_postgresql(dsn)
-    # we're not testing the endpoint behavior so path doesn't matter
+
     for prefix in tc.values:
-        ld.query(table=prefix, path="/pancakes")
+        ld.query(table=prefix, path="/patched")
     ld.drop_tables(tc.drop)
 
     with psycopg2.connect(dsn) as conn, conn.cursor() as res:
@@ -70,4 +62,4 @@ def test_postgres(
                 WHERE table_schema='public'
                 """,
         )
-        assert sorted([r[0] for r in res.fetchall()]) == sorted(tc.expected_tables)
+        assert sorted([r[0] for r in res.fetchall()]) == sorted(tc.expected_values)
