@@ -27,13 +27,14 @@ def to_csv(  # noqa: PLR0912
     header: bool,
 ) -> None:
     # Read attributes
-    attrs: list[tuple[str, dbapi.DBAPITypeCode]] = []
+    attrs: list[tuple[str, dbapi.DBAPITypeCode]] = [("__id", "NUMBER")]
 
     if sql3db := as_sqlite(db, dbtype):
         sql3cur = sql3db.cursor()
         try:
             sql3cur.execute("PRAGMA table_info(" + sqlid(table) + ")")
-            attrs.extend([(a[1], a[2]) for a in sql3cur.fetchall()])
+            t_attrs = [(a[1], a[2]) for a in sql3cur.fetchall()[1:]]
+            attrs.extend(sorted(t_attrs, key=lambda a: a[0]))
         finally:
             sql3cur.close()
 
@@ -43,7 +44,8 @@ def to_csv(  # noqa: PLR0912
             cur.execute("SELECT * FROM " + sqlid(table) + " LIMIT 1")
             cur.fetchall()
             if cur.description is not None:
-                attrs.extend([(a[0], a[1]) for a in cur.description])
+                t_attrs = [(a[0], a[1]) for a in cur.description[1:]]
+                attrs.extend(sorted(t_attrs, key=lambda a: a[0]))
         finally:
             cur.close()
 
@@ -72,8 +74,21 @@ def to_csv(  # noqa: PLR0912
                     d = "" if data is None else data
                     if i != 0:
                         s += ","
-                    if attrs[i][1] in ["NUMBER", "bigint", 20, 23]:
-                        s += str(d)
+                    if attrs[i][1] in [
+                        "NUMBER",
+                        "bigint",
+                        "numeric",
+                        20,
+                        1700,
+                    ]:
+                        s += str(d).rstrip("0").rstrip(".")
+                    elif attrs[i][1] in [
+                        "boolean",
+                        "bool",
+                        16,
+                    ]:
+                        s += str(bool(d))
+
                     else:
                         s += '"' + _escape_csv(str(d)) + '"'
                 print(s, file=f)
