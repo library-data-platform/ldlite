@@ -227,10 +227,9 @@ class LDLite:
                              password='admin')
 
         """
-        self.connect_okapi(url, tenant, user, password)
+        self._connect_okapi(url, tenant, user, password)
 
-    def connect_okapi(self, url, tenant, user, password, legacy_auth=False):
-        """Deprecated; use connect_folio(). This will be removed for the Sunflower release. """
+    def _connect_okapi(self, url, tenant, user, password, legacy_auth=False):
         if not url.startswith('https://'):
             raise ValueError('url must begin with "https://"')
         self.okapi_url = url.rstrip('/')
@@ -239,12 +238,6 @@ class LDLite:
         self.okapi_password = password
         self.legacy_auth = legacy_auth
         self._login()
-
-    def connect_okapi_token(self, url, tenant, token):
-        """Deprecated; use connect_folio(). This will be removed for the Sunflower release. """
-        self.okapi_url = url.rstrip('/')
-        self.okapi_tenant = tenant
-        self.login_token = token
 
     def drop_tables(self, table):
         """Drops a specified table and any accompanying tables that were output from JSON transformation.
@@ -284,10 +277,9 @@ class LDLite:
             ld.set_folio_max_retries(5)
 
         """
-        self.set_okapi_max_retries(max_retries)
+        self._set_okapi_max_retries(max_retries)
 
-    def set_okapi_max_retries(self, max_retries):
-        """Deprecated; use set_folio_max_retries(). This will be removed for the Sunflower release. """
+    def _set_okapi_max_retries(self, max_retries):
         self._okapi_max_retries = max_retries
 
     def set_folio_timeout(self, timeout):
@@ -301,11 +293,10 @@ class LDLite:
             ld.set_folio_timeout(300)
 
         """
-        self.set_okapi_timeout(timeout)
+        self._set_okapi_timeout(timeout)
 
 
-    def set_okapi_timeout(self, timeout):
-        """Deprecated; use set_folio_timeout(). This will be removed for the Sunflower release. """
+    def _set_okapi_timeout(self, timeout):
         self._okapi_timeout = timeout
 
     def query(self, table, path, query=None, json_depth=3, limit=None, transform=None):
