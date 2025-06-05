@@ -64,3 +64,31 @@ to be""",
             },
             expected_csvs=[("prefix__t", _SAMPLE_PATH / "escaped_chars.csv")],
         )
+
+    def case_sorting(self) -> ToCsvCase:
+        return ToCsvCase(
+            values={
+                "prefix": [
+                    {
+                        "purchaseOrders": [
+                            {
+                                "C": "YY",
+                                "B": "XX",
+                                "A": "ZZ",
+                            },
+                            {
+                                "C": "Y",
+                                "B": "XX",
+                                "A": "ZZ",
+                            },
+                            {
+                                "C": "Y",
+                                "B": "X",
+                                "A": "Z",
+                            },
+                        ],
+                    },
+                ],
+            },
+            expected_csvs=[("prefix__t", _SAMPLE_PATH / "sorting.csv")],
+        )

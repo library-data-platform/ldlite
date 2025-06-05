@@ -59,7 +59,7 @@ def to_csv(  # noqa: PLR0912
             + " FROM "
             + sqlid(table)
             + " ORDER BY "
-            + ",".join([str(i + 1) for i in range(len(attrs))]),
+            + ",".join([str(i + 2) for i in range(len(attrs[1:]))]),
         )
         fn = Path(filename if "." in filename else filename + ".csv")
         with fn.open("w") as f:
