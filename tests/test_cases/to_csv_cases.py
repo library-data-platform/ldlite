@@ -37,3 +37,30 @@ class ToCsvCases:
             },
             expected_csvs=[("prefix__t", _SAMPLE_PATH / "datatypes.csv")],
         )
+
+    def case_escaped_chars(self) -> ToCsvCase:
+        return ToCsvCase(
+            values={
+                "prefix": [
+                    {
+                        "purchaseOrders": [
+                            {
+                                "comma": "Double, double toil and trouble",
+                                "doubleQuote": 'Cry "Havoc!" a horse',
+                                "newLine": """To be
+or not
+to be""",
+                                "singleQuote": "Cry 'Havoc!' a horse",
+                            },
+                            {
+                                "comma": "Z",
+                                "doubleQuote": "Z",
+                                "newLine": "Z",
+                                "singleQuote": "Z",
+                            },
+                        ],
+                    },
+                ],
+            },
+            expected_csvs=[("prefix__t", _SAMPLE_PATH / "escaped_chars.csv")],
+        )
