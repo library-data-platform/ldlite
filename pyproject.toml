@@ -69,8 +69,7 @@ distribution = true
 package-dir = "src"
 
 [tool.pdm.scripts]
-test.composite = ["rm .coverage", "python -m coverage run -m pytest -vv {args}", "python -m coverage report"]
-test.keep_going = true
+test.composite = ["rm -f .coverage", "python -m coverage run -m pytest -vv {args}", "python -m coverage report"]
 
 [dependency-groups]
 lint = [
