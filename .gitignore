@@ -2,6 +2,7 @@
 ldlite.db
 ldlite.db.wal
 
+.coverage
 __pycache__
 dist
 ldlite.egg-info

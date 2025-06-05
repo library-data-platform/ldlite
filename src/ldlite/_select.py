@@ -33,10 +33,7 @@ def _maxlen(lines: list[str]) -> int:
 
 
 def _rstrip_lines(lines: list[str]) -> list[str]:
-    newlines: list[str] = []
-    for s in lines:
-        newlines.extend(s.rstrip())
-    return newlines
+    return [s.rstrip() for s in lines]
 
 
 def _format_value(value: list[str], dtype: dbapi.DBAPITypeCode) -> list[str]:

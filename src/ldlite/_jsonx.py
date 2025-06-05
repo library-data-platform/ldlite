@@ -100,20 +100,17 @@ def _old_drop_json_tables(db: dbapi.DBAPIConnection, table: str) -> None:
     cur = db.cursor()
     try:
         cur.execute("SELECT table_name FROM " + jtable_sql)
-        while True:
-            row = cur.fetchone()
-            if row is None:
-                break
+        rows = list(cur.fetchall())
+        for row in rows:
             t = row[0]
             cur2 = db.cursor()
             try:
-                cur2.execute("DROP TABLE IF EXISTS " + sqlid(t))
-            except (RuntimeError, psycopg2.Error):
-                pass
+                cur2.execute("DROP TABLE " + sqlid(t))
+            except (psycopg2.Error, duckdb.CatalogException, sqlite3.OperationalError):
+                continue
             finally:
                 cur2.close()
     except (
-        RuntimeError,
         psycopg2.Error,
         sqlite3.OperationalError,
         duckdb.CatalogException,
@@ -123,8 +120,12 @@ def _old_drop_json_tables(db: dbapi.DBAPIConnection, table: str) -> None:
         cur.close()
     cur = db.cursor()
     try:
-        cur.execute("DROP TABLE IF EXISTS " + jtable_sql)
-    except (duckdb.CatalogException, RuntimeError, psycopg2.Error):
+        cur.execute("DROP TABLE " + jtable_sql)
+    except (
+        psycopg2.Error,
+        duckdb.CatalogException,
+        sqlite3.OperationalError,
+    ):
         pass
     finally:
         cur.close()
@@ -136,31 +137,32 @@ def drop_json_tables(db: dbapi.DBAPIConnection, table: str) -> None:
     cur = db.cursor()
     try:
         cur.execute("SELECT table_name FROM " + tcatalog_sql)
-        while True:
-            row = cur.fetchone()
-            if row is None:
-                break
+        rows = list(cur.fetchall())
+        for row in rows:
             t = row[0]
             cur2 = db.cursor()
             try:
-                cur2.execute("DROP TABLE IF EXISTS " + sqlid(t))
-            except (duckdb.CatalogException, RuntimeError, psycopg2.Error):
-                pass
+                cur2.execute("DROP TABLE " + sqlid(t))
+            except (psycopg2.Error, duckdb.CatalogException, sqlite3.OperationalError):
+                continue
             finally:
                 cur2.close()
     except (
-        RuntimeError,
         psycopg2.Error,
-        sqlite3.OperationalError,
         duckdb.CatalogException,
+        sqlite3.OperationalError,
     ):
         pass
     finally:
         cur.close()
     cur = db.cursor()
     try:
-        cur.execute("DROP TABLE IF EXISTS " + tcatalog_sql)
-    except (RuntimeError, psycopg2.Error):
+        cur.execute("DROP TABLE " + tcatalog_sql)
+    except (
+        psycopg2.Error,
+        duckdb.CatalogException,
+        sqlite3.OperationalError,
+    ):
         pass
     finally:
         cur.close()
