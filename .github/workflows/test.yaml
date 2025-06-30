@@ -21,6 +21,7 @@ jobs:
       - uses: pdm-project/setup-pdm@v4
         with:
           cache: true
+          cache-dependency-path: pylock.toml
       - run: pdm install -G:all --lockfile pylock.toml
 
       # test
@@ -35,6 +36,7 @@ jobs:
       - uses: pdm-project/setup-pdm@v4
         with:
           cache: true
+          cache-dependency-path: pylock.minimal.toml
       - run: pdm install -G:all --lockfile pylock.minimal.toml
 
       # test
