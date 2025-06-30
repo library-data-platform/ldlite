@@ -14,6 +14,32 @@ If you'd like support or assistance upgrading please feel free to reach out to l
 
 ## Latest Major Release
 
+### 3.0.0 - The Prep for Takeoff Release
+
+The good: LDLite has been running unchanged in production for multiple years!
+
+The bad: No one really knows how to safely make fixes and improvements to LDLite.
+
+This release adds a number of Code Quality tools so that improvements can be made safely to LDLite.
+For the most part, this release has no behavior changes but there are some breaking changes with how LDLite is installed.
+
+
+The minimum supported python version is now 3.9, this has been increased from python 3.7 (which became end of life in June 2023).
+LDLite will stop supporting python 3.9 when it becames end of life itself in October 2025.
+
+Additionally, the LDLite's dependencies have been unpinned and the unused direct dependcency on pandas has been removed.
+
+##### Steps to upgrade from 2.0.0
+
+Please refer to the [official python docs](https://docs.python.org/release/3.9.23/using/index.html) for guidance on installing at least python 3.9.
+You can use `python3 --version` to check which version you have currently installed.
+
+When you install ldlite 3.0.0 some of your transient dependencies might automatically get upgraded like requests or numpy.
+If you rely on pandas without having a direct dependency on it you may have to re-install it.
+Please make sure that any code using ldlite as a dependency is tested.
+
+## Previous Major Releases
+
 ### 2.0.0 - The Sunflower Release
 
 All deprecated methods on the LDLite object related to okapi are removed.
@@ -23,8 +49,6 @@ If you have not upgraded to 1.0.0, please do that first by following the instruc
 
 None! If you've followed the instructions for migrating to 1.0.0 you're already using the appropriate methods.
 If you do encounter new issues after upgrading to 2.0.0, please reach out to ldlite-support@fivecolleges.edu or the #folio-ldlite channel in Slack.
-
-## Previous Major Releases
 
 ### 1.0.0 - The Sunflower Ready Release
 
