@@ -35,6 +35,7 @@ jobs:
       # install dependencies
       - uses: pdm-project/setup-pdm@v4
         with:
+          python-version: 3.9
           cache: true
           cache-dependency-path: pylock.minimal.toml
       - run: pdm install -G:all --lockfile pylock.minimal.toml
