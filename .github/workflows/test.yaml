@@ -21,7 +21,21 @@ jobs:
       - uses: pdm-project/setup-pdm@v4
         with:
           cache: true
-      - run: pdm install -G test
+      - run: pdm install -G:all --lockfile pylock.toml
+
+      # test
+      - run: pdm run test
+
+  test-minimal-deps:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # install dependencies
+      - uses: pdm-project/setup-pdm@v4
+        with:
+          cache: true
+      - run: pdm install -G:all --lockfile pylock.minimal.toml
 
       # test
       - run: pdm run test
