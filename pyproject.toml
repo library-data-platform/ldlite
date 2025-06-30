@@ -72,9 +72,9 @@ test.composite = ["rm -f .coverage", "python -m coverage run -m pytest -vv {args
 
 [dependency-groups]
 lint = [
-    "mypy>=1.4.1",
-    "ruff>=0.11.9",
-    "pre-commit-hooks>=4.4.0",
+    "mypy==1.16.1",
+    "ruff==0.12.1",
+    "pre-commit-hooks==4.4.0",
 ]
 test = [
     "pytest>=7.4.4",
