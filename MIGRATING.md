@@ -10,9 +10,21 @@ To check your existing ldlite version use
 python -m pip freeze | grep ldlite
 ```
 or the equivalent command for your package manager.
-If you'd like support or assistance upgrading please feel free to reach out to ldlite-support@fivecolleges.edu or the #ldlite channel in Slack.
+If you'd like support or assistance upgrading please feel free to reach out to ldlite-support@fivecolleges.edu or the #folio-ldlite channel in Slack.
 
 ## Latest Major Release
+
+### 2.0.0 - The Sunflower Release
+
+All deprecated methods on the LDLite object related to okapi are removed.
+If you have not upgraded to 1.0.0, please do that first by following the instructions in the Previous Major Releases section.
+
+##### Steps to upgrade from 1.0.0
+
+None! If you've followed the instructions for migrating to 1.0.0 you're already using the appropriate methods.
+If you do encounter new issues after upgrading to 2.0.0, please reach out to ldlite-support@fivecolleges.edu or the #folio-ldlite channel in Slack.
+
+## Previous Major Releases
 
 ### 1.0.0 - The Sunflower Ready Release
 
@@ -64,5 +76,3 @@ Verify that ldlite continues to function normally.
 You're now ready for Sunflower and Eureka! Please note, the url you use to connect to Eureka will change from the one you are using for Okapi.
 After upgrading FOLIO you can find the Eureka URL in the same location as the Okapi URL:
 > Settings > Software versions > Services > On url
-
-## Previous Major Releases
