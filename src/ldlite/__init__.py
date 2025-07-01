@@ -228,9 +228,9 @@ class LDLite:
                              password='admin')
 
         """
-        self.connect_okapi(url, tenant, user, password)
+        self._connect_okapi(url, tenant, user, password)
 
-    def connect_okapi(
+    def _connect_okapi(
         self,
         url: str,
         tenant: str,
@@ -238,7 +238,6 @@ class LDLite:
         password: str,
         legacy_auth: bool = False,
     ) -> None:  # pragma: nocover
-        """Deprecated; use connect_folio(). This will be removed after Sunflower."""
         if not url.startswith("https://"):
             msg = 'url must begin with "https://"'
             raise ValueError(msg)
@@ -248,17 +247,6 @@ class LDLite:
         self.okapi_password = password
         self.legacy_auth = legacy_auth
         self._login()
-
-    def connect_okapi_token(
-        self,
-        url: str,
-        tenant: str,
-        token: str,
-    ) -> None:  # pragma: nocover
-        """Deprecated; use connect_folio(). This will be removed after Sunflower."""
-        self.okapi_url = url.rstrip("/")
-        self.okapi_tenant = tenant
-        self.login_token = token
 
     def drop_tables(self, table: str) -> None:
         """Drops a specified table and any accompanying tables.
@@ -299,10 +287,9 @@ class LDLite:
             ld.set_folio_max_retries(5)
 
         """
-        self.set_okapi_max_retries(max_retries)
+        self._set_okapi_max_retries(max_retries)
 
-    def set_okapi_max_retries(self, max_retries: int) -> None:
-        """Deprecated; use set_folio_max_retries(). Will be removed after Sunflower."""
+    def _set_okapi_max_retries(self, max_retries: int) -> None:
         self._okapi_max_retries = max_retries
 
     def set_folio_timeout(self, timeout: int) -> None:
@@ -315,10 +302,9 @@ class LDLite:
             ld.set_folio_timeout(300)
 
         """
-        self.set_okapi_timeout(timeout)
+        self._set_okapi_timeout(timeout)
 
-    def set_okapi_timeout(self, timeout: int) -> None:
-        """Deprecated; use set_folio_timeout(). This will be removed after Sunflower."""
+    def _set_okapi_timeout(self, timeout: int) -> None:
         self._okapi_timeout = timeout
 
     def query(  # noqa: C901, PLR0912, PLR0913, PLR0915
