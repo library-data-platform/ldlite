@@ -1,10 +1,10 @@
 from __future__ import annotations
 
-import json
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Literal
 
 import httpx
+import orjson
 from httpx_retries import Retry, RetryTransport
 
 if TYPE_CHECKING:
@@ -115,7 +115,7 @@ class FolioClient:
     def iterate_records(
         self,
         path: str,
-    ) -> Iterator[tuple[int, str]]:
+    ) -> Iterator[tuple[int, bytes]]:
         """Iterates all records for a given path.
 
         Returns:
@@ -134,8 +134,8 @@ class FolioClient:
                 },
             )
             res.raise_for_status()
-            j = res.json()
-            yield (int(j["totalRecords"]), "")
+            j = orjson.loads(res.text)
+            yield (int(j["totalRecords"]), b"")
 
             key = j.keys()[0]
             records = 1
@@ -150,9 +150,9 @@ class FolioClient:
                     },
                 )
                 res.raise_for_status()
-                j = res.json()
+                j = orjson.loads(res.text)
                 for r in j[key]:
-                    yield (pkey, json.dumps(r))
+                    yield (pkey, orjson.dumps(r))
                     pkey += 1
 
                 records = j[key]
