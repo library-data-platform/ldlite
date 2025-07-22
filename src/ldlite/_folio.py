@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Literal
 
@@ -7,7 +8,7 @@ import httpx
 from httpx_retries import Retry, RetryTransport
 
 if TYPE_CHECKING:
-    from collections.abc import Generator
+    from collections.abc import Generator, Iterator
     from types import TracebackType
 
     from typing_extensions import Self
@@ -32,6 +33,8 @@ class FolioParams:
     timeout: float = 60.0
     """The number of times a failed request will be retried."""
     retries: int = 2
+    """The number of FOLIO records to retrieve in a single request."""
+    page_size: int = 10000
 
 
 class _RefreshTokenAuth(httpx.Auth):
@@ -74,12 +77,14 @@ class _RefreshTokenAuth(httpx.Auth):
 
 
 class FolioClient:
+    """Client for reliably and performantly fetching FOLIO records."""
+
     def __init__(self, params: FolioParams):
         self._params = params
         self._client: httpx.Client | None = None
 
-    def __enter__(self) -> Self:
-        self._client = httpx.Client(
+    def _get_client(self) -> httpx.Client:
+        return httpx.Client(
             base_url=self._params.base_url,
             auth=_RefreshTokenAuth(self._params),
             transport=RetryTransport(
@@ -91,6 +96,8 @@ class FolioClient:
             timeout=self._params.timeout,
         )
 
+    def __enter__(self) -> Self:
+        self._client = self._get_client()
         return self
 
     def __exit__(
@@ -104,3 +111,53 @@ class FolioClient:
         self._client = None
 
         return False
+
+    def iterate_records(
+        self,
+        path: str,
+    ) -> Iterator[tuple[int, str]]:
+        """Iterates all records for a given path.
+
+        Returns:
+            A tuple of the autoincrementing key + the json for each record.
+            The first result will be the total.
+        """
+        dispose = self._client is None
+        client = self._client or self._get_client()
+
+        try:
+            res = client.get(
+                path,
+                params={
+                    "query": "cql.allRecords=1 sortBy id asc",
+                    "limit": 1,
+                },
+            )
+            res.raise_for_status()
+            j = res.json()
+            yield (int(j["totalRecords"]), "")
+
+            key = j.keys()[0]
+            records = 1
+            last_id = j[key][0]["id"]
+            pkey = 0
+            while records > 0:
+                res = client.get(
+                    path,
+                    params={
+                        "query": f'id>="{last_id}" sortBy id asc',
+                        "limit": self._params.page_size,
+                    },
+                )
+                res.raise_for_status()
+                j = res.json()
+                for r in j[key]:
+                    yield (pkey, json.dumps(r))
+                    pkey += 1
+
+                records = j[key]
+                last_id = j[key][-1]["id"]
+
+        finally:
+            if dispose:
+                client.close()
