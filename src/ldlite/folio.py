@@ -1,3 +1,5 @@
+"""Utilities for connecting to FOLIO."""
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -11,7 +13,7 @@ if TYPE_CHECKING:
     from collections.abc import Generator, Iterator
 
 
-@dataclass
+@dataclass(frozen=True)
 class FolioParams:
     """Connection parameters for FOLIO.
 
@@ -33,18 +35,18 @@ class _RefreshTokenAuth(httpx.Auth):
 
     def __init__(self, params: FolioParams):
         self._params = params
-        self.hdr = _RefreshTokenAuth._do_auth(self._params)
+        self._hdr = _RefreshTokenAuth._do_auth(self._params)
 
     def auth_flow(
         self,
         request: httpx.Request,
     ) -> Generator[httpx.Request, httpx.Response, None]:
-        request.headers.update(self.hdr)
+        request.headers.update(self._hdr)
         response = yield request
 
         if response.status_code == 401:
-            self.hdr = _RefreshTokenAuth._do_auth(self._params)
-            request.headers.update(self.hdr)
+            self._hdr = _RefreshTokenAuth._do_auth(self._params)
+            request.headers.update(self._hdr)
             yield request
 
     @staticmethod
@@ -52,6 +54,7 @@ class _RefreshTokenAuth(httpx.Auth):
         hdr = {"x-okapi-tenant": params.tenant}
         res = httpx.post(
             params.base_url + "/authn/login-with-expiry",
+            headers=hdr,
             json={
                 "username": params.username,
                 "password": params.password,
@@ -105,14 +108,14 @@ class FolioClient:
             if r == 0:
                 return
 
-            key = j.keys()[0]
+            key = next(iter(j.keys()))
             last_id = "00000000-0000-0000-0000-000000000000"
-            pkey = 0
+            pkey = 1
             while True:
                 res = client.get(
                     path,
                     params={
-                        "query": f'id>="{last_id}" sortBy id asc',
+                        "query": f'id>"{last_id}" sortBy id asc',
                         "limit": page_size,
                     },
                 )
