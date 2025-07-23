@@ -97,7 +97,9 @@ class FolioClient:
             q = query if query is not None else "cql.allRecords=1"
             res = client.get(
                 path,
-                params={"query": q, "limit": 1},
+                # ERM endpoints use perPage and stats
+                # Additional filtering for ERM endpoints is ignored
+                params={"query": q, "limit": 1, "perPage": 1, "stats": True},
             )
             res.raise_for_status()
             j = orjson.loads(res.text)
@@ -111,13 +113,18 @@ class FolioClient:
             last_id = "00000000-0000-0000-0000-000000000000"
             pkey = 1
             while True:
-                iter_query = f'id>"{last_id}" sortBy id asc'
+                iter_query = f"id>{last_id}"
+                # Additional filtering for ERM endpoints is ignored
                 q = query + " " + iter_query if query is not None else iter_query
                 res = client.get(
                     path,
                     params={
-                        "query": q,
+                        "sort": "id;asc",
+                        "filters": iter_query,
+                        "query": q + " sortBy id asc",
                         "limit": page_size,
+                        "perPage": page_size,
+                        "stats": True,
                     },
                 )
                 res.raise_for_status()
