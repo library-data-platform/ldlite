@@ -80,6 +80,7 @@ class FolioClient:
         timeout: float,
         retries: int,
         page_size: int,
+        query: str | None = None,
     ) -> Iterator[tuple[int, bytes]]:
         """Iterates all records for a given path.
 
@@ -93,12 +94,10 @@ class FolioClient:
             transport=RetryTransport(retry=Retry(total=retries, backoff_factor=0.5)),
             timeout=timeout,
         ) as client:
+            q = query if query is not None else "cql.allRecords=1"
             res = client.get(
                 path,
-                params={
-                    "query": "cql.allRecords=1",
-                    "limit": 1,
-                },
+                params={"query": q, "limit": 1},
             )
             res.raise_for_status()
             j = orjson.loads(res.text)
@@ -112,10 +111,12 @@ class FolioClient:
             last_id = "00000000-0000-0000-0000-000000000000"
             pkey = 1
             while True:
+                iter_query = f'id>"{last_id}" sortBy id asc'
+                q = query + " " + iter_query if query is not None else iter_query
                 res = client.get(
                     path,
                     params={
-                        "query": f'id>"{last_id}" sortBy id asc',
+                        "query": q,
                         "limit": page_size,
                     },
                 )

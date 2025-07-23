@@ -1,8 +1,8 @@
 from dataclasses import astuple, dataclass
 
+import httpx
 import pytest
 from pytest_cases import parametrize_with_cases
-from requests import exceptions
 
 
 def test_ok() -> None:
@@ -55,25 +55,25 @@ class FolioConnectionCase:
 class FolioConnectionCases:
     def case_url(self) -> FolioConnectionCase:
         return FolioConnectionCase(
-            expected=exceptions.RequestException,
+            expected=httpx.ConnectError,
             url="https://not.folio.fivecolleges.edu",
         )
 
     def case_tenant(self) -> FolioConnectionCase:
         return FolioConnectionCase(
-            expected=RuntimeError,
+            expected=httpx.HTTPStatusError,
             tenant="not a tenant",
         )
 
     def case_user(self) -> FolioConnectionCase:
         return FolioConnectionCase(
-            expected=RuntimeError,
+            expected=httpx.HTTPStatusError,
             user="not a user",
         )
 
     def case_password(self) -> FolioConnectionCase:
         return FolioConnectionCase(
-            expected=RuntimeError,
+            expected=httpx.HTTPStatusError,
             password="",
         )
 

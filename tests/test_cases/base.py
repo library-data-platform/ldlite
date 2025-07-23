@@ -1,3 +1,4 @@
+import json
 from dataclasses import dataclass
 from functools import cached_property
 from typing import TYPE_CHECKING, Any
@@ -21,31 +22,31 @@ class TestCase:
     def patch_request_get(
         self,
         ld: "ldlite.LDLite",
-        _request_get_mock: MagicMock,
+        httpx_post_mock: MagicMock,
+        client_get_mock: MagicMock,
     ) -> None:
-        # _check_okapi() hack
-        ld.login_token = "token"
-        ld.okapi_url = "url"
+        # iteration hack
+        ld.page_size = 1
         # leave tqdm out of it
         ld.quiet(enable=True)
 
+        httpx_post_mock.return_value.cookies.__getitem__.return_value = "token"
+
         side_effects = []
         for values in self.values.values():
+            key = next(iter(values[0].keys()))
             total_mock = MagicMock()
-            total_mock.status_code = 200
-            total_mock.json.return_value = {}
+            total_mock.text = f'{{"{key}": "", "totalRecords": 100000}}'
 
             value_mocks = []
             for v in values:
                 value_mock = MagicMock()
-                value_mock.status_code = 200
-                value_mock.json.return_value = v
+                value_mock.text = json.dumps(v)
                 value_mocks.append(value_mock)
 
             end_mock = MagicMock()
-            end_mock.status_code = 200
-            end_mock.json.return_value = {"empty": []}
+            end_mock.text = f'{{"{key}": [] }}'
 
             side_effects.extend([total_mock, *value_mocks, end_mock])
 
-        _request_get_mock.side_effect = side_effects
+        client_get_mock.side_effect = side_effects

@@ -13,14 +13,20 @@ from .test_cases import query_cases as qc
 from .test_cases import to_csv_cases as csvc
 
 
-@mock.patch("ldlite.request_get")
+@mock.patch("ldlite.folio.httpx.post")
+@mock.patch("ldlite.folio.httpx.Client.get")
 @parametrize_with_cases("tc", cases=dtc.DropTablesCases)
-def test_drop_tables(request_get_mock: MagicMock, tc: dtc.DropTablesCase) -> None:
+def test_drop_tables(
+    client_get_mock: MagicMock,
+    httpx_post_mock: MagicMock,
+    tc: dtc.DropTablesCase,
+) -> None:
     from ldlite import LDLite as uut
 
     ld = uut()
-    tc.patch_request_get(ld, request_get_mock)
+    tc.patch_request_get(ld, httpx_post_mock, client_get_mock)
     dsn = f"file:{tc.db}?mode=memory&cache=shared"
+    ld.connect_folio("https://doesnt.matter", "", "", "")
     ld.experimental_connect_db_sqlite(dsn)
 
     for prefix in tc.values:
@@ -32,14 +38,20 @@ def test_drop_tables(request_get_mock: MagicMock, tc: dtc.DropTablesCase) -> Non
         assert sorted([r[0] for r in res.fetchall()]) == sorted(tc.expected_tables)
 
 
-@mock.patch("ldlite.request_get")
+@mock.patch("ldlite.folio.httpx.post")
+@mock.patch("ldlite.folio.httpx.Client.get")
 @parametrize_with_cases("tc", cases=qc.QueryTestCases)
-def test_query(request_get_mock: MagicMock, tc: qc.QueryCase) -> None:
+def test_query(
+    client_get_mock: MagicMock,
+    httpx_post_mock: MagicMock,
+    tc: qc.QueryCase,
+) -> None:
     from ldlite import LDLite as uut
 
     ld = uut()
-    tc.patch_request_get(ld, request_get_mock)
+    tc.patch_request_get(ld, httpx_post_mock, client_get_mock)
     dsn = f"file:{tc.db}?mode=memory&cache=shared"
+    ld.connect_folio("https://doesnt.matter", "", "", "")
     ld.experimental_connect_db_sqlite(dsn)
 
     for prefix in tc.values:
@@ -59,14 +71,22 @@ def test_query(request_get_mock: MagicMock, tc: qc.QueryCase) -> None:
                 assert res.fetchone() is None
 
 
-@mock.patch("ldlite.request_get")
+@mock.patch("ldlite.folio.httpx.post")
+@mock.patch("ldlite.folio.httpx.Client.get")
 @parametrize_with_cases("tc", cases=csvc.ToCsvCases)
-def test_to_csv(request_get_mock: MagicMock, tc: csvc.ToCsvCase, tmpdir: str) -> None:
+def test_to_csv(
+    client_get_mock: MagicMock,
+    httpx_post_mock: MagicMock,
+    tc: csvc.ToCsvCase,
+    tmpdir: str,
+) -> None:
     from ldlite import LDLite as uut
 
     ld = uut()
-    tc.patch_request_get(ld, request_get_mock)
-    ld.experimental_connect_db_sqlite(f"file:{tc.db}?mode=memory&cache=shared")
+    tc.patch_request_get(ld, httpx_post_mock, client_get_mock)
+    dsn = f"file:{tc.db}?mode=memory&cache=shared"
+    ld.connect_folio("https://doesnt.matter", "", "", "")
+    ld.experimental_connect_db_sqlite(dsn)
 
     for prefix in tc.values:
         ld.query(table=prefix, path="/patched")
