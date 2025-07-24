@@ -13,6 +13,9 @@ Please see [MIGRATING.md](./MIGRATING.md) for information on breaking changes.
 
 ### Changed
 
+- Fixed endpoints that use with perPage instead of limit
+- Improved the performance and stability for the download portion of LDLite
+
 ### Removed
 
 ## [3.0.0] - July 2025
