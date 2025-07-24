@@ -136,12 +136,13 @@ class FolioClient:
                 )
                 if is_src:
                     # source-storage doesn't support id based so we fallback to offset
-                    p.add("offset", page_size * page)
+                    p = p.add("offset", page_size * page)
                 res = client.get(
                     path,
                     params=p,
                 )
                 res.raise_for_status()
+                page += 1
 
                 if is_src:
                     # the source-storage streaming endpoint is a newline-delimited json

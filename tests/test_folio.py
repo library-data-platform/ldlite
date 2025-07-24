@@ -98,8 +98,13 @@ def test_src(folio_params: tuple[bool, FolioParams]) -> None:
     (total, _) = next(res)
     assert total > 0
 
+    prev = "0"
     read = 0
-    for _ in res:
+    for r in res:
+        record_id = json.loads(r[1])["recordId"]
+        assert record_id > prev
+        prev = record_id
+
         read += 1
         if read >= 60:
             break
