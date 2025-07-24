@@ -146,11 +146,9 @@ ld.select(table='user_groups', limit=10)
     (10 rows)
 
 ```python
-# The "user_groups" table can also be exported to a CSV or Excel file.
+# The "user_groups" table can also be exported to a CSV file.
 
 ld.export_csv(table='user_groups', filename='user_groups.csv')
-
-ld.export_excel(table='user_groups', filename='user_groups.xlsx')
 ```
 
 ```python

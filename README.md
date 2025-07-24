@@ -61,7 +61,7 @@ tables: u, u__t, u__t__departments, u__t__personal__addresses, u__t__proxy_for, 
             FROM u__t
                 JOIN g__t ON u__t.patron_group = g__t.id;
         """)
->> > ld.export_excel(table='user_groups', filename='groups.xlsx')
+>> > ld.export_csv(table='user_groups', filename='groups.csv')
 ```
 
 Features
@@ -69,7 +69,7 @@ Features
 
 * Queries FOLIO modules and transforms JSON data into tables for
   easier reporting
-* Full SQL query support and export to CSV or Excel
+* Full SQL query support and export to CSV
 * Compatible with DBeaver database tool
 * Compatible with DuckDB and PostgreSQL database systems
 * PostgreSQL support enables:
