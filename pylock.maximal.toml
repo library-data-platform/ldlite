@@ -607,7 +607,7 @@ marker = "python_version >= \"3.13\" and \"types\" in dependency_groups"
 dependencies = []
 
 [tool.pdm]
-hashes = {sha256 = "406ba6966d67f00872aa2937c4d8e2a656f48d3b9013cbd06a9ad6c0edc0ea9f"}
+hashes = {sha256 = "6ea32df0233b71a9f03a729bee67f00e8bc7c9490ee238939fed7ab3611f113c"}
 strategy = ["inherit_metadata", "static_urls"]
 
 [[tool.pdm.targets]]
