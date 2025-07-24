@@ -15,6 +15,7 @@ Please see [MIGRATING.md](./MIGRATING.md) for information on breaking changes.
 
 - Fixed endpoints that use with perPage instead of limit
 - Improved the performance and stability for the download portion of LDLite
+- Fixed `connect_db` method
 
 ### Removed
 
