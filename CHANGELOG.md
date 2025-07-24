@@ -20,7 +20,7 @@ Please see [MIGRATING.md](./MIGRATING.md) for information on breaking changes.
 
 ### Removed
 
-## [3.1.0] - July 2025
+## [3.1.0] - August 2025
 
 ### Added
 
