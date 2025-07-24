@@ -76,14 +76,14 @@ test-install.composite = ["pdm sync --lockfile=pylock.minimal.toml", "pdm sync -
 
 [dependency-groups]
 lint = [
-    "mypy==1.16.1",
-    "ruff==0.12.1",
-    "pre-commit-hooks==4.4.0",
+    "mypy==1.17.0",
+    "ruff==0.12.5",
+    "pre-commit-hooks==5.0.0",
 ]
 test = [
-    "pytest>=7.4.4",
-    "pytest-cases>=3.8.6",
-    "coverage>=7.2.7",
+    "pytest>=8.4.1",
+    "pytest-cases>=3.9.1",
+    "coverage>=7.9.2",
 ]
 types = [
     "types-psycopg2>=2.9.21.20",
