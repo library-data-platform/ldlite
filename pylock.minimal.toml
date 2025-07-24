@@ -159,8 +159,12 @@ dependencies = [
 
 [[packages]]
 name = "orjson"
-version = "2.0.7"
-sdist = {name = "orjson-2.0.7.tar.gz", url = "https://files.pythonhosted.org/packages/8c/9a/f1d72af21340fae73b5ae0d75f015ee7caf27c808e0fae3659d2246ff1e7/orjson-2.0.7.tar.gz", hashes = {sha256 = "12d22eb7577b533906bcfab79feb632cc154d1ca9ebead0739ff6078fa0cbd51"}}
+version = "2.2.1"
+requires-python = ">=3.6"
+sdist = {name = "orjson-2.2.1.tar.gz", url = "https://files.pythonhosted.org/packages/cd/58/e8526187aad924e760e6e4ca41e990fccba7ce61c501dc6c59162507ea19/orjson-2.2.1.tar.gz", hashes = {sha256 = "0636c348ef55ba2d910ef562708621a5f80ef7cdafc3b831ef85ad48447ee70d"}}
+wheels = [
+    {name = "orjson-2.2.1-cp39-cp39-manylinux1_x86_64.whl",url = "https://files.pythonhosted.org/packages/c5/63/12aaf2d15665a10799d375fe7fef5ce85e2cff97577d1ce9fa89285c5cbc/orjson-2.2.1-cp39-cp39-manylinux1_x86_64.whl",hashes = {sha256 = "e599298798a98239f7fe3abdfec4264dfe98b1b8855df6b3813f7562ed68c512"}},
+]
 marker = "python_version < \"3.10\" and python_version >= \"3.9\" and \"default\" in dependency_groups"
 
 [packages.tool.pdm]
@@ -572,7 +576,7 @@ marker = "python_version < \"3.10\" and python_version >= \"3.9\" and \"test\" i
 dependencies = []
 
 [tool.pdm]
-hashes = {sha256 = "0357f6c069a17bbeb409284f4f457082ac14769743d7c5d9ce737067bb54915a"}
+hashes = {sha256 = "a287fc0ab3be06f60c8e8f1290db24751f8411d716cdd88b7c40f62877e90f9d"}
 strategy = ["direct_minimal_versions", "inherit_metadata", "static_urls"]
 
 [[tool.pdm.targets]]
