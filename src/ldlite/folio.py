@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from itertools import count
 from typing import TYPE_CHECKING
 
 import httpx
@@ -81,19 +82,22 @@ class FolioClient:
         retries: int,
         page_size: int,
         query: str | None = None,
-    ) -> Iterator[tuple[int, bytes]]:
+    ) -> Iterator[tuple[int, str | bytes]]:
         """Iterates all records for a given path.
 
         Returns:
             A tuple of the autoincrementing key + the json for each record.
             The first result will be the total record count.
         """
+        is_src = path.startswith("/source-storage")
+
         with httpx.Client(
             base_url=self._base_url,
             auth=self._auth,
             transport=RetryTransport(retry=Retry(total=retries, backoff_factor=0.5)),
             timeout=timeout,
         ) as client:
+            path = path if not is_src else "/source-storage/source-records"
             q = query if query is not None else "cql.allRecords=1"
             res = client.get(
                 path,
@@ -109,16 +113,19 @@ class FolioClient:
             if r == 0:
                 return
 
+            path = path if not is_src else "/source-storage/stream/source-records"
+
+            # key is useless but also harmless for source-storage
             key = next(iter(j.keys()))
             last_id = "00000000-0000-0000-0000-000000000000"
-            pkey = 1
+            pkey = count(start=1)
+            page = 0
             while True:
                 iter_query = f"id>{last_id}"
                 # Additional filtering for ERM endpoints is ignored
                 q = query + " " + iter_query if query is not None else iter_query
-                res = client.get(
-                    path,
-                    params={
+                p = httpx.QueryParams(
+                    {
                         "sort": "id;asc",
                         "filters": iter_query,
                         "query": q + " sortBy id asc",
@@ -127,13 +134,26 @@ class FolioClient:
                         "stats": True,
                     },
                 )
+                if is_src:
+                    # source-storage doesn't support id based so we fallback to offset
+                    p.add("offset", page_size * page)
+                res = client.get(
+                    path,
+                    params=p,
+                )
                 res.raise_for_status()
-                j = orjson.loads(res.text)
-                for r in j[key]:
-                    yield (pkey, orjson.dumps(r))
-                    pkey += 1
 
-                if len(j[key]) < page_size:
-                    return
+                if is_src:
+                    # the source-storage streaming endpoint is a newline-delimited json
+                    j = res.text.splitlines()
+                    yield from [(next(pkey), r) for r in j]
+                    if len(j) < page_size:
+                        return
+                else:
+                    j = orjson.loads(res.text)[key]
+                    yield from [(next(pkey), orjson.dumps(r)) for r in j]
 
-                last_id = j[key][-1]["id"]
+                    if len(j) < page_size:
+                        return
+
+                    last_id = j[-1]["id"]
