@@ -1,19 +1,14 @@
 import json
 
+import pytest
 
-def test_ok() -> None:
+from ldlite.folio import FolioParams
+
+
+def test_ok(folio_params: tuple[bool, FolioParams]) -> None:
     from ldlite.folio import FolioClient as uut
-    from ldlite.folio import FolioParams
 
-    ld = uut(
-        FolioParams(
-            "https://folio-etesting-snapshot-kong.ci.folio.org",
-            "diku",
-            "diku_admin",
-            "admin",
-        ),
-    )
-
+    ld = uut(folio_params[1])
     res = ld.iterate_records(
         "/groups",
         timeout=60.0,
@@ -39,19 +34,10 @@ def test_ok() -> None:
     assert total == read
 
 
-def test_multiple_pages() -> None:
+def test_multiple_pages(folio_params: tuple[bool, FolioParams]) -> None:
     from ldlite.folio import FolioClient as uut
-    from ldlite.folio import FolioParams
 
-    ld = uut(
-        FolioParams(
-            "https://folio-etesting-snapshot-kong.ci.folio.org",
-            "diku",
-            "diku_admin",
-            "admin",
-        ),
-    )
-
+    ld = uut(folio_params[1])
     res = ld.iterate_records(
         "/groups",
         timeout=60.0,
@@ -67,19 +53,10 @@ def test_multiple_pages() -> None:
     assert read > 0
 
 
-def test_erm() -> None:
+def test_erm(folio_params: tuple[bool, FolioParams]) -> None:
     from ldlite.folio import FolioClient as uut
-    from ldlite.folio import FolioParams
 
-    ld = uut(
-        FolioParams(
-            "https://folio-etesting-snapshot-kong.ci.folio.org",
-            "diku",
-            "diku_admin",
-            "admin",
-        ),
-    )
-
+    ld = uut(folio_params[1])
     res = ld.iterate_records(
         "/erm/org",
         timeout=60.0,
@@ -103,3 +80,28 @@ def test_erm() -> None:
         read += 1
 
     assert total == read
+
+
+def test_src(folio_params: tuple[bool, FolioParams]) -> None:
+    if folio_params[0]:
+        pytest.skip("Specify an environment with --folio-base-url to run")
+
+    from ldlite.folio import FolioClient as uut
+
+    ld = uut(folio_params[1])
+    res = ld.iterate_records(
+        "/source-storage/source-records",
+        timeout=60.0,
+        retries=0,
+        page_size=15,
+    )
+    (total, _) = next(res)
+    assert total > 0
+
+    read = 0
+    for _ in res:
+        read += 1
+        if read >= 60:
+            break
+
+    assert read > 0
