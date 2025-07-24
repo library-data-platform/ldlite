@@ -32,7 +32,7 @@ $ python
                       user='diku_admin',
                       password='admin')
 >> > db = ld.connect_db()
->> > _ = ld.query(table='g', path='/groups', query='cql.allRecords=1 sortby id')
+>> > _ = ld.query(table='g', path='/groups')
 ldlite: querying: / groups
 ldlite: created
 tables: g, g__t, g__tcatalog
@@ -50,7 +50,7 @@ tables: g, g__t, g__tcatalog
 ```
 
 ```python
->> > _ = ld.query(table='u', path='/users', query='cql.allRecords=1 sortby id')
+>> > _ = ld.query(table='u', path='/users')
 ldlite: querying: / users
 ldlite: created
 tables: u, u__t, u__t__departments, u__t__personal__addresses, u__t__proxy_for, u__tcatalog

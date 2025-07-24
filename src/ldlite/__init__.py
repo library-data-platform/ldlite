@@ -25,7 +25,7 @@ Example:
                      password='admin')
 
     # Send a CQL query and store the results in table "g", "g_j", etc.
-    ld.query(table='g', path='/groups', query='cql.allRecords=1 sortby id')
+    ld.query(table='g', path='/groups')
 
     # Print the result tables.
     ld.select(table='g')
@@ -295,7 +295,7 @@ class LDLite:
         ValueError or RuntimeError.
 
         Example:
-            ld.query(table='g', path='/groups', query='cql.allRecords=1 sortby id')
+            ld.query(table='g', path='/groups')
 
         """
         if transform is not None:

@@ -7,7 +7,7 @@ from pytest_cases import parametrize_with_cases
 from ldlite.folio import FolioParams
 
 
-def test_ok(folio_params: tuple[bool, FolioParams]) -> None:
+def test_ok_legacy(folio_params: tuple[bool, FolioParams]) -> None:
     from ldlite import LDLite as uut
 
     ld = uut()
@@ -17,13 +17,23 @@ def test_ok(folio_params: tuple[bool, FolioParams]) -> None:
     ld.select(table="g__t")
 
 
+def test_ok(folio_params: tuple[bool, FolioParams]) -> None:
+    from ldlite import LDLite as uut
+
+    ld = uut()
+    ld.connect_folio(*astuple(folio_params[1]))
+    ld.connect_db()
+    ld.query(table="g", path="/groups")
+    ld.select(table="g__t")
+
+
 def test_no_connect_folio() -> None:
     from ldlite import LDLite as uut
 
     ld = uut()
     ld.connect_db()
     with pytest.raises(RuntimeError):
-        ld.query(table="g", path="/groups", query="cql.allRecords=1 sortby id")
+        ld.query(table="g", path="/groups")
 
 
 def test_no_connect_db() -> None:
@@ -37,7 +47,7 @@ def test_no_connect_db() -> None:
         password="admin",
     )
     with pytest.raises(RuntimeError):
-        ld.query(table="g", path="/groups", query="cql.allRecords=1 sortby id")
+        ld.query(table="g", path="/groups")
 
 
 @dataclass(frozen=True)
