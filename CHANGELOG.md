@@ -11,6 +11,8 @@ Please see [MIGRATING.md](./MIGRATING.md) for information on breaking changes.
 
 ### Added
 
+- Deprecation notice for xlsx and sqlite functionality. They will be removed in 4.0.
+
 ### Changed
 
 - Fixed endpoints that use with perPage instead of limit
@@ -18,6 +20,7 @@ Please see [MIGRATING.md](./MIGRATING.md) for information on breaking changes.
 - Fixed `connect_db` method
 
 ### Removed
+
 
 ## [3.0.0] - July 2025
 
