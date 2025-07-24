@@ -144,9 +144,9 @@ class LDLite:
         self,
         filename: str | None = None,
     ) -> sqlite3.Connection:
-        """Connects to an embedded SQLite database for storing data.
+        """Deprecated; this will be removed in the next major release of LDLite.
 
-        This method is experimental and may not be supported in future versions.
+        Connects to an embedded SQLite database for storing data.
 
         The optional *filename* designates a local file containing the SQLite
         database or where the database will be created if it does not exist.
@@ -550,7 +550,9 @@ class LDLite:
         table: str,
         header: bool = True,
     ) -> None:  # pragma: nocover
-        """Export a table in the reporting database to an Excel file.
+        """Deprecated; this will be removed in the next major release of LDLite.
+
+        Export a table in the reporting database to an Excel file.
 
         All rows of *table* are exported to *filename*, or *filename*.xlsx if
         *filename* does not have an extension.
