@@ -37,10 +37,12 @@ def pg_dsn(pytestconfig: pytest.Config) -> None | Callable[[str], str]:
     return setup
 
 
-@mock.patch("ldlite.request_get")
+@mock.patch("ldlite.folio.httpx.post")
+@mock.patch("ldlite.folio.httpx.Client.get")
 @parametrize_with_cases("tc", cases=dtc.DropTablesCases)
 def test_drop_tables(
-    request_get_mock: MagicMock,
+    client_get_mock: MagicMock,
+    httpx_post_mock: MagicMock,
     pg_dsn: None | Callable[[str], str],
     tc: dtc.DropTablesCase,
 ) -> None:
@@ -50,8 +52,9 @@ def test_drop_tables(
     from ldlite import LDLite as uut
 
     ld = uut()
-    tc.patch_request_get(ld, request_get_mock)
+    tc.patch_request_get(ld, httpx_post_mock, client_get_mock)
     dsn = pg_dsn(tc.db)
+    ld.connect_folio("https://doesnt.matter", "", "", "")
     ld.connect_db_postgresql(dsn)
 
     for prefix in tc.values:
@@ -69,10 +72,12 @@ def test_drop_tables(
         assert sorted([r[0] for r in res.fetchall()]) == sorted(tc.expected_tables)
 
 
-@mock.patch("ldlite.request_get")
+@mock.patch("ldlite.folio.httpx.post")
+@mock.patch("ldlite.folio.httpx.Client.get")
 @parametrize_with_cases("tc", cases=qc.QueryTestCases)
 def test_query(
-    request_get_mock: MagicMock,
+    client_get_mock: MagicMock,
+    httpx_post_mock: MagicMock,
     pg_dsn: None | Callable[[str], str],
     tc: qc.QueryCase,
 ) -> None:
@@ -82,8 +87,9 @@ def test_query(
     from ldlite import LDLite as uut
 
     ld = uut()
-    tc.patch_request_get(ld, request_get_mock)
+    tc.patch_request_get(ld, httpx_post_mock, client_get_mock)
     dsn = pg_dsn(tc.db)
+    ld.connect_folio("https://doesnt.matter", "", "", "")
     ld.connect_db_postgresql(dsn)
 
     for prefix in tc.values:
@@ -109,10 +115,12 @@ def test_query(
                 assert res.fetchone() is None
 
 
-@mock.patch("ldlite.request_get")
+@mock.patch("ldlite.folio.httpx.post")
+@mock.patch("ldlite.folio.httpx.Client.get")
 @parametrize_with_cases("tc", cases=csvc.ToCsvCases)
 def test_to_csv(
-    request_get_mock: MagicMock,
+    client_get_mock: MagicMock,
+    httpx_post_mock: MagicMock,
     pg_dsn: None | Callable[[str], str],
     tc: csvc.ToCsvCase,
     tmpdir: str,
@@ -123,8 +131,10 @@ def test_to_csv(
     from ldlite import LDLite as uut
 
     ld = uut()
-    tc.patch_request_get(ld, request_get_mock)
-    ld.connect_db_postgresql(dsn=pg_dsn(tc.db))
+    tc.patch_request_get(ld, httpx_post_mock, client_get_mock)
+    dsn = pg_dsn(tc.db)
+    ld.connect_folio("https://doesnt.matter", "", "", "")
+    ld.connect_db_postgresql(dsn)
 
     for prefix in tc.values:
         ld.query(table=prefix, path="/patched")

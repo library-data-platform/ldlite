@@ -14,7 +14,7 @@ class ToCsvCase(TestCase):
 class ToCsvCases:
     def case_basic(self) -> ToCsvCase:
         return ToCsvCase(
-            values={"prefix": [{"purchaseOrders": [{"val": "value"}]}]},
+            values={"prefix": [{"purchaseOrders": [{"id": "id", "val": "value"}]}]},
             expected_csvs=[("prefix__t", _SAMPLE_PATH / "basic.csv")],
         )
 
@@ -25,6 +25,7 @@ class ToCsvCases:
                     {
                         "purchaseOrders": [
                             {
+                                "id": "id",
                                 "string": "string",
                                 "integer": 1,
                                 "numeric": 1.1,
@@ -45,6 +46,7 @@ class ToCsvCases:
                     {
                         "purchaseOrders": [
                             {
+                                "id": "id",
                                 "comma": "Double, double toil and trouble",
                                 "doubleQuote": 'Cry "Havoc!" a horse',
                                 "newLine": """To be
@@ -53,6 +55,7 @@ to be""",
                                 "singleQuote": "Cry 'Havoc!' a horse",
                             },
                             {
+                                "id": "id",
                                 "comma": "Z",
                                 "doubleQuote": "Z",
                                 "newLine": "Z",
@@ -72,16 +75,19 @@ to be""",
                     {
                         "purchaseOrders": [
                             {
+                                "id": "id",
                                 "C": "YY",
                                 "B": "XX",
                                 "A": "ZZ",
                             },
                             {
+                                "id": "id",
                                 "C": "Y",
                                 "B": "XX",
                                 "A": "ZZ",
                             },
                             {
+                                "id": "id",
                                 "C": "Y",
                                 "B": "X",
                                 "A": "Z",

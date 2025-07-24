@@ -109,7 +109,10 @@ def json_type(dbtype: DBType) -> str:
     return "varchar"
 
 
-def encode_sql_str(dbtype: DBType, s: str) -> str:  # noqa: C901, PLR0912
+def encode_sql_str(dbtype: DBType, s: str | bytes) -> str:  # noqa: C901, PLR0912
+    if isinstance(s, bytes):
+        s = s.decode("utf-8")
+
     b = "E'" if dbtype == DBType.POSTGRES else "'"
     if dbtype in (DBType.SQLITE, DBType.DUCKDB):
         for c in s:

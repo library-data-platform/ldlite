@@ -25,7 +25,7 @@ Example:
                      password='admin')
 
     # Send a CQL query and store the results in table "g", "g_j", etc.
-    ld.query(table='g', path='/groups', query='cql.allRecords=1 sortby id')
+    ld.query(table='g', path='/groups')
 
     # Print the result tables.
     ld.select(table='g')
@@ -36,23 +36,20 @@ Example:
 
 from __future__ import annotations
 
-import json
 import sqlite3
 import sys
 from typing import TYPE_CHECKING, NoReturn, cast
 
 import duckdb
 import psycopg2
-import requests
 from tqdm import tqdm
 
 from ._csv import to_csv
 from ._jsonx import Attr, drop_json_tables, transform_json
-from ._query import query_dict
-from ._request import request_get
 from ._select import select
 from ._sqlx import DBType, as_postgres, autocommit, encode_sql_str, json_type, sqlid
 from ._xlsx import to_xlsx
+from .folio import FolioClient, FolioParams
 
 if TYPE_CHECKING:
     from _typeshed import dbapi
@@ -70,17 +67,12 @@ class LDLite:
             ld = ldlite.LDLite()
 
         """
-        self.page_size = 1000
         self._verbose = False
         self._quiet = False
         self.dbtype: DBType = DBType.UNDEFINED
         self.db: dbapi.DBAPIConnection | None = None
-        self.login_token: str | None = None
-        self.legacy_auth = True
-        self.okapi_url: str | None = None
-        self.okapi_tenant: str | None = None
-        self.okapi_user: str | None = None
-        self.okapi_password: str | None = None
+        self._folio: FolioClient | None = None
+        self.page_size = 1000
         self._okapi_timeout = 60
         self._okapi_max_retries = 2
 
@@ -171,42 +163,8 @@ class LDLite:
         autocommit(self.db, self.dbtype, True)
         return self.db
 
-    def _login(self) -> None:
-        if self._verbose:
-            print("ldlite: logging in to folio", file=sys.stderr)
-        hdr = {
-            "X-Okapi-Tenant": str(self.okapi_tenant),
-            "Content-Type": "application/json",
-        }
-        data = {"username": self.okapi_user, "password": self.okapi_password}
-
-        if self.okapi_url is None:
-            msg = "okapi_url is required"
-            raise ValueError(msg)
-        authn = (
-            self.okapi_url
-            + "/authn/"
-            + ("login" if self.legacy_auth else "login-with-expiry")
-        )
-        resp = requests.post(
-            authn,
-            headers=hdr,
-            data=json.dumps(data),
-            timeout=self._okapi_timeout,
-        )
-        if resp.status_code != 201:
-            raise RuntimeError("HTTP response status code: " + str(resp.status_code))
-
-        if self.legacy_auth and "x-okapi-token" in resp.headers:
-            self.login_token = resp.headers["x-okapi-token"]
-        elif not self.legacy_auth and "folioAccessToken" in resp.cookies:
-            self.login_token = resp.cookies["folioAccessToken"]
-        else:
-            msg = "authentication service did not return a login token"
-            raise RuntimeError(msg)
-
-    def _check_okapi(self) -> None:
-        if self.login_token is None:
+    def _check_folio(self) -> None:
+        if self._folio is None:
             msg = "connection to folio not configured: use connect_folio()"
             raise RuntimeError(msg)
 
@@ -228,25 +186,10 @@ class LDLite:
                              password='admin')
 
         """
-        self._connect_okapi(url, tenant, user, password)
-
-    def _connect_okapi(
-        self,
-        url: str,
-        tenant: str,
-        user: str,
-        password: str,
-        legacy_auth: bool = False,
-    ) -> None:  # pragma: nocover
         if not url.startswith("https://"):
             msg = 'url must begin with "https://"'
             raise ValueError(msg)
-        self.okapi_url = url.rstrip("/")
-        self.okapi_tenant = tenant
-        self.okapi_user = user
-        self.okapi_password = password
-        self.legacy_auth = legacy_auth
-        self._login()
+        self._folio = FolioClient(FolioParams(url, tenant, user, password))
 
     def drop_tables(self, table: str) -> None:
         """Drops a specified table and any accompanying tables.
@@ -352,7 +295,7 @@ class LDLite:
         ValueError or RuntimeError.
 
         Example:
-            ld.query(table='g', path='/groups', query='cql.allRecords=1 sortby id')
+            ld.query(table='g', path='/groups')
 
         """
         if transform is not None:
@@ -361,12 +304,17 @@ class LDLite:
                 "use json_depth=0 to disable JSON transformation"
             )
             raise ValueError(msg)
+        if query == "cql.allRecords=1 sortby id":
+            # this is everywhere in the docs but isn't necessary with the new client
+            query = None
         schema_table = table.split(".")
         if len(schema_table) != 1 and len(schema_table) != 2:
             raise ValueError("invalid table name: " + table)
         if json_depth is None or json_depth < 0 or json_depth > 4:
             raise ValueError("invalid value for json_depth: " + str(json_depth))
-        self._check_okapi()
+        if self._folio is None:
+            self._check_folio()
+            return []
         if self.db is None:
             self._check_db()
             return []
@@ -375,7 +323,6 @@ class LDLite:
             schema_table = [table]
         if not self._quiet:
             print("ldlite: querying: " + path, file=sys.stderr)
-        querycopy = query_dict(query)
         drop_json_tables(self.db, table)
         autocommit(self.db, self.dbtype, False)
         try:
@@ -395,53 +342,19 @@ class LDLite:
                 cur.close()
             self.db.commit()
             # First get total number of records
-            hdr = {
-                "X-Okapi-Tenant": str(self.okapi_tenant),
-                "X-Okapi-Token": str(self.login_token),
-            }
-            querycopy["offset"] = "0"
-            querycopy["limit"] = "1"
-            resp = request_get(
-                str(self.okapi_url) + path,
-                params=querycopy,
-                headers=hdr,
-                timeout=self._okapi_timeout,
-                max_retries=self._okapi_max_retries,
+            records = self._folio.iterate_records(
+                path,
+                self._okapi_timeout,
+                self._okapi_max_retries,
+                self.page_size,
+                query=query,
             )
-            if resp.status_code == 401:
-                # Retry
-                # Warning! There is now an edge case with expiring tokens.
-                # If a request has already been retried some number of times
-                # then it would be retried for the full _okapi_max_retries value again.
-                # This will be cleaned up in future releases after tests are added
-                # to allow for bigger internal changes.
-                self._login()
-                hdr = {
-                    "X-Okapi-Tenant": str(self.okapi_tenant),
-                    "X-Okapi-Token": str(self.login_token),
-                }
-                resp = request_get(
-                    str(self.okapi_url) + path,
-                    params=querycopy,
-                    headers=hdr,
-                    timeout=self._okapi_timeout,
-                    max_retries=self._okapi_max_retries,
-                )
-            if resp.status_code != 200:
-                raise RuntimeError(
-                    "HTTP response status code: " + str(resp.status_code),
-                )
-            try:
-                j = resp.json()
-            except (json.JSONDecodeError, ValueError) as e:
-                raise RuntimeError("received server response: " + resp.text) from e
-            total_records = j.get("totalRecords", -1)
+
+            (total_records, _) = next(records)
             total = total_records if total_records is not None else 0
             if self._verbose:
                 print("ldlite: estimated row count: " + str(total), file=sys.stderr)
             # Read result pages
-            count = 0
-            page = 0
             pbar = None
             pbartotal = 0
             if not self._quiet:
@@ -466,69 +379,27 @@ class LDLite:
                     )
             cur = self.db.cursor()
             try:
-                while True:
-                    offset = page * self.page_size
-                    lim = self.page_size
-                    querycopy["offset"] = str(offset)
-                    querycopy["limit"] = str(lim)
-                    resp = request_get(
-                        str(self.okapi_url) + path,
-                        params=querycopy,
-                        headers=hdr,
-                        timeout=self._okapi_timeout,
-                        max_retries=self._okapi_max_retries,
+                count = 0
+                for pkey, d in records:
+                    cur.execute(
+                        "INSERT INTO "
+                        + sqlid(table)
+                        + " VALUES("
+                        + str(pkey)
+                        + ","
+                        + encode_sql_str(self.dbtype, d)
+                        + ")",
                     )
-                    if resp.status_code == 401:
-                        # See warning above for retries
-                        self._login()
-                        hdr = {
-                            "X-Okapi-Tenant": str(self.okapi_tenant),
-                            "X-Okapi-Token": str(self.login_token),
-                        }
-                        resp = request_get(
-                            str(self.okapi_url) + path,
-                            params=querycopy,
-                            headers=hdr,
-                            timeout=self._okapi_timeout,
-                            max_retries=self._okapi_max_retries,
-                        )
-                    if resp.status_code != 200:
-                        raise RuntimeError(
-                            "HTTP response status code: " + str(resp.status_code),
-                        )
-                    try:
-                        j = resp.json()
-                    except (json.JSONDecodeError, ValueError) as e:
-                        raise RuntimeError(
-                            "received server response: " + resp.text,
-                        ) from e
-                    data = next(iter(j.values())) if isinstance(j, dict) else j
-                    lendata = len(data)
-                    if lendata == 0:
-                        break
-                    for d in data:
-                        cur.execute(
-                            "INSERT INTO "
-                            + sqlid(table)
-                            + " VALUES("
-                            + str(count + 1)
-                            + ","
-                            + encode_sql_str(self.dbtype, json.dumps(d, indent=4))
-                            + ")",
-                        )
-                        count += 1
-                        if pbar is not None:
-                            if pbartotal + 1 > total:
-                                pbartotal = total
-                                pbar.update(total - pbartotal)
-                            else:
-                                pbartotal += 1
-                                pbar.update(1)
-                        if limit is not None and count == limit:
-                            break
+                    count += 1
+                    if pbar is not None:
+                        if pbartotal + 1 > total:
+                            pbartotal = total
+                            pbar.update(total - pbartotal)
+                        else:
+                            pbartotal += 1
+                            pbar.update(1)
                     if limit is not None and count == limit:
                         break
-                    page += 1
             finally:
                 cur.close()
             if pbar is not None:
