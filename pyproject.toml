@@ -71,7 +71,7 @@ package-dir = "src"
 
 [tool.pdm.scripts]
 test.composite = ["rm -f .coverage", "python -m coverage run -m pytest -vv {args}", "python -m coverage report"]
-lock.composite = ["pdm lock --python=3.9", "pdm lock --strategy direct_minimal_versions --lockfile pylock.minimal.toml --python='>=3.9,<3.10'"]
+lock.composite = ["pdm lock --python=3.9", "pdm lock --lockfile pylock.maximal.toml --python=3.13", "pdm lock --strategy direct_minimal_versions --lockfile pylock.minimal.toml --python=3.9"]
 test-install.composite = ["pdm sync --lockfile=pylock.minimal.toml", "pdm sync --lockfile=pylock.toml"]
 
 [dependency-groups]
