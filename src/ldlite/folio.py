@@ -54,7 +54,7 @@ class _RefreshTokenAuth(httpx.Auth):
     def _do_auth(params: FolioParams) -> dict[str, str]:
         hdr = {"x-okapi-tenant": params.tenant}
         res = httpx.post(
-            params.base_url + "/authn/login-with-expiry",
+            params.base_url.rstrip("/") + "/authn/login-with-expiry",
             headers=hdr,
             json={
                 "username": params.username,
@@ -72,7 +72,7 @@ class FolioClient:
 
     def __init__(self, params: FolioParams):
         """Initializes and tests the Folio connection."""
-        self._base_url = params.base_url
+        self._base_url = params.base_url.rstrip("/")
         self._auth = _RefreshTokenAuth(params)
 
     def iterate_records(

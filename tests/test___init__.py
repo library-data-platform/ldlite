@@ -17,6 +17,20 @@ def test_ok_legacy(folio_params: tuple[bool, FolioParams]) -> None:
     ld.select(table="g__t")
 
 
+def test_ok_trailing_slash(folio_params: tuple[bool, FolioParams]) -> None:
+    if folio_params[0]:
+        pytest.skip("Specify an okapi environment with --folio-base-url to run")
+
+    from ldlite import LDLite as uut
+
+    ld = uut()
+    params = astuple(folio_params[1])
+    ld.connect_folio(*[params[0] + "/", *params[1:]])
+    ld.connect_db()
+    ld.query(table="g", path="/groups")
+    ld.select(table="g__t")
+
+
 def test_ok(folio_params: tuple[bool, FolioParams]) -> None:
     from ldlite import LDLite as uut
 
