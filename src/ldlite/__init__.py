@@ -79,7 +79,10 @@ class LDLite:
     def _set_page_size(self, page_size: int) -> None:
         self.page_size = page_size
 
-    def connect_db(self, filename: str | None = None) -> None:
+    def connect_db(
+        self,
+        filename: str | None = None,
+    ) -> duckdb.DuckDBPyConnection:
         """Connects to an embedded database for storing data.
 
         The optional *filename* designates a local file containing the
@@ -94,7 +97,7 @@ class LDLite:
             db = ld.connect_db(filename='ldlite.db')
 
         """
-        self._connect_db_duckdb(filename)
+        return self._connect_db_duckdb(filename)
 
     def _connect_db_duckdb(
         self,
