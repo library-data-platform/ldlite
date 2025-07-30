@@ -106,7 +106,7 @@ def test_src(folio_params: tuple[bool, FolioParams]) -> None:
         prev = record_id
 
         read += 1
-        if read >= 60:
+        if read >= 1000:
             break
 
     assert read > 0
