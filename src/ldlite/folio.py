@@ -32,8 +32,6 @@ class FolioParams:
 
 
 class _RefreshTokenAuth(httpx.Auth):
-    requires_response_body = True
-
     def __init__(self, params: FolioParams):
         self._params = params
         self._hdr = _RefreshTokenAuth._do_auth(self._params)
@@ -97,10 +95,11 @@ class FolioClient:
             transport=RetryTransport(retry=Retry(total=retries, backoff_factor=0.5)),
             timeout=timeout,
         ) as client:
-            path = path if not is_src else "/source-storage/source-records"
             q = query if query is not None else "cql.allRecords=1"
             res = client.get(
-                path,
+                # Hardcode the source storage endpoint that returns stats
+                # even if the user passes in the stream endpoint
+                path if not is_src else "/source-storage/source-records",
                 # ERM endpoints use perPage and stats
                 # Additional filtering for ERM endpoints is ignored
                 params={"query": q, "limit": 1, "perPage": 1, "stats": True},
@@ -113,13 +112,22 @@ class FolioClient:
             if r == 0:
                 return
 
-            path = path if not is_src else "/source-storage/stream/source-records"
+            pkey = count(start=1)
+            if is_src:
+                # this is a more stable endpoint for srs
+                # we want it to be transparent so if the user wants srs we just use it
+                # this is Java's max size of int because we want all the records
+                with client.stream(
+                    "GET",
+                    "/source-storage/stream/source-records",
+                    params=httpx.QueryParams({"limit": 2_147_483_647 - 1}),
+                ) as res:
+                    res.raise_for_status()
+                    yield from ((next(pkey), r) for r in res.iter_lines())
+                    return
 
-            # key is useless but also harmless for source-storage
             key = next(iter(j.keys()))
             last_id = "00000000-0000-0000-0000-000000000000"
-            pkey = count(start=1)
-            page = 0
             while True:
                 iter_query = f"id>{last_id}"
                 # Additional filtering for ERM endpoints is ignored
@@ -134,27 +142,16 @@ class FolioClient:
                         "stats": True,
                     },
                 )
-                if is_src:
-                    # source-storage doesn't support id based so we fallback to offset
-                    p = p.add("offset", page_size * page)
                 res = client.get(
                     path,
                     params=p,
                 )
                 res.raise_for_status()
-                page += 1
 
-                if is_src:
-                    # the source-storage streaming endpoint is a newline-delimited json
-                    j = res.text.splitlines()
-                    yield from [(next(pkey), r) for r in j]
-                    if len(j) < page_size:
-                        return
-                else:
-                    j = orjson.loads(res.text)[key]
-                    yield from [(next(pkey), orjson.dumps(r)) for r in j]
+                j = orjson.loads(res.text)[key]
+                yield from [(next(pkey), orjson.dumps(r)) for r in j]
 
-                    if len(j) < page_size:
-                        return
+                if len(j) < page_size:
+                    return
 
-                    last_id = j[-1]["id"]
+                last_id = j[-1]["id"]
