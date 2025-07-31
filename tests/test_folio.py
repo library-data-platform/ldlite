@@ -1,4 +1,6 @@
 import json
+from unittest import mock
+from unittest.mock import MagicMock
 
 import pytest
 
@@ -8,8 +10,7 @@ from ldlite.folio import FolioParams
 def test_ok(folio_params: tuple[bool, FolioParams]) -> None:
     from ldlite.folio import FolioClient as uut
 
-    ld = uut(folio_params[1])
-    res = ld.iterate_records(
+    res = uut(folio_params[1]).iterate_records(
         "/groups",
         timeout=60.0,
         retries=0,
@@ -37,8 +38,7 @@ def test_ok(folio_params: tuple[bool, FolioParams]) -> None:
 def test_multiple_pages(folio_params: tuple[bool, FolioParams]) -> None:
     from ldlite.folio import FolioClient as uut
 
-    ld = uut(folio_params[1])
-    res = ld.iterate_records(
+    res = uut(folio_params[1]).iterate_records(
         "/groups",
         timeout=60.0,
         retries=0,
@@ -56,8 +56,7 @@ def test_multiple_pages(folio_params: tuple[bool, FolioParams]) -> None:
 def test_erm(folio_params: tuple[bool, FolioParams]) -> None:
     from ldlite.folio import FolioClient as uut
 
-    ld = uut(folio_params[1])
-    res = ld.iterate_records(
+    res = uut(folio_params[1]).iterate_records(
         "/erm/org",
         timeout=60.0,
         retries=0,
@@ -88,8 +87,7 @@ def test_src(folio_params: tuple[bool, FolioParams]) -> None:
 
     from ldlite.folio import FolioClient as uut
 
-    ld = uut(folio_params[1])
-    res = ld.iterate_records(
+    res = uut(folio_params[1]).iterate_records(
         "/source-storage/source-records",
         timeout=60.0,
         retries=0,
@@ -110,3 +108,42 @@ def test_src(folio_params: tuple[bool, FolioParams]) -> None:
             break
 
     assert read > 0
+
+
+@mock.patch("ldlite.folio.httpx.post")
+@mock.patch("ldlite.folio.httpx.Client.get")
+def test_query_parameter(
+    client_get_mock: MagicMock,
+    httpx_post_mock: MagicMock,
+) -> None:
+    from ldlite.folio import FolioClient as uut
+
+    httpx_post_mock.return_value.cookies.__getitem__.return_value = "token"
+
+    total_mock = MagicMock()
+    total_mock.text = '{"key": "", "totalRecords": 100000}'
+
+    values_mock = MagicMock()
+    values_mock.text = '{"key": [], "totalRecords": 100000}'
+
+    calls = 0
+
+    def check_calls() -> MagicMock:
+        nonlocal calls
+        calls += 1
+        if calls == 1:
+            return total_mock
+        return values_mock
+
+    client_get_mock.side_effect = check_calls
+
+    list(
+        uut(FolioParams("", "", "", "")).iterate_records(
+            "/literally/anything",
+            timeout=60.0,
+            retries=0,
+            page_size=5,
+        )
+    )
+
+    assert calls == 2
