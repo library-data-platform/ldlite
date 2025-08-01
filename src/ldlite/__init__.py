@@ -257,7 +257,7 @@ class LDLite:
         self,
         table: str,
         path: str,
-        query: str | None = None,
+        query: str | dict[str, str] | None = None,
         json_depth: int = 3,
         limit: int | None = None,
         transform: bool | None = None,
@@ -311,9 +311,6 @@ class LDLite:
                 "use json_depth=0 to disable JSON transformation"
             )
             raise ValueError(msg)
-        if query == "cql.allRecords=1 sortby id":
-            # this is everywhere in the docs but isn't necessary with the new client
-            query = None
         schema_table = table.split(".")
         if len(schema_table) != 1 and len(schema_table) != 2:
             raise ValueError("invalid table name: " + table)
