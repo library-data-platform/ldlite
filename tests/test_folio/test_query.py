@@ -39,7 +39,7 @@ def test_nonsrs(
     def check_calls(*_: str, **kwargs: dict[str, typing.Any]) -> MagicMock:
         assert "params" in kwargs
         calls.append(typing.cast("httpx.QueryParams", kwargs["params"]))
-        return mocks.pop(-1)
+        return mocks.pop(0)
 
     client_get_mock.side_effect = check_calls
 
@@ -74,3 +74,57 @@ def test_nonsrs(
     for k, v in tc.expected_additional_params.items():
         assert k in calls[1]
         assert calls[1][k] == v
+
+
+@mock.patch("ldlite.folio.httpx.post")
+@mock.patch("ldlite.folio.httpx.Client.get")
+@mock.patch("ldlite.folio.httpx.Client.stream")
+def test_srs(
+    client_stream_mock: MagicMock,
+    client_get_mock: MagicMock,
+    httpx_post_mock: MagicMock,
+) -> None:
+    from ldlite.folio import FolioClient as uut
+
+    httpx_post_mock.return_value.cookies.__getitem__.return_value = "token"
+
+    mocks = []
+    total_mock = MagicMock()
+    total_mock.text = '{"key": "", "totalRecords": 100000}'
+    mocks.append(total_mock)
+
+    values_mock = MagicMock()
+    values_mock.iter_lines = ['{"key": [], "totalRecords": 100000}']
+    mocks.append(values_mock)
+
+    calls: list[httpx.QueryParams] = []
+
+    def check_calls(*_: str, **kwargs: dict[str, typing.Any]) -> MagicMock:
+        assert "params" in kwargs
+        calls.append(typing.cast("httpx.QueryParams", kwargs["params"]))
+        return mocks.pop(0)
+
+    client_get_mock.side_effect = check_calls
+    client_stream_mock.side_effect = check_calls
+
+    list(
+        uut(FolioParams("", "", "", "")).iterate_records(
+            "/source-storage/then/literally/anything",
+            timeout=60.0,
+            retries=0,
+            page_size=100,
+            query={"state": "old"},
+        ),
+    )
+
+    assert len(calls) == 2
+
+    assert calls[0]["limit"] == "1"
+    # erm parameters
+    assert "state" in calls[0]
+    assert calls[0]["state"] == "old"
+
+    assert int(calls[1]["limit"]) > 10_000_000
+    # erm parameters
+    assert "state" in calls[1]
+    assert calls[1]["state"] == "old"

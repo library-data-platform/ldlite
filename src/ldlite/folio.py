@@ -126,7 +126,7 @@ class _QueryParams:
             },
         )
 
-    def for_values(self, last_id: str | None) -> httpx.QueryParams:
+    def for_values(self, last_id: str | None = None) -> httpx.QueryParams:
         if last_id is None:
             last_id = "00000000-0000-0000-0000-000000000000"
         iter_query = f"id>{last_id}"
@@ -169,8 +169,9 @@ class FolioClient:
             A tuple of the autoincrementing key + the json for each record.
             The first result will be the total record count.
         """
-        is_src = path.startswith("/source-storage")
-        params = _QueryParams(query, page_size)
+        is_srs = path.startswith("/source-storage")
+        # this is Java's max size of int because we want all the source records
+        params = _QueryParams(query, 2_147_483_647 - 1 if is_srs else page_size)
 
         with httpx.Client(
             base_url=self._base_url,
@@ -181,7 +182,7 @@ class FolioClient:
             res = client.get(
                 # Hardcode the source storage endpoint that returns stats
                 # even if the user passes in the stream endpoint
-                path if not is_src else "/source-storage/source-records",
+                path if not is_srs else "/source-storage/source-records",
                 params=params.for_stats(),
             )
             res.raise_for_status()
@@ -193,14 +194,13 @@ class FolioClient:
                 return
 
             pkey = count(start=1)
-            if is_src:
+            if is_srs:
                 # this is a more stable endpoint for srs
                 # we want it to be transparent so if the user wants srs we just use it
-                # this is Java's max size of int because we want all the records
                 with client.stream(
                     "GET",
                     "/source-storage/stream/source-records",
-                    params=httpx.QueryParams({"limit": 2_147_483_647 - 1}),
+                    params=params.for_values(),
                 ) as res:
                     res.raise_for_status()
                     yield from ((next(pkey), r) for r in res.iter_lines())
