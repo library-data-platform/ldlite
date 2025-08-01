@@ -81,11 +81,17 @@ class _QueryParams:
         query: str | dict[str, str] | None,
         page_size: int,
     ):
-        if (
-            query is None
-            or isinstance(query, dict)
-            or self._default_re.match(query) is not None
-        ):
+        if isinstance(query, dict):
+            q = None
+            if "query" in query:
+                q = query["query"]
+                del query["query"]
+            self.additional_params = query
+            query = q
+        else:
+            self.additional_params = {}
+
+        if query is None or self._default_re.match(query) is not None:
             # See below for papering over sort desc notes
             self.query_str = None
         else:
@@ -109,6 +115,7 @@ class _QueryParams:
         q = self.query_str if self.query_str is not None else "cql.allRecords=1"
         return httpx.QueryParams(
             {
+                **self.additional_params,
                 "query": q,
                 "limit": 1,
                 # ERM endpoints use perPage and stats
@@ -129,6 +136,7 @@ class _QueryParams:
         # Additional filtering beyond ids for ERM endpoints is ignored
         return httpx.QueryParams(
             {
+                **self.additional_params,
                 "sort": "id;asc",
                 "filters": iter_query,
                 "query": q + " sortBy id asc",

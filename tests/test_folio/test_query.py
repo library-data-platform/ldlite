@@ -60,6 +60,9 @@ def test_nonsrs(
     # erm parameters
     assert calls[0]["perPage"] == "1"
     assert calls[0]["stats"]
+    for k, v in tc.expected_additional_params.items():
+        assert k in calls[0]
+        assert calls[0][k] == v
 
     assert calls[1]["limit"] == str(tc.page_size)
     assert calls[1]["query"] == tc.expected_values_query + " sortBy id asc"
@@ -68,3 +71,6 @@ def test_nonsrs(
     assert calls[1]["stats"]
     assert calls[1]["sort"] == "id;asc"
     assert calls[1]["filters"] == tc.expected_filters_query
+    for k, v in tc.expected_additional_params.items():
+        assert k in calls[1]
+        assert calls[1][k] == v
