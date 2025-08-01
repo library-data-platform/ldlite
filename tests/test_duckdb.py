@@ -7,9 +7,9 @@ import duckdb
 import pytest
 from pytest_cases import parametrize_with_cases
 
-from .test_cases import drop_tables_cases as dtc
-from .test_cases import query_cases as qc
-from .test_cases import to_csv_cases as csvc
+from tests.test_cases import drop_tables_cases as dtc
+from tests.test_cases import query_cases as qc
+from tests.test_cases import to_csv_cases as csvc
 
 
 @mock.patch("ldlite.folio.httpx.post")

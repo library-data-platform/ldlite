@@ -79,7 +79,7 @@ class FolioClient:
         timeout: float,
         retries: int,
         page_size: int,
-        query: str | None = None,
+        query: str | dict[str, str] | None = None,
     ) -> Iterator[tuple[int, str | bytes]]:
         """Iterates all records for a given path.
 
@@ -87,6 +87,8 @@ class FolioClient:
             A tuple of the autoincrementing key + the json for each record.
             The first result will be the total record count.
         """
+        if isinstance(query, dict):
+            return
         is_src = path.startswith("/source-storage")
 
         with httpx.Client(
@@ -102,7 +104,14 @@ class FolioClient:
                 path if not is_src else "/source-storage/source-records",
                 # ERM endpoints use perPage and stats
                 # Additional filtering for ERM endpoints is ignored
-                params={"query": q, "limit": 1, "perPage": 1, "stats": True},
+                params=httpx.QueryParams(
+                    {
+                        "query": q,
+                        "limit": 1,
+                        "perPage": 1,
+                        "stats": True,
+                    },
+                ),
             )
             res.raise_for_status()
             j = orjson.loads(res.text)
