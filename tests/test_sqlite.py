@@ -30,7 +30,7 @@ def test_drop_tables(
     ld.experimental_connect_db_sqlite(dsn)
 
     for prefix in tc.values:
-        ld.query(table=prefix, path="/patched")
+        ld.query(table=prefix, path="/patched", keep_raw=tc.keep_raw)
     ld.drop_tables(tc.drop)
 
     with sqlite3.connect(dsn) as conn, contextlib.closing(conn.cursor()) as res:
@@ -55,7 +55,12 @@ def test_query(
     ld.experimental_connect_db_sqlite(dsn)
 
     for prefix in tc.values:
-        ld.query(table=prefix, path="/patched", json_depth=tc.json_depth)
+        ld.query(
+            table=prefix,
+            path="/patched",
+            json_depth=tc.json_depth,
+            keep_raw=tc.keep_raw,
+        )
 
     with sqlite3.connect(dsn) as conn:
         with contextlib.closing(conn.cursor()) as res:

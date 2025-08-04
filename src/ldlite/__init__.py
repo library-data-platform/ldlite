@@ -261,6 +261,7 @@ class LDLite:
         json_depth: int = 3,
         limit: int | None = None,
         transform: bool | None = None,
+        keep_raw: bool = True,
     ) -> list[str]:
         """Submits a query to a FOLIO module, and transforms and stores the result.
 
@@ -289,6 +290,9 @@ class LDLite:
 
         If *limit* is specified, then only up to *limit* records are
         retrieved.
+
+        If *keep_raw* is set to False, then the raw table of
+        __id, json will be dropped saving an estimated 20% disk space.
 
         The *transform* parameter is no longer supported and will be
         removed in the future.  Instead, specify *json_depth* as 0 to
@@ -424,6 +428,15 @@ class LDLite:
                 for t in newattrs:
                     newattrs[t]["__id"] = Attr("__id", "bigint")
                 newattrs[table] = {"__id": Attr("__id", "bigint")}
+
+            if not keep_raw:
+                cur = self.db.cursor()
+                try:
+                    cur.execute("DROP TABLE " + sqlid(table))
+                    self.db.commit()
+                finally:
+                    cur.close()
+
         finally:
             autocommit(self.db, self.dbtype, True)
         # Create indexes on id columns (for postgres)
