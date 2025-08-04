@@ -1,13 +1,13 @@
 from dataclasses import dataclass
 from pathlib import Path
 
-from .base import TestCase
+from .base import EndToEndTestCase
 
 _SAMPLE_PATH = Path() / "tests" / "test_cases" / "to_csv_samples"
 
 
 @dataclass(frozen=True)
-class ToCsvCase(TestCase):
+class ToCsvCase(EndToEndTestCase):
     expected_csvs: list[tuple[str, Path]]
 
 

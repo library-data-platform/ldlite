@@ -10,7 +10,7 @@ if TYPE_CHECKING:
 
 
 @dataclass(frozen=True)
-class TestCase:
+class EndToEndTestCase:
     values: dict[str, list[dict[str, Any]]]
 
     @cached_property

@@ -4,11 +4,11 @@ from typing import Any
 
 from pytest_cases import parametrize
 
-from .base import TestCase
+from .base import EndToEndTestCase
 
 
 @dataclass(frozen=True)
-class QueryCase(TestCase):
+class QueryCase(EndToEndTestCase):
     json_depth: int
     expected_tables: list[str]
     expected_values: dict[str, tuple[list[str], list[tuple[Any, ...]]]]
