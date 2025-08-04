@@ -15,6 +15,7 @@ class QueryCase(EndToEndTestCase):
     expected_tables: list[str]
     expected_values: dict[str, tuple[list[str], list[tuple[Any, ...]]]]
     expected_indexes: list[tuple[str, str]] | None = None
+    keep_raw: bool = True
 
 
 class QueryTestCases:
@@ -543,4 +544,35 @@ class QueryTestCases:
                 ("prefix__t", "other_id"),
                 ("prefix__t", "an_id_but_with_a_different_ending"),
             ],
+        )
+
+    @parametrize(json_depth=range(1, 2))
+    def case_drop_raw(self, json_depth: int) -> QueryCase:
+        return QueryCase(
+            json_depth=json_depth,
+            values={
+                "prefix": [
+                    {
+                        "purchaseOrders": [
+                            {
+                                "id": "b096504a-3d54-4664-9bf5-1b872466fd66",
+                                "value": "value",
+                            },
+                        ],
+                    },
+                ],
+            },
+            expected_tables=["prefix__t", "prefix__tcatalog"],
+            expected_values={
+                "prefix__t": (
+                    ["id", "value"],
+                    [("b096504a-3d54-4664-9bf5-1b872466fd66", "value")],
+                ),
+                "prefix__tcatalog": (["table_name"], [("prefix__t",)]),
+            },
+            expected_indexes=[
+                ("prefix__t", "__id"),
+                ("prefix__t", "id"),
+            ],
+            keep_raw=False,
         )

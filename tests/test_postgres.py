@@ -58,7 +58,7 @@ def test_drop_tables(
     ld.connect_db_postgresql(dsn)
 
     for prefix in tc.values:
-        ld.query(table=prefix, path="/patched")
+        ld.query(table=prefix, path="/patched", keep_raw=tc.keep_raw)
     ld.drop_tables(tc.drop)
 
     with psycopg2.connect(dsn) as conn, conn.cursor() as res:
@@ -93,7 +93,12 @@ def test_query(
     ld.connect_db_postgresql(dsn)
 
     for prefix in tc.values:
-        ld.query(table=prefix, path="/patched", json_depth=tc.json_depth)
+        ld.query(
+            table=prefix,
+            path="/patched",
+            json_depth=tc.json_depth,
+            keep_raw=tc.keep_raw,
+        )
 
     with psycopg2.connect(dsn) as conn:
         with conn.cursor() as res:

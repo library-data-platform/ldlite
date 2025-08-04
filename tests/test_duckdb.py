@@ -29,7 +29,7 @@ def test_drop_tables(
     ld.connect_db(dsn)
 
     for prefix in tc.values:
-        ld.query(table=prefix, path="/patched")
+        ld.query(table=prefix, path="/patched", keep_raw=tc.keep_raw)
     ld.drop_tables(tc.drop)
 
     with duckdb.connect(dsn) as res:
@@ -54,7 +54,12 @@ def test_query(
     ld.connect_db(dsn)
 
     for prefix in tc.values:
-        ld.query(table=prefix, path="/patched", json_depth=tc.json_depth)
+        ld.query(
+            table=prefix,
+            path="/patched",
+            json_depth=tc.json_depth,
+            keep_raw=tc.keep_raw,
+        )
 
     with duckdb.connect(dsn) as res:
         res.execute("SHOW TABLES;")
