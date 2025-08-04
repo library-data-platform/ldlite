@@ -3,7 +3,7 @@ from __future__ import annotations
 import contextlib
 from difflib import unified_diff
 from pathlib import Path
-from typing import TYPE_CHECKING, Callable
+from typing import TYPE_CHECKING, Callable, cast
 from unittest import mock
 from unittest.mock import MagicMock
 
@@ -113,6 +113,20 @@ def test_query(
                     assert res.fetchone() == v
 
                 assert res.fetchone() is None
+
+        if tc.expected_indexes is not None:
+            with conn.cursor() as res:
+                res.execute(
+                    "SELECT COUNT(*) FROM pg_indexes WHERE schemaname = 'public';",
+                )
+                assert cast("tuple[int]", res.fetchone())[0] == len(tc.expected_indexes)
+
+                for t, c in tc.expected_indexes:
+                    res.execute(f"""
+SELECT COUNT(*) FROM pg_indexes
+WHERE indexdef LIKE 'CREATE INDEX % ON public.{t} USING btree ({c})';
+""")
+                    assert cast("tuple[int]", res.fetchone())[0] == 1, f"{t}, {c}"
 
 
 @mock.patch("ldlite.folio.httpx.post")

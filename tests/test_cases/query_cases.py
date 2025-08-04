@@ -1,17 +1,20 @@
+from __future__ import annotations
+
 import json
 from dataclasses import dataclass
 from typing import Any
 
 from pytest_cases import parametrize
 
-from .base import TestCase
+from .base import EndToEndTestCase
 
 
 @dataclass(frozen=True)
-class QueryCase(TestCase):
+class QueryCase(EndToEndTestCase):
     json_depth: int
     expected_tables: list[str]
     expected_values: dict[str, tuple[list[str], list[tuple[Any, ...]]]]
+    expected_indexes: list[tuple[str, str]] | None = None
 
 
 class QueryTestCases:
@@ -39,6 +42,11 @@ class QueryTestCases:
                 ),
                 "prefix__tcatalog": (["table_name"], [("prefix__t",)]),
             },
+            expected_indexes=[
+                ("prefix", "__id"),
+                ("prefix__t", "__id"),
+                ("prefix__t", "id"),
+            ],
         )
 
     @parametrize(json_depth=range(2, 3))
@@ -98,6 +106,15 @@ class QueryTestCases:
                     [("prefix__t",), ("prefix__t__sub_objects",)],
                 ),
             },
+            expected_indexes=[
+                ("prefix", "__id"),
+                ("prefix__t", "__id"),
+                ("prefix__t", "id"),
+                ("prefix__t__sub_objects", "__id"),
+                ("prefix__t__sub_objects", "id"),
+                ("prefix__t__sub_objects", "sub_objects__o"),
+                ("prefix__t__sub_objects", "sub_objects__id"),
+            ],
         )
 
     @parametrize(json_depth=range(1))
@@ -243,6 +260,27 @@ class QueryTestCases:
                     ],
                 ),
             },
+            expected_indexes=[
+                ("prefix", "__id"),
+                ("prefix__t", "__id"),
+                ("prefix__t", "id"),
+                ("prefix__t__sub_objects", "__id"),
+                ("prefix__t__sub_objects", "id"),
+                ("prefix__t__sub_objects", "sub_objects__o"),
+                ("prefix__t__sub_objects", "sub_objects__id"),
+                ("prefix__t__sub_objects__sub_sub_objects", "__id"),
+                ("prefix__t__sub_objects__sub_sub_objects", "id"),
+                ("prefix__t__sub_objects__sub_sub_objects", "sub_objects__o"),
+                ("prefix__t__sub_objects__sub_sub_objects", "sub_objects__id"),
+                (
+                    "prefix__t__sub_objects__sub_sub_objects",
+                    "sub_objects__sub_sub_objects__o",
+                ),
+                (
+                    "prefix__t__sub_objects__sub_sub_objects",
+                    "sub_objects__sub_sub_objects__id",
+                ),
+            ],
         )
 
     def case_nested_object(self) -> QueryCase:
@@ -282,6 +320,12 @@ class QueryTestCases:
                     [("prefix__t",)],
                 ),
             },
+            expected_indexes=[
+                ("prefix", "__id"),
+                ("prefix__t", "__id"),
+                ("prefix__t", "id"),
+                ("prefix__t", "sub_object__id"),
+            ],
         )
 
     def case_doubly_nested_object(self) -> QueryCase:
@@ -332,6 +376,13 @@ class QueryTestCases:
                     [("prefix__t",)],
                 ),
             },
+            expected_indexes=[
+                ("prefix", "__id"),
+                ("prefix__t", "__id"),
+                ("prefix__t", "id"),
+                ("prefix__t", "sub_object__id"),
+                ("prefix__t", "sub_object__sub_sub_object__id"),
+            ],
         )
 
     def case_nested_object_underexpansion(self) -> QueryCase:
@@ -459,4 +510,37 @@ class QueryTestCases:
                     ],
                 ),
             },
+        )
+
+    def case_indexing_id_like(self) -> QueryCase:
+        return QueryCase(
+            json_depth=4,
+            values={
+                "prefix": [
+                    {
+                        "purchaseOrders": [
+                            {
+                                "id": "b096504a-3d54-4664-9bf5-1b872466fd66",
+                                "otherId": "b096504a-3d54-4664-9bf5-1b872466fd66",
+                                "anIdButWithADifferentEnding": (
+                                    "b096504a-3d54-4664-9bf5-1b872466fd66"
+                                ),
+                            },
+                        ],
+                    },
+                ],
+            },
+            expected_tables=[
+                "prefix",
+                "prefix__t",
+                "prefix__tcatalog",
+            ],
+            expected_values={},
+            expected_indexes=[
+                ("prefix", "__id"),
+                ("prefix__t", "__id"),
+                ("prefix__t", "id"),
+                ("prefix__t", "other_id"),
+                ("prefix__t", "an_id_but_with_a_different_ending"),
+            ],
         )

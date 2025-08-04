@@ -1,10 +1,10 @@
 from dataclasses import dataclass
 
-from .base import TestCase
+from .base import EndToEndTestCase
 
 
 @dataclass(frozen=True)
-class DropTablesCase(TestCase):
+class DropTablesCase(EndToEndTestCase):
     drop: str
     expected_tables: list[str]
 
