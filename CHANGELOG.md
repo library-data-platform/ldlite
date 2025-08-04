@@ -31,7 +31,8 @@ Please see [MIGRATING.md](./MIGRATING.md) for information on breaking changes.
 ### Fixed
 
 - Fixed endpoints that use with perPage instead of limit
-- Fixed `connect_db` method
+- Fixed `connect_db` method return value
+- Re-enabled indexing for postgres databases
 
 ### Changed
 
