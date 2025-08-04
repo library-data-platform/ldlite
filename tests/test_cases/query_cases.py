@@ -511,3 +511,36 @@ class QueryTestCases:
                 ),
             },
         )
+
+    def case_indexing_id_like(self) -> QueryCase:
+        return QueryCase(
+            json_depth=4,
+            values={
+                "prefix": [
+                    {
+                        "purchaseOrders": [
+                            {
+                                "id": "b096504a-3d54-4664-9bf5-1b872466fd66",
+                                "otherId": "b096504a-3d54-4664-9bf5-1b872466fd66",
+                                "anIdButWithADifferentEnding": (
+                                    "b096504a-3d54-4664-9bf5-1b872466fd66"
+                                ),
+                            },
+                        ],
+                    },
+                ],
+            },
+            expected_tables=[
+                "prefix",
+                "prefix__t",
+                "prefix__tcatalog",
+            ],
+            expected_values={},
+            expected_indexes=[
+                ("prefix", "__id"),
+                ("prefix__t", "__id"),
+                ("prefix__t", "id"),
+                ("prefix__t", "other_id"),
+                ("prefix__t", "an_id_but_with_a_different_ending"),
+            ],
+        )

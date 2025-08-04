@@ -433,7 +433,7 @@ class LDLite:
                 for t, attrs in newattrs.items()
                 for n, a in attrs.items()
                 if n in ["__id", "id"]
-                or n.endswith(("Id", "__o"))
+                or n.endswith(("_id", "__o"))
                 or a.datatype == "uuid"
             ]
             index_total = len(indexable_attrs)
