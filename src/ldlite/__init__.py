@@ -426,10 +426,17 @@ class LDLite:
                 newattrs[table] = {"__id": Attr("__id", "bigint")}
         finally:
             autocommit(self.db, self.dbtype, True)
-        # Create indexes (for postgres)
-        # This broke in the 0.34.0 release but is probably better broken
-        if False:
-            index_total = sum(map(len, newattrs.values()))
+        # Create indexes on id columns (for postgres)
+        if self.dbtype == DBType.POSTGRES:
+            indexable_attrs = [
+                (t, a)
+                for t, attrs in newattrs.items()
+                for n, a in attrs.items()
+                if n in ["__id", "id"]
+                or n.endswith(("Id", "__o"))
+                or a.datatype == "uuid"
+            ]
+            index_total = len(indexable_attrs)
             if not self._quiet:
                 pbar = tqdm(
                     desc="indexing",
@@ -441,24 +448,19 @@ class LDLite:
                     bar_format="{desc} {bar}{postfix}",
                 )
                 pbartotal = 0
-            for t, attrs in newattrs.items():
-                for attr in attrs.values():
-                    cur = self.db.cursor()
-                    try:
-                        cur.execute(
-                            "CREATE INDEX ON "
-                            + sqlid(t)
-                            + " ("
-                            + sqlid(attr.name)
-                            + ")",
-                        )
-                    except (RuntimeError, psycopg2.Error):
-                        pass
-                    finally:
-                        cur.close()
-                    if pbar is not None:
-                        pbartotal += 1
-                        pbar.update(1)
+            for t, attr in indexable_attrs:
+                cur = self.db.cursor()
+                try:
+                    cur.execute(
+                        "CREATE INDEX ON " + sqlid(t) + " (" + sqlid(attr.name) + ")",
+                    )
+                except (RuntimeError, psycopg2.Error):
+                    pass
+                finally:
+                    cur.close()
+                if pbar is not None:
+                    pbartotal += 1
+                    pbar.update(1)
             if pbar is not None:
                 pbar.close()
         # Return table names
