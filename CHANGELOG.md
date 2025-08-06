@@ -10,9 +10,6 @@ Please see [MIGRATING.md](./MIGRATING.md) for information on breaking changes.
 ## [Unreleased]
 
 ### Added
-- New flag to remove the raw json tables after loading is complete
-
-### Added
 
 ### Fixed
 
@@ -27,6 +24,7 @@ Please see [MIGRATING.md](./MIGRATING.md) for information on breaking changes.
 - Deprecation notice for xlsx and sqlite functionality. They will be removed in 4.0.
 - pdm scripts for locking and testing installability
 - New lockfile for testing python against 3.13
+- New flag to remove the raw json tables after loading is complete
 
 ### Fixed
 
