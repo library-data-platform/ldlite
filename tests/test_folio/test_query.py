@@ -65,7 +65,7 @@ def test_nonsrs(
         assert calls[0][k] == v
 
     assert calls[1]["limit"] == str(tc.page_size)
-    assert calls[1]["query"] == tc.expected_values_query + " sortBy id asc"
+    assert calls[1]["query"] == tc.expected_values_query + " sortBy id"
     # erm parameters
     assert calls[1]["perPage"] == str(tc.page_size)
     assert calls[1]["stats"]

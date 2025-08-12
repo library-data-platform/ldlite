@@ -139,7 +139,7 @@ class _QueryParams:
                 **self.additional_params,
                 "sort": "id;asc",
                 "filters": iter_query,
-                "query": q + " sortBy id asc",
+                "query": q + " sortBy id",
                 "limit": self.page_size,
                 "perPage": self.page_size,
                 "stats": True,
