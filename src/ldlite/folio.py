@@ -68,7 +68,7 @@ class _RefreshTokenAuth(httpx.Auth):
 
 class _QueryParams:
     _default_re = re.compile(
-        r"^cql\.allrecords(?:=1)?(?:\s+sortby\s+id(?:\s+(asc|desc))?)?$",
+        r"^cql\.allrecords(?:=1)?(?:\s+sortby\s+id(?:(?:\/|\s)+(?:sort\.)?(asc|desc))?)?$",
         re.IGNORECASE,
     )
     _without_sort_re = re.compile(
