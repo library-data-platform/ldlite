@@ -218,7 +218,7 @@ class FolioClient:
                 j = orjson.loads(res.text)[key]
                 yield from [(next(pkey), orjson.dumps(r)) for r in j]
 
-                if len(j) < page_size:
+                if len(j) == 0:
                     return
 
                 last_id = j[-1]["id"]

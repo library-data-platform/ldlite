@@ -58,7 +58,7 @@ def test_erm(folio_params: tuple[bool, FolioParams]) -> None:
         "/erm/org",
         timeout=60.0,
         retries=0,
-        page_size=5,
+        page_size=101,  # erm caps to 100 per page
     )
 
     (total, _) = next(res)
