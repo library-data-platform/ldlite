@@ -68,7 +68,7 @@ class _RefreshTokenAuth(httpx.Auth):
 
 class _QueryParams:
     _default_re = re.compile(
-        r"^cql\.allrecords(?:=1)?(?:\s+sortby\s+id(?:\s+(asc|desc))?)?$",
+        r"^cql\.allrecords(?:=1)?(?:\s+sortby\s+id(?:(?:\/|\s)+(?:sort\.)?(asc|desc))?)?$",
         re.IGNORECASE,
     )
     _without_sort_re = re.compile(
@@ -139,7 +139,7 @@ class _QueryParams:
                 **self.additional_params,
                 "sort": "id;asc",
                 "filters": iter_query,
-                "query": q + " sortBy id asc",
+                "query": q + " sortBy id",
                 "limit": self.page_size,
                 "perPage": self.page_size,
                 "stats": True,
@@ -203,7 +203,15 @@ class FolioClient:
                     params=params.for_values(),
                 ) as res:
                     res.raise_for_status()
-                    yield from ((next(pkey), r) for r in res.iter_lines())
+                    record = ""
+                    for f in res.iter_lines():
+                        # FOLIO can return partial json fragments
+                        # if they contain "newline-ish" characters like U+2028
+                        record += f
+                        if f[-1] == "}":
+                            yield (next(pkey), record)
+                            record = ""
+                            continue
                     return
 
             key = next(iter(j.keys()))
@@ -218,7 +226,7 @@ class FolioClient:
                 j = orjson.loads(res.text)[key]
                 yield from [(next(pkey), orjson.dumps(r)) for r in j]
 
-                if len(j) < page_size:
+                if len(j) == 0:
                     return
 
                 last_id = j[-1]["id"]

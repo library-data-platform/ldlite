@@ -10,20 +10,31 @@ Please see [MIGRATING.md](./MIGRATING.md) for information on breaking changes.
 ## [Unreleased]
 
 ### Added
-- New flag to remove the raw json tables after loading is complete
+
+### Fixed
+
+### Changed
+
+### Removed
+
+## [3.1.0] - August 2025
 
 ### Added
 
 - Deprecation notice for xlsx and sqlite functionality. They will be removed in 4.0.
+- pdm scripts for locking and testing installability
+- New lockfile for testing python against 3.13
+- New flag to remove the raw json tables after loading is complete
+
+### Fixed
+
+- Fixed endpoints that use with perPage instead of limit
+- Fixed `connect_db` method return value
+- Re-enabled indexing for postgres databases
 
 ### Changed
 
-- Fixed endpoints that use with perPage instead of limit
 - Improved the performance and stability for the download portion of LDLite
-- Fixed `connect_db` method
-
-### Removed
-
 
 ## [3.0.0] - July 2025
 

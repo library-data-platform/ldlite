@@ -58,7 +58,7 @@ def test_erm(folio_params: tuple[bool, FolioParams]) -> None:
         "/erm/org",
         timeout=60.0,
         retries=0,
-        page_size=5,
+        page_size=101,  # erm caps to 100 per page
     )
 
     (total, _) = next(res)
@@ -77,6 +77,29 @@ def test_erm(folio_params: tuple[bool, FolioParams]) -> None:
         read += 1
 
     assert total == read
+
+
+def test_notes(folio_params: tuple[bool, FolioParams]) -> None:
+    if folio_params[0]:
+        pytest.skip("Specify an environment with --folio-base-url to run")
+
+    from ldlite.folio import FolioClient as uut
+
+    res = uut(folio_params[1]).iterate_records(
+        "/notes",  # Notes parses cql weirdly
+        timeout=60.0,
+        retries=0,
+        page_size=1,
+    )
+    next(res)
+
+    read = 0
+    for _ in res:
+        read += 1
+        if read > 2:
+            break
+
+    assert read > 0
 
 
 def test_srs(folio_params: tuple[bool, FolioParams]) -> None:

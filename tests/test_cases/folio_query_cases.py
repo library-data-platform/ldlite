@@ -25,9 +25,13 @@ _default_queries = [
     "cql.allRecords=1 sortby id desc",
     "cql.allRecords=1 SORTBY id ASC",
     "cql.allRecords=1 SORTBY id DESC",
+    "cql.allRecords=1 sortBy id/sort.asc",
+    "cql.allRecords=1 sortBy id/sort.desc",
 ]
 _nondefault_queries = [
     "some_query sortBy some_column",
+    "some_query sortBy some_column/and_another",
+    "some_query sortBy some_column and_another",
     "some_query sortBy some_column asc",
     "some_query sortBy some_column desc",
     "some_query sortby some_column",
@@ -35,6 +39,9 @@ _nondefault_queries = [
     "some_query sortby some_column desc",
     "some_query SORTBY some_column ASC",
     "some_query SORTBY some_column DESC",
+    "some_query sortBy some_column/sort.asc",
+    "some_query sortBy some_column/sort.desc",
+    "some_query sortBy some_column/sort.ignoreCase",
 ]
 
 
