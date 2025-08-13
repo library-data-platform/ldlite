@@ -203,7 +203,15 @@ class FolioClient:
                     params=params.for_values(),
                 ) as res:
                     res.raise_for_status()
-                    yield from ((next(pkey), r) for r in res.iter_lines())
+                    record = ""
+                    for f in res.iter_lines():
+                        # FOLIO can return partial json fragments
+                        # if they contain "newline-ish" characters like U+2028
+                        record += f
+                        if f[-1] == "}":
+                            yield (next(pkey), record)
+                            record = ""
+                            continue
                     return
 
             key = next(iter(j.keys()))
