@@ -102,6 +102,29 @@ def test_notes(folio_params: tuple[bool, FolioParams]) -> None:
     assert read > 0
 
 
+def test_offset(folio_params: tuple[bool, FolioParams]) -> None:
+    if folio_params[0]:
+        pytest.skip("Specify an environment with --folio-base-url to run")
+
+    from ldlite.folio import FolioClient as uut
+
+    res = uut(folio_params[1]).iterate_records(
+        "/finance/ledger-rollovers-logs",  # There's no id column here
+        timeout=60.0,
+        retries=0,
+        page_size=2,
+    )
+    next(res)
+
+    read = 0
+    for _ in res:
+        read += 1
+        if read > 5:
+            break
+
+    assert read > 0
+
+
 def test_srs(folio_params: tuple[bool, FolioParams]) -> None:
     if folio_params[0]:
         pytest.skip("Specify an environment with --folio-base-url to run")

@@ -36,7 +36,7 @@ class EndToEndTestCase:
         for values in self.values.values():
             key = next(iter(values[0].keys()))
             total_mock = MagicMock()
-            total_mock.text = f'{{"{key}": "", "totalRecords": 100000}}'
+            total_mock.text = f'{{"{key}": [{{"id": ""}}], "totalRecords": 100000}}'
 
             value_mocks = []
             for v in values:

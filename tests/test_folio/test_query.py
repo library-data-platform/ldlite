@@ -27,7 +27,7 @@ def test_nonsrs(
 
     mocks = []
     total_mock = MagicMock()
-    total_mock.text = '{"key": "", "totalRecords": 100000}'
+    total_mock.text = '{"key": [{"id": ""}], "totalRecords": 100000}'
     mocks.append(total_mock)
 
     values_mock = MagicMock()
