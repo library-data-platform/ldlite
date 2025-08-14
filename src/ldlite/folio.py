@@ -116,7 +116,8 @@ class _QueryParams:
         return httpx.QueryParams(
             {
                 **self.additional_params,
-                "query": q,
+                # sortBy id puts nulls last
+                "query": q + " sortBy id",
                 "limit": 1,
                 # ERM endpoints use perPage and stats
                 # Additional filtering for ERM endpoints is ignored
