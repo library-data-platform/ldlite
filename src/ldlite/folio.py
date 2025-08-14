@@ -109,7 +109,7 @@ class _QueryParams:
             # I'm gambling that this isn't happening
             self.query_str = without_sort.groups()[0]
 
-        self.page_size = str(page_size)
+        self._page_size = page_size
 
     def for_stats(self) -> httpx.QueryParams:
         q = self.query_str if self.query_str is not None else "cql.allRecords=1"
@@ -140,9 +140,21 @@ class _QueryParams:
                 "sort": "id;asc",
                 "filters": iter_query,
                 "query": q + " sortBy id",
-                "limit": self.page_size,
-                "perPage": self.page_size,
+                "limit": str(self._page_size),
+                "perPage": str(self._page_size),
                 "stats": True,
+            },
+        )
+
+    def for_values_offset(self, sort_key: str, page: int) -> httpx.QueryParams:
+        # ERM endpoints all have ids
+        return httpx.QueryParams(
+            {
+                **self.additional_params,
+                "query": (self.query_str or "cql.allRecords=1")
+                + f' sortBy "{sort_key}"',
+                "offset": str(page * self._page_size),
+                "limit": str(self._page_size),
             },
         )
 
@@ -215,11 +227,22 @@ class FolioClient:
                     return
 
             key = next(iter(j.keys()))
+            sort_key = (
+                None
+                # If there's an id or we'll use id paging
+                if "id" in j[key][0]
+                # Otherwise we have to fall back to offet paging sorted by the first key
+                else next(iter(j[key][0].keys()))
+            )
+
             last_id: str | None = None
+            page = count(start=0)
             while True:
                 res = client.get(
                     path,
-                    params=params.for_values(last_id),
+                    params=params.for_values(last_id)
+                    if sort_key is None
+                    else params.for_values_offset(sort_key, next(page)),
                 )
                 res.raise_for_status()
 
@@ -231,4 +254,7 @@ class FolioClient:
                 if last is None:
                     return
 
-                last_id = last["id"]
+                last_id = last.get(
+                    "id",
+                    "this value is unused because we're offset paging",
+                )
