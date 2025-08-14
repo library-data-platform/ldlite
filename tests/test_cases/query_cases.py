@@ -576,3 +576,30 @@ class QueryTestCases:
             ],
             keep_raw=False,
         )
+
+    # this case should be testing the FolioClient class
+    # but it isn't setup to mock the data properly right now
+    def case_null_records(self) -> QueryCase:
+        return QueryCase(
+            json_depth=1,
+            values={
+                "prefix": [
+                    {
+                        "purchaseOrders": [
+                            {
+                                "id": "b096504a-3d54-4664-9bf5-1b872466fd66",
+                                "value": "value",
+                            },
+                            None,
+                        ],
+                    },
+                ],
+            },
+            expected_tables=["prefix", "prefix__t", "prefix__tcatalog"],
+            expected_values={},
+            expected_indexes=[
+                ("prefix", "__id"),
+                ("prefix__t", "__id"),
+                ("prefix__t", "id"),
+            ],
+        )

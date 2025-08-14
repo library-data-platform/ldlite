@@ -223,10 +223,12 @@ class FolioClient:
                 )
                 res.raise_for_status()
 
-                j = orjson.loads(res.text)[key]
-                yield from [(next(pkey), orjson.dumps(r)) for r in j]
+                last = None
+                for r in (o for o in orjson.loads(res.text)[key] if o is not None):
+                    last = r
+                    yield (next(pkey), orjson.dumps(r))
 
-                if len(j) == 0:
+                if last is None:
                     return
 
-                last_id = j[-1]["id"]
+                last_id = last["id"]
