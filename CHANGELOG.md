@@ -17,6 +17,12 @@ Please see [MIGRATING.md](./MIGRATING.md) for information on breaking changes.
 
 ### Removed
 
+## [3.1.1] - August 2025
+
+### Fixed
+- Now falling back to offset based paging when there is no id field in the response
+- Fixed an issue when FOLIO was return null records (why is this happening in the first place?)
+
 ## [3.1.0] - August 2025
 
 ### Added

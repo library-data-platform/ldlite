@@ -4,7 +4,7 @@ build-backend = "pdm.backend"
 
 [project]
 name = "ldlite"
-version = "3.1.0"
+version = "3.1.1"
 description = "Lightweight analytics tool for FOLIO services"
 authors = [
     {name = "Katherine Bargar", email = "kbargar@fivecolleges.edu"},
