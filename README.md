@@ -12,6 +12,16 @@ services. It is part of the Library Data Platform project and
 provides basic LDP functions without requiring the server to be
 installed.
 
+LDLite supports two modes of usage.
+* Ad-hoc uses a local DuckDB to enable downloading small amounts of data and querying using sql.
+* Server uses a persistent postgres server and managed cron server to download large amounts of data for analytic processing and reporting.
+
+### Usage with a persistent postgres server
+
+See the [Five Colleges Setup](https://github.com/Five-Colleges-Incorporated/ldlite-scripts) for an example of automating overnight data loads.
+
+### Usage for ad-hoc local querying
+
 To install LDLite or upgrade to the latest version:
 
 ```bash

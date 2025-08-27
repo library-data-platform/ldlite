@@ -11,6 +11,8 @@ database.
 
 The following requires ldpmarc v1.6.0-beta5 or later.
 
+See the [Five Colleges Setup](https://github.com/Five-Colleges-Incorporated/ldlite-scripts) for an example of automating weekly loads of MARC data.
+
 
 Querying and retrieving SRS data
 --------------------------------
