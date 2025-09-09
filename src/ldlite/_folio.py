@@ -81,7 +81,7 @@ class FolioClient:
                     return
 
             key = next(iter(j.keys()))
-            sort_key = (
+            nonid_key = (
                 # Grab the first key if there isn't an id column
                 # because we need it to offset page properly
                 next(iter(j[key][0].keys())) if "id" not in j[key][0] else None
@@ -90,10 +90,10 @@ class FolioClient:
             last_id: str | None = None
             page = count(start=1)
             while True:
-                if params.can_page_by_id():
+                if nonid_key is not None:
+                    p = params.offset_paging(key=nonid_key, page=next(page))
+                elif params.can_page_by_id():
                     p = params.id_paging(last_id=last_id)
-                elif sort_key is not None:
-                    p = params.offset_paging(key=sort_key, page=next(page))
                 else:
                     p = params.offset_paging(page=next(page))
 
