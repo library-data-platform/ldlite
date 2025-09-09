@@ -15,10 +15,9 @@ dependencies = [
     "psycopg2>=2.9.5",
     "tqdm>=4.64.1",
     "XlsxWriter>=3.0.6",
-    "httpx>=0.0.1", # httpx-retries requires >=0.27.0 for some reason
-    "httpx-retries>=0.2.0",
-    "orjson>=2.2.1",
+    "httpx>=0.0.1",
     "httpx-folio>=0.2.2",
+    "orjson>=2.2.1",
 ]
 requires-python = ">=3.9"
 readme = "README.md"
