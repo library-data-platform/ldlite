@@ -18,7 +18,7 @@ dependencies = [
     "httpx>=0.0.1", # httpx-retries requires >=0.27.0 for some reason
     "httpx-retries>=0.2.0",
     "orjson>=2.2.1",
-    "httpx-folio>=0.2.1",
+    "httpx-folio>=0.2.2",
 ]
 requires-python = ">=3.9"
 readme = "README.md"

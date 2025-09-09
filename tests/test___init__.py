@@ -2,9 +2,8 @@ from dataclasses import astuple, dataclass
 
 import httpx
 import pytest
+from httpx_folio.auth import FolioParams
 from pytest_cases import parametrize_with_cases
-
-from ldlite.folio import FolioParams
 
 
 def test_ok_legacy(folio_params: tuple[bool, FolioParams]) -> None:
