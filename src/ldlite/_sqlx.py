@@ -84,15 +84,6 @@ def as_sqlite(
     return cast("sqlite3.Connection", db)
 
 
-def strip_schema(table: str) -> str:
-    st = table.split(".")
-    if len(st) == 1:
-        return table
-    if len(st) == 2:
-        return st[1]
-    raise ValueError("invalid table name: " + table)
-
-
 def autocommit(db: dbapi.DBAPIConnection, dbtype: DBType, enable: bool) -> None:
     if (pgdb := as_postgres(db, dbtype)) is not None:
         pgdb.rollback()
@@ -130,14 +121,6 @@ def cast_to_varchar(ident: str, dbtype: DBType) -> str:
 
 def varchar_type(dbtype: DBType) -> str:
     if dbtype == DBType.POSTGRES or DBType.SQLITE:
-        return "text"
-    return "varchar"
-
-
-def json_type(dbtype: DBType) -> str:
-    if dbtype == DBType.POSTGRES:
-        return "jsonb"
-    if dbtype == DBType.SQLITE:
         return "text"
     return "varchar"
 
