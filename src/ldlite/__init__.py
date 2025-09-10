@@ -123,8 +123,8 @@ class LDLite:
         self.dbtype = DBType.DUCKDB
         fn = filename if filename is not None else ":memory:"
         db = duckdb.connect(database=fn)
-        self.db = cast("dbapi.DBAPIConnection", db)
-        return db
+        self.db = cast("dbapi.DBAPIConnection", db.cursor())
+        return db.cursor()
 
     def connect_db_postgresql(self, dsn: str) -> psycopg2.extensions.connection:
         """Connects to a PostgreSQL database for storing data.
@@ -170,9 +170,11 @@ class LDLite:
 
         """
         self.dbtype = DBType.SQLITE
-        fn = filename if filename is not None else ":memory:"
+        fn = filename if filename is not None else "file::memory:?cache=shared"
         self.db = sqlite3.connect(fn)
-        autocommit(self.db, self.dbtype, True)
+
+        db = sqlite3.connect(fn)
+        autocommit(db, self.dbtype, True)
         return self.db
 
     def _check_folio(self) -> None:
