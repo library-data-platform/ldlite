@@ -6,8 +6,6 @@ from typing import TYPE_CHECKING, Callable, Generic, TypeVar
 
 from psycopg import sql
 
-from ._sqlx import DBType, server_cursor
-
 if TYPE_CHECKING:
     from _typeshed import dbapi
 else:
@@ -46,9 +44,6 @@ class Database(ABC, Generic[DB, DBC]):
     def __init__(self, conn_factory: Callable[[], DB]):
         self._conn_factory = conn_factory
 
-    @abstractmethod
-    def _create_server_cursor(self, conn: DB) -> DBC: ...
-
     @property
     @abstractmethod
     def _truncate_raw_table_sql(self) -> sql.SQL: ...
@@ -79,30 +74,3 @@ class Database(ABC, Generic[DB, DBC]):
                     table=prefix.raw_table_name,
                 ).as_string(),
             )
-
-
-class DBTypeDatabase(Database[dbapi.DBAPIConnection, dbapi.DBAPICursor]):
-    def __init__(self, dbtype: DBType, db: dbapi.DBAPIConnection):
-        self._dbtype = dbtype
-        super().__init__(lambda: db)
-
-    def _create_server_cursor(self, conn: dbapi.DBAPIConnection) -> dbapi.DBAPICursor:
-        return server_cursor(conn, self._dbtype)
-
-    @property
-    def _create_raw_table_sql(self) -> sql.SQL:
-        create_sql = "CREATE TABLE IF NOT EXISTS {table} (__id integer, jsonb text);"
-        if self._dbtype == DBType.POSTGRES:
-            create_sql = (
-                "CREATE TABLE IF NOT EXISTS {table} (__id integer, jsonb jsonb);"
-            )
-
-        return sql.SQL(create_sql)
-
-    @property
-    def _truncate_raw_table_sql(self) -> sql.SQL:
-        truncate_sql = "TRUNCATE TABLE {table}"
-        if self._dbtype == DBType.SQLITE:
-            truncate_sql = "DELETE FROM {table}"
-
-        return sql.SQL(truncate_sql)

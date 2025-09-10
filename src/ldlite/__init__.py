@@ -47,11 +47,18 @@ from httpx_folio.auth import FolioParams
 from tqdm import tqdm
 
 from ._csv import to_csv
-from ._database import DBTypeDatabase, Prefix
+from ._database import Prefix
 from ._folio import FolioClient
 from ._jsonx import Attr, drop_json_tables, transform_json
 from ._select import select
-from ._sqlx import DBType, as_postgres, autocommit, encode_sql_str, sqlid
+from ._sqlx import (
+    DBType,
+    DBTypeDatabase,
+    as_postgres,
+    autocommit,
+    encode_sql_str,
+    sqlid,
+)
 from ._xlsx import to_xlsx
 
 if TYPE_CHECKING:

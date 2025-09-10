@@ -4,6 +4,10 @@ import secrets
 from enum import Enum
 from typing import TYPE_CHECKING, cast
 
+from psycopg import sql
+
+from ._database import Database
+
 if TYPE_CHECKING:
     import sqlite3
 
@@ -12,6 +16,11 @@ if TYPE_CHECKING:
     from _typeshed import dbapi
 
     from ._jsonx import JsonValue
+else:
+    # I can't seem to figure out how to make this better
+    from unittest.mock import MagicMock
+
+    dbapi = MagicMock()
 
 
 class DBType(Enum):
@@ -19,6 +28,30 @@ class DBType(Enum):
     DUCKDB = 1
     POSTGRES = 2
     SQLITE = 4
+
+
+class DBTypeDatabase(Database[dbapi.DBAPIConnection, dbapi.DBAPICursor]):
+    def __init__(self, dbtype: DBType, db: dbapi.DBAPIConnection):
+        self._dbtype = dbtype
+        super().__init__(lambda: db)
+
+    @property
+    def _create_raw_table_sql(self) -> sql.SQL:
+        create_sql = "CREATE TABLE IF NOT EXISTS {table} (__id integer, jsonb text);"
+        if self._dbtype == DBType.POSTGRES:
+            create_sql = (
+                "CREATE TABLE IF NOT EXISTS {table} (__id integer, jsonb jsonb);"
+            )
+
+        return sql.SQL(create_sql)
+
+    @property
+    def _truncate_raw_table_sql(self) -> sql.SQL:
+        truncate_sql = "TRUNCATE TABLE {table}"
+        if self._dbtype == DBType.SQLITE:
+            truncate_sql = "DELETE FROM {table}"
+
+        return sql.SQL(truncate_sql)
 
 
 def as_duckdb(
