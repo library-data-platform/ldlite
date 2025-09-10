@@ -8,7 +8,7 @@ if TYPE_CHECKING:
     import sqlite3
 
     import duckdb
-    import psycopg2
+    import psycopg
     from _typeshed import dbapi
 
     from ._jsonx import JsonValue
@@ -34,11 +34,11 @@ def as_duckdb(
 def as_postgres(
     db: dbapi.DBAPIConnection,
     dbtype: DBType,
-) -> psycopg2.extensions.connection | None:
+) -> psycopg.Connection | None:
     if dbtype != DBType.POSTGRES:
         return None
 
-    return cast("psycopg2.extensions.connection", db)
+    return cast("psycopg.Connection", db)
 
 
 def as_sqlite(
@@ -63,7 +63,7 @@ def strip_schema(table: str) -> str:
 def autocommit(db: dbapi.DBAPIConnection, dbtype: DBType, enable: bool) -> None:
     if (pgdb := as_postgres(db, dbtype)) is not None:
         pgdb.rollback()
-        pgdb.set_session(autocommit=enable)
+        pgdb.set_autocommit(enable)
 
     if (sql3db := as_sqlite(db, dbtype)) is not None:
         sql3db.rollback()

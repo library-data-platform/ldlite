@@ -41,6 +41,7 @@ import sys
 from typing import TYPE_CHECKING, NoReturn, cast
 
 import duckdb
+import psycopg
 import psycopg2
 from httpx_folio.auth import FolioParams
 from tqdm import tqdm
@@ -132,15 +133,21 @@ class LDLite:
         connection to the database which can be used to submit SQL queries.
         The returned connection defaults to autocommit mode.
 
+        This will return a psycopg3 connection in the next major release of LDLite.
+
         Example:
             db = ld.connect_db_postgresql(dsn='dbname=ld host=localhost user=ldlite')
 
         """
         self.dbtype = DBType.POSTGRES
-        db = psycopg2.connect(dsn)
+        db = psycopg.connect(dsn)
         self.db = cast("dbapi.DBAPIConnection", db)
         autocommit(self.db, self.dbtype, True)
-        return db
+
+        ret_db = psycopg2.connect(dsn)
+        ret_db.rollback()
+        ret_db.set_session(autocommit=True)
+        return ret_db
 
     def experimental_connect_db_sqlite(
         self,
@@ -466,7 +473,7 @@ class LDLite:
                     cur.execute(
                         "CREATE INDEX ON " + sqlid(t) + " (" + sqlid(attr.name) + ")",
                     )
-                except (RuntimeError, psycopg2.Error):
+                except (RuntimeError, psycopg.Error):
                     pass
                 finally:
                     cur.close()
