@@ -10,14 +10,14 @@ from pytest_cases import parametrize
 
 @parametrize(
     tc=[
-        (True, "/finance/ledger-rollovers-logs", None),  # no id column
-        (True, "/notes", "title=Key Permissions"),  # finicky about sorting
-        (
-            False,
-            "/loan-policy-storage/loan-policies",
-            "cql.allRecords=1 sortBy id/sort.descending",
-        ),
-        (False, "/groups", "cql.allRecords=1 sortBy group desc"),  # non id sort
+        # no id column
+        (True, "/finance/ledger-rollovers-logs", None),
+        # finicky about sorting
+        (True, "/notes", "title=Key Permissions"),
+        # id descending
+        (False, "/invoice/invoices", "vendorId==e0* sortBy id desc"),
+        # non id sort
+        (False, "/groups", "cql.allRecords=1 sortBy group desc"),
     ],
 )
 def test_endtoend(
