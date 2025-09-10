@@ -71,13 +71,13 @@ class FolioClient:
                     res.raise_for_status()
                     record = ""
                     for f in res.iter_lines():
-                        # FOLIO can return partial json fragments
+                        # HTTPX can return partial json fragments during iteration
                         # if they contain "newline-ish" characters like U+2028
                         record += f
-                        if f[-1] == "}":
-                            yield (next(pkey), record)
-                            record = ""
+                        if len(f) == 0 or f[-1] != "}":
                             continue
+                        yield (next(pkey), record)
+                        record = ""
                     return
 
             key = next(iter(j.keys()))

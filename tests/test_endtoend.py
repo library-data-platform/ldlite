@@ -54,3 +54,20 @@ def test_endtoend(
     actual = cast("tuple[int]", db.fetchone())[0]
 
     assert actual == expected
+
+
+def test_endtoend_srs(folio_params: tuple[bool, FolioParams]) -> None:
+    from ldlite import LDLite as uut
+
+    ld = uut()
+    ld.connect_db(":memory:shared")
+
+    ld.connect_folio(*astuple(folio_params[1]))
+    ld.query(table="test", path="/source-storage/source-records", limit=4)
+
+    db = duckdb.connect(":memory:shared")
+    db.execute("SELECT COUNT(DISTINCT COLUMNS(*)) FROM test__t;")
+    actual = cast("tuple[int]", db.fetchone())[0]
+
+    # snapshot only has 4 records
+    assert actual == 4
