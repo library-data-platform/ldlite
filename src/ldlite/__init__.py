@@ -47,10 +47,11 @@ from httpx_folio.auth import FolioParams
 from tqdm import tqdm
 
 from ._csv import to_csv
+from ._database import DBTypeDatabase, Prefix
 from ._folio import FolioClient
 from ._jsonx import Attr, drop_json_tables, transform_json
 from ._select import select
-from ._sqlx import DBType, as_postgres, autocommit, encode_sql_str, json_type, sqlid
+from ._sqlx import DBType, as_postgres, autocommit, encode_sql_str, sqlid
 from ._xlsx import to_xlsx
 
 if TYPE_CHECKING:
@@ -341,20 +342,8 @@ class LDLite:
         drop_json_tables(self.db, table)
         autocommit(self.db, self.dbtype, False)
         try:
-            cur = self.db.cursor()
-            try:
-                if len(schema_table) == 2:
-                    cur.execute("CREATE SCHEMA IF NOT EXISTS " + sqlid(schema_table[0]))
-                cur.execute("DROP TABLE IF EXISTS " + sqlid(table))
-                cur.execute(
-                    "CREATE TABLE "
-                    + sqlid(table)
-                    + "(__id integer, jsonb "
-                    + json_type(self.dbtype)
-                    + ")",
-                )
-            finally:
-                cur.close()
+            db = DBTypeDatabase(self.dbtype, self.db)
+            db.prepare_raw_table(self.db, Prefix(table))
             self.db.commit()
             # First get total number of records
             records = self._folio.iterate_records(
