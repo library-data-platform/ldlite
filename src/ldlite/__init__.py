@@ -42,17 +42,19 @@ from typing import TYPE_CHECKING, NoReturn, cast
 
 import duckdb
 import psycopg2
+from httpx_folio.auth import FolioParams
 from tqdm import tqdm
 
 from ._csv import to_csv
+from ._folio import FolioClient
 from ._jsonx import Attr, drop_json_tables, transform_json
 from ._select import select
 from ._sqlx import DBType, as_postgres, autocommit, encode_sql_str, json_type, sqlid
 from ._xlsx import to_xlsx
-from .folio import FolioClient, FolioParams
 
 if TYPE_CHECKING:
     from _typeshed import dbapi
+    from httpx_folio.query import QueryType
 
 
 class LDLite:
@@ -351,7 +353,7 @@ class LDLite:
                 self._okapi_timeout,
                 self._okapi_max_retries,
                 self.page_size,
-                query=query,
+                query=cast("QueryType", query),
             )
 
             (total_records, _) = next(records)
