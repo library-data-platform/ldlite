@@ -12,6 +12,17 @@ Please see [MIGRATING.md](./MIGRATING.md) for information on breaking changes.
 ### Added
 
 ### Fixed
+
+### Changed
+
+### Removed
+
+
+## [3.1.3] - September 2025
+
+### Added
+
+### Fixed
 - Fixed multiple sequential newline characters in srs download
 - Fixed edge cases around non-default sorts and pagination
 - Unexposed an accidentally exposed internal module
