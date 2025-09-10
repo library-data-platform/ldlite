@@ -122,7 +122,7 @@ class LDLite:
         self.dbtype = DBType.DUCKDB
         fn = filename if filename is not None else ":memory:"
         db = duckdb.connect(database=fn)
-        self.db = cast("dbapi.DBAPIConnection", duckdb.connect(database=fn))
+        self.db = cast("dbapi.DBAPIConnection", db)
         return db
 
     def connect_db_postgresql(self, dsn: str) -> psycopg2.extensions.connection:
