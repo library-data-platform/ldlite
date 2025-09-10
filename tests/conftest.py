@@ -1,6 +1,5 @@
 import pytest
-
-from ldlite.folio import FolioParams
+from httpx_folio.auth import FolioParams
 
 
 def pytest_addoption(parser: pytest.Parser) -> None:

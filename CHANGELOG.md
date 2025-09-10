@@ -12,6 +12,8 @@ Please see [MIGRATING.md](./MIGRATING.md) for information on breaking changes.
 ### Added
 
 ### Fixed
+- Fixed edge cases around non-default sorts and pagination
+- Unexposed an accidentally exposed internal module
 
 ### Changed
 

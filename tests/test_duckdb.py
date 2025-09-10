@@ -12,8 +12,8 @@ from tests.test_cases import query_cases as qc
 from tests.test_cases import to_csv_cases as csvc
 
 
-@mock.patch("ldlite.folio.httpx.post")
-@mock.patch("ldlite.folio.httpx.Client.get")
+@mock.patch("httpx_folio.auth.httpx.post")
+@mock.patch("httpx_folio.factories.httpx.Client.get")
 @parametrize_with_cases("tc", cases=dtc.DropTablesCases)
 def test_drop_tables(
     client_get_mock: MagicMock,
@@ -37,8 +37,8 @@ def test_drop_tables(
         assert sorted([r[0] for r in res.fetchall()]) == sorted(tc.expected_tables)
 
 
-@mock.patch("ldlite.folio.httpx.post")
-@mock.patch("ldlite.folio.httpx.Client.get")
+@mock.patch("httpx_folio.auth.httpx.post")
+@mock.patch("httpx_folio.factories.httpx.Client.get")
 @parametrize_with_cases("tc", cases=qc.QueryTestCases)
 def test_query(
     client_get_mock: MagicMock,
@@ -74,8 +74,8 @@ def test_query(
             assert res.fetchone() is None
 
 
-@mock.patch("ldlite.folio.httpx.post")
-@mock.patch("ldlite.folio.httpx.Client.get")
+@mock.patch("httpx_folio.auth.httpx.post")
+@mock.patch("httpx_folio.factories.httpx.Client.get")
 @parametrize_with_cases("tc", cases=csvc.ToCsvCases)
 def test_to_csv(
     client_get_mock: MagicMock,
