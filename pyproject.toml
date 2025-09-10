@@ -15,7 +15,6 @@ dependencies = [
     "psycopg2>=2.9.5",
     "tqdm>=4.64.1",
     "XlsxWriter>=3.0.6",
-    "httpx>=0.0.1",
     "httpx-folio>=0.2.3",
     "orjson>=2.2.1",
 ]

@@ -156,30 +156,12 @@ marker = "python_version >= \"3.13\" and \"default\" in dependency_groups"
 dependencies = []
 
 [[packages]]
-name = "httpx"
-version = "0.28.1"
-requires-python = ">=3.8"
-sdist = {name = "httpx-0.28.1.tar.gz", url = "https://files.pythonhosted.org/packages/b1/df/48c586a5fe32a0f01324ee087459e112ebb7224f646c0b5023f5e79e9956/httpx-0.28.1.tar.gz", hashes = {sha256 = "75e98c5f16b0f35b567856f597f06ff2270a374470a5c2392242528e3e3e42fc"}}
-wheels = [
-    {name = "httpx-0.28.1-py3-none-any.whl",url = "https://files.pythonhosted.org/packages/2a/39/e50c7c3a983047577ee07d2a9e53faf5a69493943ec3f6a384bdc792deb2/httpx-0.28.1-py3-none-any.whl",hashes = {sha256 = "d909fcccc110f8c7faf814ca82a9a4d816bc5a6dbfea25d6591d6985b8ba59ad"}},
-]
-marker = "python_version >= \"3.13\" and \"default\" in dependency_groups"
-
-[packages.tool.pdm]
-dependencies = [
-    "anyio",
-    "certifi",
-    "httpcore==1.*",
-    "idna",
-]
-
-[[packages]]
 name = "httpx-folio"
-version = "0.2.2"
+version = "0.2.3"
 requires-python = ">=3.9"
-sdist = {name = "httpx_folio-0.2.2.tar.gz", url = "https://files.pythonhosted.org/packages/ca/42/52177fad68c6c615577fd09df94c905d1d81b324678220a95a8cdfc27423/httpx_folio-0.2.2.tar.gz", hashes = {sha256 = "183c43ab67935695e02ff84aa825db655e9d7cb6dda50cfa43282fb67c33f4b7"}}
+sdist = {name = "httpx_folio-0.2.3.tar.gz", url = "https://files.pythonhosted.org/packages/72/07/727a73827674a6a91db6a58ac492703d6d0efe9a5f14d856aff9b434fe65/httpx_folio-0.2.3.tar.gz", hashes = {sha256 = "8c4afd55231e1a645c824a7ffa63ebc1b0261223e5d6b65101ab639a6a0a54dd"}}
 wheels = [
-    {name = "httpx_folio-0.2.2-py3-none-any.whl",url = "https://files.pythonhosted.org/packages/61/3a/f1899625bcc7ab258b4ebe086a2f9f7c0cc9198b01618e246ef7ab01ee28/httpx_folio-0.2.2-py3-none-any.whl",hashes = {sha256 = "54cf393b4ac813d7e4afcdf6491f02cdd4d9e6aa9d907f9da829e8d77ed004ab"}},
+    {name = "httpx_folio-0.2.3-py3-none-any.whl",url = "https://files.pythonhosted.org/packages/34/3c/b5333a57399d8c787efb2c90d9accb6ddf22523fcec3404814b0eb10bb8a/httpx_folio-0.2.3-py3-none-any.whl",hashes = {sha256 = "e319cc8cf3e0443982655a6012017e36af112e58081b050b40048052b039b6e9"}},
 ]
 marker = "python_version >= \"3.13\" and \"default\" in dependency_groups"
 
@@ -335,22 +317,6 @@ marker = "python_version >= \"3.13\" and \"default\" in dependency_groups"
 dependencies = []
 
 [[packages]]
-name = "httpcore"
-version = "1.0.9"
-requires-python = ">=3.8"
-sdist = {name = "httpcore-1.0.9.tar.gz", url = "https://files.pythonhosted.org/packages/06/94/82699a10bca87a5556c9c59b5963f2d039dbd239f25bc2a63907a05a14cb/httpcore-1.0.9.tar.gz", hashes = {sha256 = "6e34463af53fd2ab5d807f399a9b45ea31c3dfa2276f15a2c3f00afff6e176e8"}}
-wheels = [
-    {name = "httpcore-1.0.9-py3-none-any.whl",url = "https://files.pythonhosted.org/packages/7e/f5/f66802a942d491edb555dd61e3a9961140fd64c90bce1eafd741609d334d/httpcore-1.0.9-py3-none-any.whl",hashes = {sha256 = "2d400746a40668fc9dec9810239072b40b4484b640a8c38fd654a024c7a1bf55"}},
-]
-marker = "python_version >= \"3.13\" and \"default\" in dependency_groups"
-
-[packages.tool.pdm]
-dependencies = [
-    "certifi",
-    "h11>=0.16",
-]
-
-[[packages]]
 name = "pluggy"
 version = "1.6.0"
 requires-python = ">=3.9"
@@ -375,6 +341,40 @@ marker = "sys_platform == \"win32\" and python_version >= \"3.13\" and \"default
 
 [packages.tool.pdm]
 dependencies = []
+
+[[packages]]
+name = "httpx"
+version = "0.28.1"
+requires-python = ">=3.8"
+sdist = {name = "httpx-0.28.1.tar.gz", url = "https://files.pythonhosted.org/packages/b1/df/48c586a5fe32a0f01324ee087459e112ebb7224f646c0b5023f5e79e9956/httpx-0.28.1.tar.gz", hashes = {sha256 = "75e98c5f16b0f35b567856f597f06ff2270a374470a5c2392242528e3e3e42fc"}}
+wheels = [
+    {name = "httpx-0.28.1-py3-none-any.whl",url = "https://files.pythonhosted.org/packages/2a/39/e50c7c3a983047577ee07d2a9e53faf5a69493943ec3f6a384bdc792deb2/httpx-0.28.1-py3-none-any.whl",hashes = {sha256 = "d909fcccc110f8c7faf814ca82a9a4d816bc5a6dbfea25d6591d6985b8ba59ad"}},
+]
+marker = "python_version >= \"3.13\" and \"default\" in dependency_groups"
+
+[packages.tool.pdm]
+dependencies = [
+    "anyio",
+    "certifi",
+    "httpcore==1.*",
+    "idna",
+]
+
+[[packages]]
+name = "httpcore"
+version = "1.0.9"
+requires-python = ">=3.8"
+sdist = {name = "httpcore-1.0.9.tar.gz", url = "https://files.pythonhosted.org/packages/06/94/82699a10bca87a5556c9c59b5963f2d039dbd239f25bc2a63907a05a14cb/httpcore-1.0.9.tar.gz", hashes = {sha256 = "6e34463af53fd2ab5d807f399a9b45ea31c3dfa2276f15a2c3f00afff6e176e8"}}
+wheels = [
+    {name = "httpcore-1.0.9-py3-none-any.whl",url = "https://files.pythonhosted.org/packages/7e/f5/f66802a942d491edb555dd61e3a9961140fd64c90bce1eafd741609d334d/httpcore-1.0.9-py3-none-any.whl",hashes = {sha256 = "2d400746a40668fc9dec9810239072b40b4484b640a8c38fd654a024c7a1bf55"}},
+]
+marker = "python_version >= \"3.13\" and \"default\" in dependency_groups"
+
+[packages.tool.pdm]
+dependencies = [
+    "certifi",
+    "h11>=0.16",
+]
 
 [[packages]]
 name = "h11"
@@ -634,7 +634,7 @@ marker = "python_version >= \"3.13\" and \"types\" in dependency_groups"
 dependencies = []
 
 [tool.pdm]
-hashes = {sha256 = "45cbfa64d51acee8e9cd358b9f9a97c0a49e6dc6a3dae9aba6d2ef4a31bac476"}
+hashes = {sha256 = "8f79d3a116fb2aeff8263d46e00c1f48dbba637f607c3da738af719783d85afe"}
 strategy = ["inherit_metadata", "static_urls"]
 
 [[tool.pdm.targets]]
