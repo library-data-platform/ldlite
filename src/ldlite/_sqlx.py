@@ -4,6 +4,10 @@ import secrets
 from enum import Enum
 from typing import TYPE_CHECKING, cast
 
+from psycopg import sql
+
+from ._database import Database
+
 if TYPE_CHECKING:
     import sqlite3
 
@@ -19,6 +23,38 @@ class DBType(Enum):
     DUCKDB = 1
     POSTGRES = 2
     SQLITE = 4
+
+
+class DBTypeDatabase(Database["dbapi.DBAPIConnection"]):
+    def __init__(self, dbtype: DBType, db: dbapi.DBAPIConnection):
+        self._dbtype = dbtype
+        super().__init__(lambda: db)
+
+    @property
+    def _create_raw_table_sql(self) -> sql.SQL:
+        create_sql = "CREATE TABLE IF NOT EXISTS {table} (__id integer, jsonb text);"
+        if self._dbtype == DBType.POSTGRES:
+            create_sql = (
+                "CREATE TABLE IF NOT EXISTS {table} (__id integer, jsonb jsonb);"
+            )
+
+        return sql.SQL(create_sql)
+
+    @property
+    def _truncate_raw_table_sql(self) -> sql.SQL:
+        truncate_sql = "TRUNCATE TABLE {table};"
+        if self._dbtype == DBType.SQLITE:
+            truncate_sql = "DELETE FROM {table};"
+
+        return sql.SQL(truncate_sql)
+
+    @property
+    def _insert_record_sql(self) -> sql.SQL:
+        insert_sql = "INSERT INTO {table} VALUES(?, ?);"
+        if self._dbtype == DBType.POSTGRES:
+            insert_sql = "INSERT INTO {table} VALUES(%s, %s);"
+
+        return sql.SQL(insert_sql)
 
 
 def as_duckdb(
@@ -49,15 +85,6 @@ def as_sqlite(
         return None
 
     return cast("sqlite3.Connection", db)
-
-
-def strip_schema(table: str) -> str:
-    st = table.split(".")
-    if len(st) == 1:
-        return table
-    if len(st) == 2:
-        return st[1]
-    raise ValueError("invalid table name: " + table)
 
 
 def autocommit(db: dbapi.DBAPIConnection, dbtype: DBType, enable: bool) -> None:
@@ -97,14 +124,6 @@ def cast_to_varchar(ident: str, dbtype: DBType) -> str:
 
 def varchar_type(dbtype: DBType) -> str:
     if dbtype == DBType.POSTGRES or DBType.SQLITE:
-        return "text"
-    return "varchar"
-
-
-def json_type(dbtype: DBType) -> str:
-    if dbtype == DBType.POSTGRES:
-        return "jsonb"
-    if dbtype == DBType.SQLITE:
         return "text"
     return "varchar"
 
