@@ -16,10 +16,6 @@ if TYPE_CHECKING:
     from _typeshed import dbapi
 
     from ._jsonx import JsonValue
-else:
-    from unittest.mock import MagicMock
-
-    dbapi = MagicMock()
 
 
 class DBType(Enum):
@@ -29,7 +25,7 @@ class DBType(Enum):
     SQLITE = 4
 
 
-class DBTypeDatabase(Database[dbapi.DBAPIConnection]):
+class DBTypeDatabase(Database["dbapi.DBAPIConnection"]):
     def __init__(self, dbtype: DBType, db: dbapi.DBAPIConnection):
         self._dbtype = dbtype
         super().__init__(lambda: db)

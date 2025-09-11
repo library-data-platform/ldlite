@@ -10,14 +10,8 @@ if TYPE_CHECKING:
     from collections.abc import Iterator
 
     from _typeshed import dbapi
-else:
-    # I can't seem to figure out how to make this better
-    # _typeshed does not exist at runtime but is necessary for the generics
-    from unittest.mock import MagicMock
 
-    dbapi = MagicMock()
-
-DB = TypeVar("DB", bound=dbapi.DBAPIConnection)
+DB = TypeVar("DB", bound="dbapi.DBAPIConnection")
 
 
 class Prefix:
