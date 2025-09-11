@@ -82,6 +82,7 @@ class LDLite:
         self._quiet = False
         self.dbtype: DBType = DBType.UNDEFINED
         self.db: dbapi.DBAPIConnection | None = None
+        self._db: DBTypeDatabase | None = None
         self._folio: FolioClient | None = None
         self.page_size = 1000
         self._okapi_timeout = 60
@@ -132,6 +133,11 @@ class LDLite:
         fn = filename if filename is not None else ":memory:"
         db = duckdb.connect(database=fn)
         self.db = cast("dbapi.DBAPIConnection", db.cursor())
+        self._db = DBTypeDatabase(
+            DBType.DUCKDB,
+            lambda: cast("dbapi.DBAPIConnection", db.cursor()),
+        )
+
         return db.cursor()
 
     def connect_db_postgresql(self, dsn: str) -> psycopg2.extensions.connection:
@@ -150,7 +156,10 @@ class LDLite:
         self.dbtype = DBType.POSTGRES
         db = psycopg.connect(dsn)
         self.db = cast("dbapi.DBAPIConnection", db)
-        autocommit(self.db, self.dbtype, True)
+        self._db = DBTypeDatabase(
+            DBType.POSTGRES,
+            lambda: cast("dbapi.DBAPIConnection", psycopg.connect(dsn)),
+        )
 
         ret_db = psycopg2.connect(dsn)
         ret_db.rollback()
@@ -180,6 +189,10 @@ class LDLite:
         self.dbtype = DBType.SQLITE
         fn = filename if filename is not None else "file::memory:?cache=shared"
         self.db = sqlite3.connect(fn)
+        self._db = DBTypeDatabase(
+            DBType.SQLITE,
+            lambda: cast("dbapi.DBAPIConnection", sqlite3.connect(fn)),
+        )
 
         db = sqlite3.connect(fn)
         autocommit(db, self.dbtype, True)
@@ -338,7 +351,7 @@ class LDLite:
         if self._folio is None:
             self._check_folio()
             return []
-        if self.db is None:
+        if self.db is None or self._db is None:
             self._check_db()
             return []
         if len(schema_table) == 2 and self.dbtype == DBType.SQLITE:
@@ -346,6 +359,7 @@ class LDLite:
             schema_table = [table]
         if not self._quiet:
             print("ldlite: querying: " + path, file=sys.stderr)
+        autocommit(self.db, self.dbtype, True)
         drop_json_tables(self.db, table)
         autocommit(self.db, self.dbtype, False)
         try:
@@ -381,10 +395,7 @@ class LDLite:
                 p = next(processed)
                 return limit is None or p >= limit
 
-            cur = self.db.cursor()
-            db = DBTypeDatabase(self.dbtype, self.db)
-            db.ingest_records(self.db, Prefix(table), on_processed, records)
-            self.db.commit()
+            self._db.ingest_records(Prefix(table), on_processed, records)
             if pbar is not None:
                 pbar.close()
 

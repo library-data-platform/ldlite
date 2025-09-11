@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import secrets
 from enum import Enum
-from typing import TYPE_CHECKING, cast
+from typing import TYPE_CHECKING, Callable, cast
 
 from psycopg import sql
 
@@ -26,9 +26,9 @@ class DBType(Enum):
 
 
 class DBTypeDatabase(Database["dbapi.DBAPIConnection"]):
-    def __init__(self, dbtype: DBType, db: dbapi.DBAPIConnection):
+    def __init__(self, dbtype: DBType, factory: Callable[[], dbapi.DBAPIConnection]):
         self._dbtype = dbtype
-        super().__init__(lambda: db)
+        super().__init__(factory)
 
     @property
     def _create_raw_table_sql(self) -> sql.SQL:

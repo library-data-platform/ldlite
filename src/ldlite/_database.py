@@ -76,23 +76,20 @@ class Database(ABC, Generic[DB]):
 
     def ingest_records(
         self,
-        conn: DB,
         prefix: Prefix,
         on_processed: Callable[[], bool],
         records: Iterator[tuple[int, str | bytes]],
     ) -> None:
-        # the only implementation right now is a hack
-        # the db connection is managed outside of the factory
-        # for now it's taken as a parameter
-        # with self._conn_factory() as conn:
-        self._prepare_raw_table(conn, prefix)
-        with closing(conn.cursor()) as cur:
-            for pkey, d in records:
-                cur.execute(
-                    self._insert_record_sql.format(
-                        table=prefix.raw_table_name,
-                    ).as_string(),
-                    [pkey, d if isinstance(d, str) else d.decode("utf-8")],
-                )
-                if not on_processed():
-                    return
+        with closing(self._conn_factory()) as conn:
+            self._prepare_raw_table(conn, prefix)
+            with closing(conn.cursor()) as cur:
+                for pkey, d in records:
+                    cur.execute(
+                        self._insert_record_sql.format(
+                            table=prefix.raw_table_name,
+                        ).as_string(),
+                        [pkey, d if isinstance(d, str) else d.decode("utf-8")],
+                    )
+                    if not on_processed():
+                        return
+            conn.commit()
