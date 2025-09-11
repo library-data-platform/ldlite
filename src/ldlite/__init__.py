@@ -367,8 +367,9 @@ class LDLite:
             if self._verbose:
                 print("ldlite: estimated row count: " + str(total), file=sys.stderr)
 
-            processed = count(0)
-            pbar = None
+            p_count = count(0)
+            processed = 0
+            pbar: tqdm | PbarNoop  # type:ignore[type-arg]
             if not self._quiet:
                 pbar = tqdm(
                     desc="reading",
@@ -379,16 +380,32 @@ class LDLite:
                     colour="#A9A9A9",
                     bar_format="{desc} {bar}{postfix}",
                 )
+            else:
+
+                class PbarNoop:
+                    def update(self, _: int) -> None: ...
+                    def close(self) -> None: ...
+
+                pbar = PbarNoop()
 
             def on_processed() -> bool:
-                if pbar is not None:
-                    pbar.update(1)
-                p = next(processed)
-                return limit is None or p >= limit
+                pbar.update(1)
+                nonlocal processed
+                processed = next(p_count)
+                return True
 
-            self._db.ingest_records(prefix, on_processed, records)
-            if pbar is not None:
-                pbar.close()
+            def on_processed_limit() -> bool:
+                pbar.update(1)
+                nonlocal processed
+                processed = next(p_count)
+                return limit is None or processed >= limit
+
+            self._db.ingest_records(
+                prefix,
+                on_processed_limit if limit is not None else on_processed,
+                records,
+            )
+            pbar.close()
 
             self._db.drop_extracted_tables(prefix)
             newtables = [table]
@@ -399,7 +416,7 @@ class LDLite:
                     self.db,
                     self.dbtype,
                     table,
-                    next(processed) - 1,
+                    processed,
                     self._quiet,
                     json_depth,
                 )
@@ -445,10 +462,8 @@ class LDLite:
                     pass
                 finally:
                     cur.close()
-                if pbar is not None:
-                    pbar.update(1)
-            if pbar is not None:
-                pbar.close()
+                pbar.update(1)
+            pbar.close()
         # Return table names
         if not self._quiet:
             print("ldlite: created tables: " + ", ".join(newtables), file=sys.stderr)
