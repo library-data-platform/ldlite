@@ -21,6 +21,7 @@ Please see [MIGRATING.md](./MIGRATING.md) for information on breaking changes.
 
 ### Fixed
 - Fixed `connect_db` method return value for default :memory: connections
+- Fixed flaky end to end test for source records in the snapshot environment
 
 ## [3.1.3] - September 2025
 

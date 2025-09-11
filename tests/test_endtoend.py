@@ -61,10 +61,14 @@ def test_endtoend_srs(folio_params: tuple[bool, FolioParams]) -> None:
     db = ld.connect_db()
 
     ld.connect_folio(*astuple(folio_params[1]))
-    ld.query(table="test", path="/source-storage/source-records", limit=4)
+    ld.query(table="test", path="/source-storage/source-records", limit=10)
 
     db.execute("SELECT COUNT(DISTINCT COLUMNS(*)) FROM test__t;")
     actual = cast("tuple[int]", db.fetchone())[0]
 
-    # snapshot only has 4 records
-    assert actual == 4
+    # snapshot a variable number of records
+    assert actual >= 1
+    if folio_params[0]:
+        assert actual <= 10
+    else:
+        assert actual == 10
