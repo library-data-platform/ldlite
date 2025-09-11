@@ -12,12 +12,12 @@ if TYPE_CHECKING:
     from _typeshed import dbapi
 else:
     # I can't seem to figure out how to make this better
+    # _typeshed does not exist at runtime but is necessary for the generics
     from unittest.mock import MagicMock
 
     dbapi = MagicMock()
 
 DB = TypeVar("DB", bound=dbapi.DBAPIConnection)
-DBC = TypeVar("DBC", bound=dbapi.DBAPICursor)
 
 
 class Prefix:
@@ -42,7 +42,7 @@ class Prefix:
         )
 
 
-class Database(ABC, Generic[DB, DBC]):
+class Database(ABC, Generic[DB]):
     def __init__(self, conn_factory: Callable[[], DB]):
         self._conn_factory = conn_factory
 

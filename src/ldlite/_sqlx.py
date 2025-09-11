@@ -17,7 +17,6 @@ if TYPE_CHECKING:
 
     from ._jsonx import JsonValue
 else:
-    # I can't seem to figure out how to make this better
     from unittest.mock import MagicMock
 
     dbapi = MagicMock()
@@ -30,7 +29,7 @@ class DBType(Enum):
     SQLITE = 4
 
 
-class DBTypeDatabase(Database[dbapi.DBAPIConnection, dbapi.DBAPICursor]):
+class DBTypeDatabase(Database[dbapi.DBAPIConnection]):
     def __init__(self, dbtype: DBType, db: dbapi.DBAPIConnection):
         self._dbtype = dbtype
         super().__init__(lambda: db)
