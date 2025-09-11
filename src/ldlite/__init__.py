@@ -378,7 +378,8 @@ class LDLite:
             def on_processed() -> bool:
                 if pbar is not None:
                     pbar.update(1)
-                return limit is None or next(processed) >= limit
+                p = next(processed)
+                return limit is None or p >= limit
 
             cur = self.db.cursor()
             db = DBTypeDatabase(self.dbtype, self.db)
