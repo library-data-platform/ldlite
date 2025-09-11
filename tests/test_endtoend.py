@@ -1,7 +1,6 @@
 from dataclasses import astuple
 from typing import cast
 
-import duckdb
 import pytest
 from httpx_folio.factories import FolioParams, default_client_factory
 from httpx_folio.query import QueryParams, QueryType
@@ -33,7 +32,7 @@ def test_endtoend(
     from ldlite import LDLite as uut
 
     ld = uut()
-    ld.connect_db(":memory:shared")
+    db = ld.connect_db()
 
     ld.page_size = 3
     ld.connect_folio(*astuple(folio_params[1]))
@@ -49,7 +48,6 @@ def test_endtoend(
         expected = res.json()["totalRecords"]
         assert expected > 3
 
-    db = duckdb.connect(":memory:shared")
     db.execute("SELECT COUNT(DISTINCT COLUMNS(*)) FROM test__t;")
     actual = cast("tuple[int]", db.fetchone())[0]
 
@@ -60,14 +58,17 @@ def test_endtoend_srs(folio_params: tuple[bool, FolioParams]) -> None:
     from ldlite import LDLite as uut
 
     ld = uut()
-    ld.connect_db(":memory:shared")
+    db = ld.connect_db()
 
     ld.connect_folio(*astuple(folio_params[1]))
-    ld.query(table="test", path="/source-storage/source-records", limit=4)
+    ld.query(table="test", path="/source-storage/source-records", limit=10)
 
-    db = duckdb.connect(":memory:shared")
     db.execute("SELECT COUNT(DISTINCT COLUMNS(*)) FROM test__t;")
     actual = cast("tuple[int]", db.fetchone())[0]
 
-    # snapshot only has 4 records
-    assert actual == 4
+    # snapshot a variable number of records
+    assert actual >= 1
+    if folio_params[0]:
+        assert actual <= 10
+    else:
+        assert actual == 10
