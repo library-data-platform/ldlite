@@ -1,18 +1,17 @@
 from __future__ import annotations
 
 import secrets
+import sqlite3
 from enum import Enum
-from typing import TYPE_CHECKING, cast
+from typing import TYPE_CHECKING, Callable, cast
 
+import duckdb
+import psycopg
 from psycopg import sql
 
 from ._database import Database
 
 if TYPE_CHECKING:
-    import sqlite3
-
-    import duckdb
-    import psycopg
     from _typeshed import dbapi
 
     from ._jsonx import JsonValue
@@ -26,9 +25,23 @@ class DBType(Enum):
 
 
 class DBTypeDatabase(Database["dbapi.DBAPIConnection"]):
-    def __init__(self, dbtype: DBType, db: dbapi.DBAPIConnection):
+    def __init__(self, dbtype: DBType, factory: Callable[[], dbapi.DBAPIConnection]):
         self._dbtype = dbtype
-        super().__init__(lambda: db)
+        super().__init__(factory)
+
+    @property
+    def _missing_table_error(self) -> tuple[type[Exception], ...]:
+        return (
+            psycopg.errors.UndefinedTable,
+            sqlite3.OperationalError,
+            duckdb.CatalogException,
+        )
+
+    def _rollback(self, conn: dbapi.DBAPIConnection) -> None:
+        if sql3db := as_sqlite(conn, self._dbtype):
+            sql3db.rollback()
+        if pgdb := as_postgres(conn, self._dbtype):
+            pgdb.rollback()
 
     @property
     def _create_raw_table_sql(self) -> sql.SQL:
