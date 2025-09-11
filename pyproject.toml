@@ -12,11 +12,12 @@ authors = [
 ]
 dependencies = [
     "duckdb>=0.6.1",
-    "psycopg2>=2.9.5",
+    "psycopg2-binary>=2.9.5",
     "tqdm>=4.64.1",
     "XlsxWriter>=3.0.6",
     "httpx-folio>=0.2.3",
     "orjson>=2.2.1",
+    "psycopg>=3.0",
 ]
 requires-python = ">=3.9"
 readme = "README.md"

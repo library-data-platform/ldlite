@@ -41,6 +41,7 @@ import sys
 from typing import TYPE_CHECKING, NoReturn, cast
 
 import duckdb
+import psycopg
 import psycopg2
 from httpx_folio.auth import FolioParams
 from tqdm import tqdm
@@ -122,8 +123,8 @@ class LDLite:
         self.dbtype = DBType.DUCKDB
         fn = filename if filename is not None else ":memory:"
         db = duckdb.connect(database=fn)
-        self.db = cast("dbapi.DBAPIConnection", db)
-        return db
+        self.db = cast("dbapi.DBAPIConnection", db.cursor())
+        return db.cursor()
 
     def connect_db_postgresql(self, dsn: str) -> psycopg2.extensions.connection:
         """Connects to a PostgreSQL database for storing data.
@@ -132,15 +133,21 @@ class LDLite:
         connection to the database which can be used to submit SQL queries.
         The returned connection defaults to autocommit mode.
 
+        This will return a psycopg3 connection in the next major release of LDLite.
+
         Example:
             db = ld.connect_db_postgresql(dsn='dbname=ld host=localhost user=ldlite')
 
         """
         self.dbtype = DBType.POSTGRES
-        db = psycopg2.connect(dsn)
+        db = psycopg.connect(dsn)
         self.db = cast("dbapi.DBAPIConnection", db)
         autocommit(self.db, self.dbtype, True)
-        return db
+
+        ret_db = psycopg2.connect(dsn)
+        ret_db.rollback()
+        ret_db.set_session(autocommit=True)
+        return ret_db
 
     def experimental_connect_db_sqlite(
         self,
@@ -163,9 +170,11 @@ class LDLite:
 
         """
         self.dbtype = DBType.SQLITE
-        fn = filename if filename is not None else ":memory:"
+        fn = filename if filename is not None else "file::memory:?cache=shared"
         self.db = sqlite3.connect(fn)
-        autocommit(self.db, self.dbtype, True)
+
+        db = sqlite3.connect(fn)
+        autocommit(db, self.dbtype, True)
         return self.db
 
     def _check_folio(self) -> None:
@@ -466,7 +475,7 @@ class LDLite:
                     cur.execute(
                         "CREATE INDEX ON " + sqlid(t) + " (" + sqlid(attr.name) + ")",
                     )
-                except (RuntimeError, psycopg2.Error):
+                except (RuntimeError, psycopg.Error):
                     pass
                 finally:
                     cur.close()

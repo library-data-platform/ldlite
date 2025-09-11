@@ -11,9 +11,14 @@ Please see [MIGRATING.md](./MIGRATING.md) for information on breaking changes.
 
 ### Added
 
+- Connections returned from the LDLite.connect_db* methods are now isolated from the ones used internally.
+
 ### Fixed
 
 ### Changed
+
+- psycopg3 is now used for internal operations. LDLite.connect_db_postgres will return a psycopg3 connection instead of psycopg2 in the next major release.
+- psycopg2 is now installed using the binary version.
 
 ### Removed
 
