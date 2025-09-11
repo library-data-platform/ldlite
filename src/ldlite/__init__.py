@@ -50,7 +50,7 @@ from tqdm import tqdm
 from ._csv import to_csv
 from ._database import Prefix
 from ._folio import FolioClient
-from ._jsonx import Attr, drop_json_tables, transform_json
+from ._jsonx import Attr, transform_json
 from ._select import select
 from ._sqlx import (
     DBType,
@@ -236,22 +236,16 @@ class LDLite:
             ld.drop_tables('g')
 
         """
-        if self.db is None:
+        if self.db is None or self._db is None:
             self._check_db()
             return
-        autocommit(self.db, self.dbtype, True)
         schema_table = table.strip().split(".")
-        if len(schema_table) < 1 or len(schema_table) > 2:
+        if len(schema_table) != 1 and len(schema_table) != 2:
             raise ValueError("invalid table name: " + table)
-        self._check_db()
-        cur = self.db.cursor()
-        try:
-            cur.execute("DROP TABLE IF EXISTS " + sqlid(table))
-        except (RuntimeError, psycopg2.Error):
-            pass
-        finally:
-            cur.close()
-        drop_json_tables(self.db, table)
+        if len(schema_table) == 2 and self.dbtype == DBType.SQLITE:
+            table = schema_table[0] + "_" + schema_table[1]
+        prefix = Prefix(table)
+        self._db.drop_prefix(prefix)
 
     def set_folio_max_retries(self, max_retries: int) -> None:
         """Sets the maximum number of retries for FOLIO requests.
@@ -356,12 +350,9 @@ class LDLite:
             return []
         if len(schema_table) == 2 and self.dbtype == DBType.SQLITE:
             table = schema_table[0] + "_" + schema_table[1]
-            schema_table = [table]
+        prefix = Prefix(table)
         if not self._quiet:
             print("ldlite: querying: " + path, file=sys.stderr)
-        autocommit(self.db, self.dbtype, True)
-        drop_json_tables(self.db, table)
-        autocommit(self.db, self.dbtype, False)
         try:
             # First get total number of records
             records = self._folio.iterate_records(
@@ -395,13 +386,15 @@ class LDLite:
                 p = next(processed)
                 return limit is None or p >= limit
 
-            self._db.ingest_records(Prefix(table), on_processed, records)
+            self._db.ingest_records(prefix, on_processed, records)
             if pbar is not None:
                 pbar.close()
 
+            self._db.drop_extracted_tables(prefix)
             newtables = [table]
             newattrs = {}
             if json_depth > 0:
+                autocommit(self.db, self.dbtype, False)
                 jsontables, jsonattrs = transform_json(
                     self.db,
                     self.dbtype,
@@ -417,12 +410,7 @@ class LDLite:
                 newattrs[table] = {"__id": Attr("__id", "bigint")}
 
             if not keep_raw:
-                cur = self.db.cursor()
-                try:
-                    cur.execute("DROP TABLE " + sqlid(table))
-                    self.db.commit()
-                finally:
-                    cur.close()
+                self._db.drop_raw_table(prefix)
 
         finally:
             autocommit(self.db, self.dbtype, True)
