@@ -47,11 +47,19 @@ class DBTypeDatabase(Database[dbapi.DBAPIConnection, dbapi.DBAPICursor]):
 
     @property
     def _truncate_raw_table_sql(self) -> sql.SQL:
-        truncate_sql = "TRUNCATE TABLE {table}"
+        truncate_sql = "TRUNCATE TABLE {table};"
         if self._dbtype == DBType.SQLITE:
-            truncate_sql = "DELETE FROM {table}"
+            truncate_sql = "DELETE FROM {table};"
 
         return sql.SQL(truncate_sql)
+
+    @property
+    def _insert_record_sql(self) -> sql.SQL:
+        insert_sql = "INSERT INTO {table} VALUES(?, ?);"
+        if self._dbtype == DBType.POSTGRES:
+            insert_sql = "INSERT INTO {table} VALUES(%s, %s);"
+
+        return sql.SQL(insert_sql)
 
 
 def as_duckdb(

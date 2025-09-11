@@ -38,6 +38,7 @@ from __future__ import annotations
 
 import sqlite3
 import sys
+from itertools import count
 from typing import TYPE_CHECKING, NoReturn, cast
 
 import duckdb
@@ -56,7 +57,6 @@ from ._sqlx import (
     DBTypeDatabase,
     as_postgres,
     autocommit,
-    encode_sql_str,
     sqlid,
 )
 from ._xlsx import to_xlsx
@@ -349,9 +349,6 @@ class LDLite:
         drop_json_tables(self.db, table)
         autocommit(self.db, self.dbtype, False)
         try:
-            db = DBTypeDatabase(self.dbtype, self.db)
-            db.prepare_raw_table(self.db, Prefix(table))
-            self.db.commit()
             # First get total number of records
             records = self._folio.iterate_records(
                 path,
@@ -360,62 +357,36 @@ class LDLite:
                 self.page_size,
                 query=cast("QueryType", query),
             )
-
             (total_records, _) = next(records)
-            total = total_records if total_records is not None else 0
+            total = min(total_records, limit or total_records)
             if self._verbose:
                 print("ldlite: estimated row count: " + str(total), file=sys.stderr)
-            # Read result pages
+
+            processed = count(0)
             pbar = None
-            pbartotal = 0
             if not self._quiet:
-                if total == -1:
-                    pbar = tqdm(
-                        desc="reading",
-                        leave=False,
-                        mininterval=3,
-                        smoothing=0,
-                        colour="#A9A9A9",
-                        bar_format="{desc} {elapsed} {bar}{postfix}",
-                    )
-                else:
-                    pbar = tqdm(
-                        desc="reading",
-                        total=total,
-                        leave=False,
-                        mininterval=3,
-                        smoothing=0,
-                        colour="#A9A9A9",
-                        bar_format="{desc} {bar}{postfix}",
-                    )
+                pbar = tqdm(
+                    desc="reading",
+                    total=total,
+                    leave=False,
+                    mininterval=3,
+                    smoothing=0,
+                    colour="#A9A9A9",
+                    bar_format="{desc} {bar}{postfix}",
+                )
+
+            def on_processed() -> bool:
+                if pbar is not None:
+                    pbar.update(1)
+                return limit is None or next(processed) >= limit
+
             cur = self.db.cursor()
-            try:
-                count = 0
-                for pkey, d in records:
-                    cur.execute(
-                        "INSERT INTO "
-                        + sqlid(table)
-                        + " VALUES("
-                        + str(pkey)
-                        + ","
-                        + encode_sql_str(self.dbtype, d)
-                        + ")",
-                    )
-                    count += 1
-                    if pbar is not None:
-                        if pbartotal + 1 > total:
-                            pbartotal = total
-                            pbar.update(total - pbartotal)
-                        else:
-                            pbartotal += 1
-                            pbar.update(1)
-                    if limit is not None and count == limit:
-                        break
-            finally:
-                cur.close()
+            db = DBTypeDatabase(self.dbtype, self.db)
+            db.ingest_records(self.db, Prefix(table), on_processed, records)
+            self.db.commit()
             if pbar is not None:
                 pbar.close()
-            self.db.commit()
+
             newtables = [table]
             newattrs = {}
             if json_depth > 0:
@@ -423,7 +394,7 @@ class LDLite:
                     self.db,
                     self.dbtype,
                     table,
-                    count,
+                    next(processed) - 1,
                     self._quiet,
                     json_depth,
                 )
@@ -464,7 +435,6 @@ class LDLite:
                     colour="#A9A9A9",
                     bar_format="{desc} {bar}{postfix}",
                 )
-                pbartotal = 0
             for t, attr in indexable_attrs:
                 cur = self.db.cursor()
                 try:
@@ -476,7 +446,6 @@ class LDLite:
                 finally:
                     cur.close()
                 if pbar is not None:
-                    pbartotal += 1
                     pbar.update(1)
             if pbar is not None:
                 pbar.close()
