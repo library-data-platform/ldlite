@@ -28,7 +28,7 @@ class FolioClient:
         retries: int,
         page_size: int,
         query: QueryType | None = None,
-    ) -> Iterator[tuple[int, str | bytes]]:
+    ) -> Iterator[int | tuple[bytes, bytes] | tuple[int, str]]:
         """Iterates all records for a given path.
 
         Returns:
@@ -54,7 +54,7 @@ class FolioClient:
             res.raise_for_status()
             j = orjson.loads(res.text)
             r = int(j["totalRecords"])
-            yield (r, b"")
+            yield r
 
             if r == 0:
                 return
@@ -103,7 +103,7 @@ class FolioClient:
                 last = None
                 for r in (o for o in orjson.loads(res.text)[key] if o is not None):
                     last = r
-                    yield (next(pkey), orjson.dumps(r))
+                    yield (next(pkey).to_bytes(4, "big"), orjson.dumps(r))
 
                 if last is None:
                     return

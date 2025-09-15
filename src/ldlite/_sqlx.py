@@ -77,7 +77,7 @@ class DBTypeDatabase(Database["dbapi.DBAPIConnection"]):
         self,
         prefix: Prefix,
         on_processed: Callable[[], bool],
-        records: Iterator[tuple[int, str | bytes]],
+        records: Iterator[tuple[bytes, bytes] | tuple[int, str]],
     ) -> None:
         if self._dbtype != DBType.POSTGRES:
             super().ingest_records(prefix, on_processed, records)
@@ -85,27 +85,40 @@ class DBTypeDatabase(Database["dbapi.DBAPIConnection"]):
 
         with closing(self._conn_factory()) as conn:
             self._prepare_raw_table(conn, prefix)
+
+            fr = next(records)
+            copy_from = "COPY {table} (__id, jsonb) FROM STDIN"
+            if is_bytes := isinstance(fr[0], bytes):
+                copy_from += " (FORMAT BINARY)"
+
             if pgconn := as_postgres(conn, self._dbtype):
                 with (
                     pgconn.cursor() as cur,
                     cur.copy(
-                        sql.SQL("COPY {table} (__id, jsonb) FROM STDIN").format(
-                            table=prefix.raw_table_name,
-                        ),
+                        sql.SQL(copy_from).format(table=prefix.raw_table_name),
                     ) as copy,
                 ):
-                    is_str = None
-                    for pkey, r in records:
-                        if is_str is None:
-                            is_str = isinstance(r, str)
-                        copy.write_row(
-                            (
-                                pkey,
-                                r if is_str else cast("bytes", r).decode(),
-                            ),
-                        )
-                        if not on_processed():
-                            break
+                    if is_bytes:
+                        # postgres jsonb is always version 1
+                        # and it always goes in front
+                        jver = (1).to_bytes(1, "big")
+                        record = fr
+                        while record is not None:
+                            pkey, rb = record
+                            rpg = bytearray()
+                            rpg.extend(jver)
+                            rpg.extend(cast("bytes", rb))
+                            copy.write_row((pkey, rpg))
+                            if not on_processed():
+                                break
+                            record = cast("tuple[bytes, bytes]", next(records, None))
+                    else:
+                        copy.write_row(fr)
+                        for r in records:
+                            copy.write_row(r)
+                            if not on_processed():
+                                break
+
                 pgconn.commit()
 
 
