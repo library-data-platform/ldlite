@@ -178,13 +178,16 @@ class Database(ABC, Generic[DB]):
         with closing(self._conn_factory()) as conn:
             self._prepare_raw_table(conn, prefix)
             with closing(conn.cursor()) as cur:
-                for pkey, d in records:
+                is_str = None
+                for pkey, r in records:
+                    if is_str is None:
+                        is_str = isinstance(r, str)
                     cur.execute(
                         self._insert_record_sql.format(
                             table=prefix.raw_table_name,
                         ).as_string(),
-                        [pkey, d if isinstance(d, str) else d.decode("utf-8")],
+                        [pkey, r if is_str else cast("bytes", r).decode()],
                     )
                     if not on_processed():
-                        return
+                        break
             conn.commit()

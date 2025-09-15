@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import secrets
 import sqlite3
+from contextlib import closing
 from enum import Enum
 from typing import TYPE_CHECKING, Callable, cast
 
@@ -12,8 +13,11 @@ from psycopg import sql
 from ._database import Database
 
 if TYPE_CHECKING:
+    from collections.abc import Iterator
+
     from _typeshed import dbapi
 
+    from ._database import Prefix
     from ._jsonx import JsonValue
 
 
@@ -68,6 +72,41 @@ class DBTypeDatabase(Database["dbapi.DBAPIConnection"]):
             insert_sql = "INSERT INTO {table} VALUES(%s, %s);"
 
         return sql.SQL(insert_sql)
+
+    def ingest_records(
+        self,
+        prefix: Prefix,
+        on_processed: Callable[[], bool],
+        records: Iterator[tuple[int, str | bytes]],
+    ) -> None:
+        if self._dbtype != DBType.POSTGRES:
+            super().ingest_records(prefix, on_processed, records)
+            return
+
+        with closing(self._conn_factory()) as conn:
+            self._prepare_raw_table(conn, prefix)
+            if pgconn := as_postgres(conn, self._dbtype):
+                with (
+                    pgconn.cursor() as cur,
+                    cur.copy(
+                        sql.SQL("COPY {table} (__id, jsonb) FROM STDIN").format(
+                            table=prefix.raw_table_name,
+                        ),
+                    ) as copy,
+                ):
+                    is_str = None
+                    for pkey, r in records:
+                        if is_str is None:
+                            is_str = isinstance(r, str)
+                        copy.write_row(
+                            (
+                                pkey,
+                                r if is_str else cast("bytes", r).decode(),
+                            ),
+                        )
+                        if not on_processed():
+                            break
+                pgconn.commit()
 
 
 def as_duckdb(
