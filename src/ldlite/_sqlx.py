@@ -105,10 +105,10 @@ class DBTypeDatabase(Database["dbapi.DBAPIConnection"]):
                         record = fr
                         while record is not None:
                             pkey, rb = record
-                            rpg = bytearray()
-                            rpg.extend(jver)
-                            rpg.extend(cast("bytes", rb))
-                            copy.write_row((pkey, rpg))
+                            rbpg = bytearray()
+                            rbpg.extend(jver)
+                            rbpg.extend(cast("bytes", rb))
+                            copy.write_row((pkey, rbpg))
                             if not on_processed():
                                 break
                             record = cast("tuple[bytes, bytes]", next(records, None))
