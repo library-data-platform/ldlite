@@ -20,6 +20,7 @@ Please see [MIGRATING.md](./MIGRATING.md) for information on breaking changes.
 - psycopg3 is now used for internal operations. LDLite.connect_db_postgres will return a psycopg3 connection instead of psycopg2 in the next major release.
 - psycopg2 is now installed using the binary version.
 - Refactored internal database handling logic
+- Ingesting data into postgres now uses COPY FROM which significantly improves the download performance.
 
 ### Removed
 

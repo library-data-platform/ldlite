@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import secrets
 import sqlite3
+from contextlib import closing
 from enum import Enum
 from typing import TYPE_CHECKING, Callable, cast
 
@@ -12,8 +13,11 @@ from psycopg import sql
 from ._database import Database
 
 if TYPE_CHECKING:
+    from collections.abc import Iterator
+
     from _typeshed import dbapi
 
+    from ._database import Prefix
     from ._jsonx import JsonValue
 
 
@@ -68,6 +72,54 @@ class DBTypeDatabase(Database["dbapi.DBAPIConnection"]):
             insert_sql = "INSERT INTO {table} VALUES(%s, %s);"
 
         return sql.SQL(insert_sql)
+
+    def ingest_records(
+        self,
+        prefix: Prefix,
+        on_processed: Callable[[], bool],
+        records: Iterator[tuple[bytes, bytes] | tuple[int, str]],
+    ) -> None:
+        if self._dbtype != DBType.POSTGRES:
+            super().ingest_records(prefix, on_processed, records)
+            return
+
+        with closing(self._conn_factory()) as conn:
+            self._prepare_raw_table(conn, prefix)
+
+            fr = next(records)
+            copy_from = "COPY {table} (__id, jsonb) FROM STDIN"
+            if is_bytes := isinstance(fr[0], bytes):
+                copy_from += " (FORMAT BINARY)"
+
+            if pgconn := as_postgres(conn, self._dbtype):
+                with (
+                    pgconn.cursor() as cur,
+                    cur.copy(
+                        sql.SQL(copy_from).format(table=prefix.raw_table_name),
+                    ) as copy,
+                ):
+                    if is_bytes:
+                        # postgres jsonb is always version 1
+                        # and it always goes in front
+                        jver = (1).to_bytes(1, "big")
+                        record = fr
+                        while record is not None:
+                            pkey, rb = record
+                            rbpg = bytearray()
+                            rbpg.extend(jver)
+                            rbpg.extend(cast("bytes", rb))
+                            copy.write_row((pkey, rbpg))
+                            if not on_processed():
+                                break
+                            record = cast("tuple[bytes, bytes]", next(records, None))
+                    else:
+                        copy.write_row(fr)
+                        for r in records:
+                            copy.write_row(r)
+                            if not on_processed():
+                                break
+
+                pgconn.commit()
 
 
 def as_duckdb(

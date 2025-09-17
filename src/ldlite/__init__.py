@@ -62,6 +62,8 @@ from ._sqlx import (
 from ._xlsx import to_xlsx
 
 if TYPE_CHECKING:
+    from collections.abc import Iterator
+
     from _typeshed import dbapi
     from httpx_folio.query import QueryType
 
@@ -362,7 +364,7 @@ class LDLite:
                 self.page_size,
                 query=cast("QueryType", query),
             )
-            (total_records, _) = next(records)
+            total_records = cast("int", next(records))
             total = min(total_records, limit or total_records)
             if self._verbose:
                 print("ldlite: estimated row count: " + str(total), file=sys.stderr)
@@ -403,7 +405,7 @@ class LDLite:
             self._db.ingest_records(
                 prefix,
                 on_processed_limit if limit is not None else on_processed,
-                records,
+                cast("Iterator[tuple[bytes, bytes] | tuple[int, str]]", records),
             )
             pbar.close()
 
