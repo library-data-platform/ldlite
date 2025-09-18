@@ -104,6 +104,53 @@ marker = "\"lint\" in dependency_groups"
 dependencies = []
 
 [[packages]]
+name = "duckdb"
+version = "1.3.2"
+requires-python = ">=3.7.0"
+sdist = {name = "duckdb-1.3.2.tar.gz", url = "https://files.pythonhosted.org/packages/47/24/a2e7fb78fba577641c286fe33185789ab1e1569ccdf4d142e005995991d2/duckdb-1.3.2.tar.gz", hashes = {sha256 = "c658df8a1bc78704f702ad0d954d82a1edd4518d7a04f00027ec53e40f591ff5"}}
+wheels = [
+    {name = "duckdb-1.3.2-cp313-cp313-macosx_12_0_arm64.whl",url = "https://files.pythonhosted.org/packages/f5/f0/8cac9713735864899e8abc4065bbdb3d1617f2130006d508a80e1b1a6c53/duckdb-1.3.2-cp313-cp313-macosx_12_0_arm64.whl",hashes = {sha256 = "a3418c973b06ac4e97f178f803e032c30c9a9f56a3e3b43a866f33223dfbf60b"}},
+    {name = "duckdb-1.3.2-cp313-cp313-macosx_12_0_universal2.whl",url = "https://files.pythonhosted.org/packages/c5/26/6698bbb30b7bce8b8b17697599f1517611c61e4bd68b37eaeaf4f5ddd915/duckdb-1.3.2-cp313-cp313-macosx_12_0_universal2.whl",hashes = {sha256 = "2a741eae2cf110fd2223eeebe4151e22c0c02803e1cfac6880dbe8a39fecab6a"}},
+    {name = "duckdb-1.3.2-cp313-cp313-macosx_12_0_x86_64.whl",url = "https://files.pythonhosted.org/packages/10/75/8ab4da3099a2fac7335ecebce4246706d19bdd5dad167aa436b5b27c43c4/duckdb-1.3.2-cp313-cp313-macosx_12_0_x86_64.whl",hashes = {sha256 = "51e62541341ea1a9e31f0f1ade2496a39b742caf513bebd52396f42ddd6525a0"}},
+    {name = "duckdb-1.3.2-cp313-cp313-manylinux_2_27_aarch64.manylinux_2_28_aarch64.whl",url = "https://files.pythonhosted.org/packages/d1/46/af81b10d4a66a0f27c248df296d1b41ff2a305a235ed8488f93240f6f8b5/duckdb-1.3.2-cp313-cp313-manylinux_2_27_aarch64.manylinux_2_28_aarch64.whl",hashes = {sha256 = "b3e519de5640e5671f1731b3ae6b496e0ed7e4de4a1c25c7a2f34c991ab64d71"}},
+    {name = "duckdb-1.3.2-cp313-cp313-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl",url = "https://files.pythonhosted.org/packages/68/fc/259a54fc22111a847981927aa58528d766e8b228c6d41deb0ad8a1959f9f/duckdb-1.3.2-cp313-cp313-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl",hashes = {sha256 = "4732fb8cc60566b60e7e53b8c19972cb5ed12d285147a3063b16cc64a79f6d9f"}},
+    {name = "duckdb-1.3.2-cp313-cp313-musllinux_1_2_x86_64.whl",url = "https://files.pythonhosted.org/packages/ab/dc/5d5140383e40661173dacdceaddee2a97c3f6721a5e8d76e08258110595e/duckdb-1.3.2-cp313-cp313-musllinux_1_2_x86_64.whl",hashes = {sha256 = "97f7a22dcaa1cca889d12c3dc43a999468375cdb6f6fe56edf840e062d4a8293"}},
+    {name = "duckdb-1.3.2-cp313-cp313-win_amd64.whl",url = "https://files.pythonhosted.org/packages/51/c9/2fcd86ab7530a5b6caff42dbe516ce7a86277e12c499d1c1f5acd266ffb2/duckdb-1.3.2-cp313-cp313-win_amd64.whl",hashes = {sha256 = "cd3d717bf9c49ef4b1016c2216517572258fa645c2923e91c5234053defa3fb5"}},
+    {name = "duckdb-1.3.2-cp312-cp312-macosx_12_0_arm64.whl",url = "https://files.pythonhosted.org/packages/6c/5d/77f15528857c2b186ebec07778dc199ccc04aafb69fb7b15227af4f19ac9/duckdb-1.3.2-cp312-cp312-macosx_12_0_arm64.whl",hashes = {sha256 = "2455b1ffef4e3d3c7ef8b806977c0e3973c10ec85aa28f08c993ab7f2598e8dd"}},
+    {name = "duckdb-1.3.2-cp312-cp312-macosx_12_0_universal2.whl",url = "https://files.pythonhosted.org/packages/78/67/7e4964f688b846676c813a4acc527cd3454be8a9cafa10f3a9aa78d0d165/duckdb-1.3.2-cp312-cp312-macosx_12_0_universal2.whl",hashes = {sha256 = "9d0ae509713da3461c000af27496d5413f839d26111d2a609242d9d17b37d464"}},
+    {name = "duckdb-1.3.2-cp312-cp312-macosx_12_0_x86_64.whl",url = "https://files.pythonhosted.org/packages/95/3d/2d7f8078194130dbf30b5ae154ce454bfc208c91aa5f3e802531a3e09bca/duckdb-1.3.2-cp312-cp312-macosx_12_0_x86_64.whl",hashes = {sha256 = "72ca6143d23c0bf6426396400f01fcbe4785ad9ceec771bd9a4acc5b5ef9a075"}},
+    {name = "duckdb-1.3.2-cp312-cp312-manylinux_2_27_aarch64.manylinux_2_28_aarch64.whl",url = "https://files.pythonhosted.org/packages/cd/05/36ff9000b9c6d2a68c1b248f133ee316fcac10c0ff817112cbf5214dbe91/duckdb-1.3.2-cp312-cp312-manylinux_2_27_aarch64.manylinux_2_28_aarch64.whl",hashes = {sha256 = "b49a11afba36b98436db83770df10faa03ebded06514cb9b180b513d8be7f392"}},
+    {name = "duckdb-1.3.2-cp312-cp312-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl",url = "https://files.pythonhosted.org/packages/ac/73/f85acbb3ac319a86abbf6b46103d58594d73529123377219980f11b388e9/duckdb-1.3.2-cp312-cp312-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl",hashes = {sha256 = "36abdfe0d1704fe09b08d233165f312dad7d7d0ecaaca5fb3bb869f4838a2d0b"}},
+    {name = "duckdb-1.3.2-cp312-cp312-musllinux_1_2_x86_64.whl",url = "https://files.pythonhosted.org/packages/32/40/9aa3267f3631ae06b30fb1045a48628f4dba7beb2efb485c0282b4a73367/duckdb-1.3.2-cp312-cp312-musllinux_1_2_x86_64.whl",hashes = {sha256 = "3380aae1c4f2af3f37b0bf223fabd62077dd0493c84ef441e69b45167188e7b6"}},
+    {name = "duckdb-1.3.2-cp312-cp312-win_amd64.whl",url = "https://files.pythonhosted.org/packages/8c/8d/47bf95f6999b327cf4da677e150cfce802abf9057b61a93a1f91e89d748c/duckdb-1.3.2-cp312-cp312-win_amd64.whl",hashes = {sha256 = "11af73963ae174aafd90ea45fb0317f1b2e28a7f1d9902819d47c67cc957d49c"}},
+    {name = "duckdb-1.3.2-cp311-cp311-macosx_12_0_arm64.whl",url = "https://files.pythonhosted.org/packages/38/16/4cde40c37dd1f48d2f9ffa63027e8b668391c5cc32cbb59f7ca8b1cec6e2/duckdb-1.3.2-cp311-cp311-macosx_12_0_arm64.whl",hashes = {sha256 = "e1872cf63aae28c3f1dc2e19b5e23940339fc39fb3425a06196c5d00a8d01040"}},
+    {name = "duckdb-1.3.2-cp311-cp311-macosx_12_0_universal2.whl",url = "https://files.pythonhosted.org/packages/22/ca/9ca65db51868604007114a27cc7d44864d89328ad6a934668626618147ff/duckdb-1.3.2-cp311-cp311-macosx_12_0_universal2.whl",hashes = {sha256 = "db256c206056468ae6a9e931776bdf7debaffc58e19a0ff4fa9e7e1e82d38b3b"}},
+    {name = "duckdb-1.3.2-cp311-cp311-macosx_12_0_x86_64.whl",url = "https://files.pythonhosted.org/packages/9e/ca/7f7cf01dd7731d358632fb516521f2962070a627558fb6fc3137e594bbaa/duckdb-1.3.2-cp311-cp311-macosx_12_0_x86_64.whl",hashes = {sha256 = "1d57df2149d6e4e0bd5198689316c5e2ceec7f6ac0a9ec11bc2b216502a57b34"}},
+    {name = "duckdb-1.3.2-cp311-cp311-manylinux_2_27_aarch64.manylinux_2_28_aarch64.whl",url = "https://files.pythonhosted.org/packages/4c/7f/38e518b8f51299410dcad9f1e99f1c99f3592516581467a2da344d3b5951/duckdb-1.3.2-cp311-cp311-manylinux_2_27_aarch64.manylinux_2_28_aarch64.whl",hashes = {sha256 = "54f76c8b1e2a19dfe194027894209ce9ddb073fd9db69af729a524d2860e4680"}},
+    {name = "duckdb-1.3.2-cp311-cp311-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl",url = "https://files.pythonhosted.org/packages/90/a3/41f3d42fddd9629846aac328eb295170e76782d8dfc5e58b3584b96fa296/duckdb-1.3.2-cp311-cp311-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl",hashes = {sha256 = "45bea70b3e93c6bf766ce2f80fc3876efa94c4ee4de72036417a7bd1e32142fe"}},
+    {name = "duckdb-1.3.2-cp311-cp311-musllinux_1_2_x86_64.whl",url = "https://files.pythonhosted.org/packages/11/8e/c5444b6890ae7f00836fd0cd17799abbcc3066bbab32e90b04aa8a8a5087/duckdb-1.3.2-cp311-cp311-musllinux_1_2_x86_64.whl",hashes = {sha256 = "003f7d36f0d8a430cb0e00521f18b7d5ee49ec98aaa541914c6d0e008c306f1a"}},
+    {name = "duckdb-1.3.2-cp311-cp311-win_amd64.whl",url = "https://files.pythonhosted.org/packages/87/a1/e240bd07671542ddf2084962e68a7d5c9b068d8da3f938e935af69441355/duckdb-1.3.2-cp311-cp311-win_amd64.whl",hashes = {sha256 = "0eb210cedf08b067fa90c666339688f1c874844a54708562282bc54b0189aac6"}},
+    {name = "duckdb-1.3.2-cp310-cp310-macosx_12_0_arm64.whl",url = "https://files.pythonhosted.org/packages/6a/a0/13f45e67565800826ce0af12a0ab68fe9502dcac0e39bc03bf8a8cba61da/duckdb-1.3.2-cp310-cp310-macosx_12_0_arm64.whl",hashes = {sha256 = "14676651b86f827ea10bf965eec698b18e3519fdc6266d4ca849f5af7a8c315e"}},
+    {name = "duckdb-1.3.2-cp310-cp310-macosx_12_0_universal2.whl",url = "https://files.pythonhosted.org/packages/ec/28/daf9c01b5cb4058fc80070c74284c52f11581c888db2b0e73ca48f9bae23/duckdb-1.3.2-cp310-cp310-macosx_12_0_universal2.whl",hashes = {sha256 = "e584f25892450757919639b148c2410402b17105bd404017a57fa9eec9c98919"}},
+    {name = "duckdb-1.3.2-cp310-cp310-macosx_12_0_x86_64.whl",url = "https://files.pythonhosted.org/packages/77/e0/5b50014d92eb6c879608183f6184186ab2cf324dd33e432174af93d19a44/duckdb-1.3.2-cp310-cp310-macosx_12_0_x86_64.whl",hashes = {sha256 = "84a19f185ee0c5bc66d95908c6be19103e184b743e594e005dee6f84118dc22c"}},
+    {name = "duckdb-1.3.2-cp310-cp310-manylinux_2_27_aarch64.manylinux_2_28_aarch64.whl",url = "https://files.pythonhosted.org/packages/a2/ff/291d74f8b4c988b2a7ee5f65d3073fe0cf4c6a4505aa1a6f28721bb2ebe2/duckdb-1.3.2-cp310-cp310-manylinux_2_27_aarch64.manylinux_2_28_aarch64.whl",hashes = {sha256 = "186fc3f98943e97f88a1e501d5720b11214695571f2c74745d6e300b18bef80e"}},
+    {name = "duckdb-1.3.2-cp310-cp310-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl",url = "https://files.pythonhosted.org/packages/65/50/9a1289619447d93a8c63b08f6ab22e1e6ce73a681e0dceb0cd0ea7558613/duckdb-1.3.2-cp310-cp310-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl",hashes = {sha256 = "6b7e6bb613b73745f03bff4bb412f362d4a1e158bdcb3946f61fd18e9e1a8ddf"}},
+    {name = "duckdb-1.3.2-cp310-cp310-musllinux_1_2_x86_64.whl",url = "https://files.pythonhosted.org/packages/e0/d1/8dc959e3ca16c4c32ab34e28ceea189edc9bf32523aaa976080fd2101835/duckdb-1.3.2-cp310-cp310-musllinux_1_2_x86_64.whl",hashes = {sha256 = "1c90646b52a0eccda1f76b10ac98b502deb9017569e84073da00a2ab97763578"}},
+    {name = "duckdb-1.3.2-cp310-cp310-win_amd64.whl",url = "https://files.pythonhosted.org/packages/7b/e8/126767fe5acbe01230f7431d999a2c2ef028ffdaebda8fe32ddb57628815/duckdb-1.3.2-cp310-cp310-win_amd64.whl",hashes = {sha256 = "4cdffb1e60defbfa75407b7f2ccc322f535fd462976940731dfd1644146f90c6"}},
+    {name = "duckdb-1.3.2-cp39-cp39-macosx_12_0_arm64.whl",url = "https://files.pythonhosted.org/packages/e5/e1/2e98d78eebcf405f1900e22c4ec3f5f7e2d4ed889693f95103255f6a1452/duckdb-1.3.2-cp39-cp39-macosx_12_0_arm64.whl",hashes = {sha256 = "18862e3b8a805f2204543d42d5f103b629cb7f7f2e69f5188eceb0b8a023f0af"}},
+    {name = "duckdb-1.3.2-cp39-cp39-macosx_12_0_universal2.whl",url = "https://files.pythonhosted.org/packages/f7/73/ee28ba97b5dd2da5d1bb4e592e79384d54288d82ec34e75c068012b36f53/duckdb-1.3.2-cp39-cp39-macosx_12_0_universal2.whl",hashes = {sha256 = "75ed129761b6159f0b8eca4854e496a3c4c416e888537ec47ff8eb35fda2b667"}},
+    {name = "duckdb-1.3.2-cp39-cp39-macosx_12_0_x86_64.whl",url = "https://files.pythonhosted.org/packages/a6/0b/67f938499c6c52df90c821a8a3f25699274ce7fbf46fa9227bc4c0bd92fe/duckdb-1.3.2-cp39-cp39-macosx_12_0_x86_64.whl",hashes = {sha256 = "875193ae9f718bc80ab5635435de5b313e3de3ec99420a9b25275ddc5c45ff58"}},
+    {name = "duckdb-1.3.2-cp39-cp39-manylinux_2_27_aarch64.manylinux_2_28_aarch64.whl",url = "https://files.pythonhosted.org/packages/6c/2d/373665ef567ef0d6bcf9caf9803b697168f9e6904aff99d5782a1c5e91d1/duckdb-1.3.2-cp39-cp39-manylinux_2_27_aarch64.manylinux_2_28_aarch64.whl",hashes = {sha256 = "09b5fd8a112301096668903781ad5944c3aec2af27622bd80eae54149de42b42"}},
+    {name = "duckdb-1.3.2-cp39-cp39-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl",url = "https://files.pythonhosted.org/packages/b1/18/9a89fa02689db8496d414f96d2e0ea56a24910c546c126c8a4626f3a51ee/duckdb-1.3.2-cp39-cp39-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl",hashes = {sha256 = "10cb87ad964b989175e7757d7ada0b1a7264b401a79be2f828cf8f7c366f7f95"}},
+    {name = "duckdb-1.3.2-cp39-cp39-musllinux_1_2_x86_64.whl",url = "https://files.pythonhosted.org/packages/2e/97/2b09ad149081d75534fe063ff6a1b4b91fffe7e17816a7d9261aa7456788/duckdb-1.3.2-cp39-cp39-musllinux_1_2_x86_64.whl",hashes = {sha256 = "4389fc3812e26977034fe3ff08d1f7dbfe6d2d8337487b4686f2b50e254d7ee3"}},
+    {name = "duckdb-1.3.2-cp39-cp39-win_amd64.whl",url = "https://files.pythonhosted.org/packages/6d/78/8c096f1ef46205f561e7e62d1aff749a079cf57f5c433485f55e15463041/duckdb-1.3.2-cp39-cp39-win_amd64.whl",hashes = {sha256 = "07952ec6f45dd3c7db0f825d231232dc889f1f2490b97a4e9b7abb6830145a19"}},
+]
+marker = "\"default\" in dependency_groups"
+
+[packages.tool.pdm]
+dependencies = []
+
+[[packages]]
 name = "coverage"
 version = "7.10.6"
 requires-python = ">=3.9"
@@ -198,53 +245,6 @@ wheels = [
     {name = "coverage-7.10.6-py3-none-any.whl",url = "https://files.pythonhosted.org/packages/44/0c/50db5379b615854b5cf89146f8f5bd1d5a9693d7f3a987e269693521c404/coverage-7.10.6-py3-none-any.whl",hashes = {sha256 = "92c4ecf6bf11b2e85fd4d8204814dc26e6a19f0c9d938c207c5cb0eadfcabbe3"}},
 ]
 marker = "\"test\" in dependency_groups"
-
-[packages.tool.pdm]
-dependencies = []
-
-[[packages]]
-name = "duckdb"
-version = "1.3.2"
-requires-python = ">=3.7.0"
-sdist = {name = "duckdb-1.3.2.tar.gz", url = "https://files.pythonhosted.org/packages/47/24/a2e7fb78fba577641c286fe33185789ab1e1569ccdf4d142e005995991d2/duckdb-1.3.2.tar.gz", hashes = {sha256 = "c658df8a1bc78704f702ad0d954d82a1edd4518d7a04f00027ec53e40f591ff5"}}
-wheels = [
-    {name = "duckdb-1.3.2-cp313-cp313-macosx_12_0_arm64.whl",url = "https://files.pythonhosted.org/packages/f5/f0/8cac9713735864899e8abc4065bbdb3d1617f2130006d508a80e1b1a6c53/duckdb-1.3.2-cp313-cp313-macosx_12_0_arm64.whl",hashes = {sha256 = "a3418c973b06ac4e97f178f803e032c30c9a9f56a3e3b43a866f33223dfbf60b"}},
-    {name = "duckdb-1.3.2-cp313-cp313-macosx_12_0_universal2.whl",url = "https://files.pythonhosted.org/packages/c5/26/6698bbb30b7bce8b8b17697599f1517611c61e4bd68b37eaeaf4f5ddd915/duckdb-1.3.2-cp313-cp313-macosx_12_0_universal2.whl",hashes = {sha256 = "2a741eae2cf110fd2223eeebe4151e22c0c02803e1cfac6880dbe8a39fecab6a"}},
-    {name = "duckdb-1.3.2-cp313-cp313-macosx_12_0_x86_64.whl",url = "https://files.pythonhosted.org/packages/10/75/8ab4da3099a2fac7335ecebce4246706d19bdd5dad167aa436b5b27c43c4/duckdb-1.3.2-cp313-cp313-macosx_12_0_x86_64.whl",hashes = {sha256 = "51e62541341ea1a9e31f0f1ade2496a39b742caf513bebd52396f42ddd6525a0"}},
-    {name = "duckdb-1.3.2-cp313-cp313-manylinux_2_27_aarch64.manylinux_2_28_aarch64.whl",url = "https://files.pythonhosted.org/packages/d1/46/af81b10d4a66a0f27c248df296d1b41ff2a305a235ed8488f93240f6f8b5/duckdb-1.3.2-cp313-cp313-manylinux_2_27_aarch64.manylinux_2_28_aarch64.whl",hashes = {sha256 = "b3e519de5640e5671f1731b3ae6b496e0ed7e4de4a1c25c7a2f34c991ab64d71"}},
-    {name = "duckdb-1.3.2-cp313-cp313-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl",url = "https://files.pythonhosted.org/packages/68/fc/259a54fc22111a847981927aa58528d766e8b228c6d41deb0ad8a1959f9f/duckdb-1.3.2-cp313-cp313-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl",hashes = {sha256 = "4732fb8cc60566b60e7e53b8c19972cb5ed12d285147a3063b16cc64a79f6d9f"}},
-    {name = "duckdb-1.3.2-cp313-cp313-musllinux_1_2_x86_64.whl",url = "https://files.pythonhosted.org/packages/ab/dc/5d5140383e40661173dacdceaddee2a97c3f6721a5e8d76e08258110595e/duckdb-1.3.2-cp313-cp313-musllinux_1_2_x86_64.whl",hashes = {sha256 = "97f7a22dcaa1cca889d12c3dc43a999468375cdb6f6fe56edf840e062d4a8293"}},
-    {name = "duckdb-1.3.2-cp313-cp313-win_amd64.whl",url = "https://files.pythonhosted.org/packages/51/c9/2fcd86ab7530a5b6caff42dbe516ce7a86277e12c499d1c1f5acd266ffb2/duckdb-1.3.2-cp313-cp313-win_amd64.whl",hashes = {sha256 = "cd3d717bf9c49ef4b1016c2216517572258fa645c2923e91c5234053defa3fb5"}},
-    {name = "duckdb-1.3.2-cp312-cp312-macosx_12_0_arm64.whl",url = "https://files.pythonhosted.org/packages/6c/5d/77f15528857c2b186ebec07778dc199ccc04aafb69fb7b15227af4f19ac9/duckdb-1.3.2-cp312-cp312-macosx_12_0_arm64.whl",hashes = {sha256 = "2455b1ffef4e3d3c7ef8b806977c0e3973c10ec85aa28f08c993ab7f2598e8dd"}},
-    {name = "duckdb-1.3.2-cp312-cp312-macosx_12_0_universal2.whl",url = "https://files.pythonhosted.org/packages/78/67/7e4964f688b846676c813a4acc527cd3454be8a9cafa10f3a9aa78d0d165/duckdb-1.3.2-cp312-cp312-macosx_12_0_universal2.whl",hashes = {sha256 = "9d0ae509713da3461c000af27496d5413f839d26111d2a609242d9d17b37d464"}},
-    {name = "duckdb-1.3.2-cp312-cp312-macosx_12_0_x86_64.whl",url = "https://files.pythonhosted.org/packages/95/3d/2d7f8078194130dbf30b5ae154ce454bfc208c91aa5f3e802531a3e09bca/duckdb-1.3.2-cp312-cp312-macosx_12_0_x86_64.whl",hashes = {sha256 = "72ca6143d23c0bf6426396400f01fcbe4785ad9ceec771bd9a4acc5b5ef9a075"}},
-    {name = "duckdb-1.3.2-cp312-cp312-manylinux_2_27_aarch64.manylinux_2_28_aarch64.whl",url = "https://files.pythonhosted.org/packages/cd/05/36ff9000b9c6d2a68c1b248f133ee316fcac10c0ff817112cbf5214dbe91/duckdb-1.3.2-cp312-cp312-manylinux_2_27_aarch64.manylinux_2_28_aarch64.whl",hashes = {sha256 = "b49a11afba36b98436db83770df10faa03ebded06514cb9b180b513d8be7f392"}},
-    {name = "duckdb-1.3.2-cp312-cp312-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl",url = "https://files.pythonhosted.org/packages/ac/73/f85acbb3ac319a86abbf6b46103d58594d73529123377219980f11b388e9/duckdb-1.3.2-cp312-cp312-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl",hashes = {sha256 = "36abdfe0d1704fe09b08d233165f312dad7d7d0ecaaca5fb3bb869f4838a2d0b"}},
-    {name = "duckdb-1.3.2-cp312-cp312-musllinux_1_2_x86_64.whl",url = "https://files.pythonhosted.org/packages/32/40/9aa3267f3631ae06b30fb1045a48628f4dba7beb2efb485c0282b4a73367/duckdb-1.3.2-cp312-cp312-musllinux_1_2_x86_64.whl",hashes = {sha256 = "3380aae1c4f2af3f37b0bf223fabd62077dd0493c84ef441e69b45167188e7b6"}},
-    {name = "duckdb-1.3.2-cp312-cp312-win_amd64.whl",url = "https://files.pythonhosted.org/packages/8c/8d/47bf95f6999b327cf4da677e150cfce802abf9057b61a93a1f91e89d748c/duckdb-1.3.2-cp312-cp312-win_amd64.whl",hashes = {sha256 = "11af73963ae174aafd90ea45fb0317f1b2e28a7f1d9902819d47c67cc957d49c"}},
-    {name = "duckdb-1.3.2-cp311-cp311-macosx_12_0_arm64.whl",url = "https://files.pythonhosted.org/packages/38/16/4cde40c37dd1f48d2f9ffa63027e8b668391c5cc32cbb59f7ca8b1cec6e2/duckdb-1.3.2-cp311-cp311-macosx_12_0_arm64.whl",hashes = {sha256 = "e1872cf63aae28c3f1dc2e19b5e23940339fc39fb3425a06196c5d00a8d01040"}},
-    {name = "duckdb-1.3.2-cp311-cp311-macosx_12_0_universal2.whl",url = "https://files.pythonhosted.org/packages/22/ca/9ca65db51868604007114a27cc7d44864d89328ad6a934668626618147ff/duckdb-1.3.2-cp311-cp311-macosx_12_0_universal2.whl",hashes = {sha256 = "db256c206056468ae6a9e931776bdf7debaffc58e19a0ff4fa9e7e1e82d38b3b"}},
-    {name = "duckdb-1.3.2-cp311-cp311-macosx_12_0_x86_64.whl",url = "https://files.pythonhosted.org/packages/9e/ca/7f7cf01dd7731d358632fb516521f2962070a627558fb6fc3137e594bbaa/duckdb-1.3.2-cp311-cp311-macosx_12_0_x86_64.whl",hashes = {sha256 = "1d57df2149d6e4e0bd5198689316c5e2ceec7f6ac0a9ec11bc2b216502a57b34"}},
-    {name = "duckdb-1.3.2-cp311-cp311-manylinux_2_27_aarch64.manylinux_2_28_aarch64.whl",url = "https://files.pythonhosted.org/packages/4c/7f/38e518b8f51299410dcad9f1e99f1c99f3592516581467a2da344d3b5951/duckdb-1.3.2-cp311-cp311-manylinux_2_27_aarch64.manylinux_2_28_aarch64.whl",hashes = {sha256 = "54f76c8b1e2a19dfe194027894209ce9ddb073fd9db69af729a524d2860e4680"}},
-    {name = "duckdb-1.3.2-cp311-cp311-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl",url = "https://files.pythonhosted.org/packages/90/a3/41f3d42fddd9629846aac328eb295170e76782d8dfc5e58b3584b96fa296/duckdb-1.3.2-cp311-cp311-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl",hashes = {sha256 = "45bea70b3e93c6bf766ce2f80fc3876efa94c4ee4de72036417a7bd1e32142fe"}},
-    {name = "duckdb-1.3.2-cp311-cp311-musllinux_1_2_x86_64.whl",url = "https://files.pythonhosted.org/packages/11/8e/c5444b6890ae7f00836fd0cd17799abbcc3066bbab32e90b04aa8a8a5087/duckdb-1.3.2-cp311-cp311-musllinux_1_2_x86_64.whl",hashes = {sha256 = "003f7d36f0d8a430cb0e00521f18b7d5ee49ec98aaa541914c6d0e008c306f1a"}},
-    {name = "duckdb-1.3.2-cp311-cp311-win_amd64.whl",url = "https://files.pythonhosted.org/packages/87/a1/e240bd07671542ddf2084962e68a7d5c9b068d8da3f938e935af69441355/duckdb-1.3.2-cp311-cp311-win_amd64.whl",hashes = {sha256 = "0eb210cedf08b067fa90c666339688f1c874844a54708562282bc54b0189aac6"}},
-    {name = "duckdb-1.3.2-cp310-cp310-macosx_12_0_arm64.whl",url = "https://files.pythonhosted.org/packages/6a/a0/13f45e67565800826ce0af12a0ab68fe9502dcac0e39bc03bf8a8cba61da/duckdb-1.3.2-cp310-cp310-macosx_12_0_arm64.whl",hashes = {sha256 = "14676651b86f827ea10bf965eec698b18e3519fdc6266d4ca849f5af7a8c315e"}},
-    {name = "duckdb-1.3.2-cp310-cp310-macosx_12_0_universal2.whl",url = "https://files.pythonhosted.org/packages/ec/28/daf9c01b5cb4058fc80070c74284c52f11581c888db2b0e73ca48f9bae23/duckdb-1.3.2-cp310-cp310-macosx_12_0_universal2.whl",hashes = {sha256 = "e584f25892450757919639b148c2410402b17105bd404017a57fa9eec9c98919"}},
-    {name = "duckdb-1.3.2-cp310-cp310-macosx_12_0_x86_64.whl",url = "https://files.pythonhosted.org/packages/77/e0/5b50014d92eb6c879608183f6184186ab2cf324dd33e432174af93d19a44/duckdb-1.3.2-cp310-cp310-macosx_12_0_x86_64.whl",hashes = {sha256 = "84a19f185ee0c5bc66d95908c6be19103e184b743e594e005dee6f84118dc22c"}},
-    {name = "duckdb-1.3.2-cp310-cp310-manylinux_2_27_aarch64.manylinux_2_28_aarch64.whl",url = "https://files.pythonhosted.org/packages/a2/ff/291d74f8b4c988b2a7ee5f65d3073fe0cf4c6a4505aa1a6f28721bb2ebe2/duckdb-1.3.2-cp310-cp310-manylinux_2_27_aarch64.manylinux_2_28_aarch64.whl",hashes = {sha256 = "186fc3f98943e97f88a1e501d5720b11214695571f2c74745d6e300b18bef80e"}},
-    {name = "duckdb-1.3.2-cp310-cp310-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl",url = "https://files.pythonhosted.org/packages/65/50/9a1289619447d93a8c63b08f6ab22e1e6ce73a681e0dceb0cd0ea7558613/duckdb-1.3.2-cp310-cp310-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl",hashes = {sha256 = "6b7e6bb613b73745f03bff4bb412f362d4a1e158bdcb3946f61fd18e9e1a8ddf"}},
-    {name = "duckdb-1.3.2-cp310-cp310-musllinux_1_2_x86_64.whl",url = "https://files.pythonhosted.org/packages/e0/d1/8dc959e3ca16c4c32ab34e28ceea189edc9bf32523aaa976080fd2101835/duckdb-1.3.2-cp310-cp310-musllinux_1_2_x86_64.whl",hashes = {sha256 = "1c90646b52a0eccda1f76b10ac98b502deb9017569e84073da00a2ab97763578"}},
-    {name = "duckdb-1.3.2-cp310-cp310-win_amd64.whl",url = "https://files.pythonhosted.org/packages/7b/e8/126767fe5acbe01230f7431d999a2c2ef028ffdaebda8fe32ddb57628815/duckdb-1.3.2-cp310-cp310-win_amd64.whl",hashes = {sha256 = "4cdffb1e60defbfa75407b7f2ccc322f535fd462976940731dfd1644146f90c6"}},
-    {name = "duckdb-1.3.2-cp39-cp39-macosx_12_0_arm64.whl",url = "https://files.pythonhosted.org/packages/e5/e1/2e98d78eebcf405f1900e22c4ec3f5f7e2d4ed889693f95103255f6a1452/duckdb-1.3.2-cp39-cp39-macosx_12_0_arm64.whl",hashes = {sha256 = "18862e3b8a805f2204543d42d5f103b629cb7f7f2e69f5188eceb0b8a023f0af"}},
-    {name = "duckdb-1.3.2-cp39-cp39-macosx_12_0_universal2.whl",url = "https://files.pythonhosted.org/packages/f7/73/ee28ba97b5dd2da5d1bb4e592e79384d54288d82ec34e75c068012b36f53/duckdb-1.3.2-cp39-cp39-macosx_12_0_universal2.whl",hashes = {sha256 = "75ed129761b6159f0b8eca4854e496a3c4c416e888537ec47ff8eb35fda2b667"}},
-    {name = "duckdb-1.3.2-cp39-cp39-macosx_12_0_x86_64.whl",url = "https://files.pythonhosted.org/packages/a6/0b/67f938499c6c52df90c821a8a3f25699274ce7fbf46fa9227bc4c0bd92fe/duckdb-1.3.2-cp39-cp39-macosx_12_0_x86_64.whl",hashes = {sha256 = "875193ae9f718bc80ab5635435de5b313e3de3ec99420a9b25275ddc5c45ff58"}},
-    {name = "duckdb-1.3.2-cp39-cp39-manylinux_2_27_aarch64.manylinux_2_28_aarch64.whl",url = "https://files.pythonhosted.org/packages/6c/2d/373665ef567ef0d6bcf9caf9803b697168f9e6904aff99d5782a1c5e91d1/duckdb-1.3.2-cp39-cp39-manylinux_2_27_aarch64.manylinux_2_28_aarch64.whl",hashes = {sha256 = "09b5fd8a112301096668903781ad5944c3aec2af27622bd80eae54149de42b42"}},
-    {name = "duckdb-1.3.2-cp39-cp39-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl",url = "https://files.pythonhosted.org/packages/b1/18/9a89fa02689db8496d414f96d2e0ea56a24910c546c126c8a4626f3a51ee/duckdb-1.3.2-cp39-cp39-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl",hashes = {sha256 = "10cb87ad964b989175e7757d7ada0b1a7264b401a79be2f828cf8f7c366f7f95"}},
-    {name = "duckdb-1.3.2-cp39-cp39-musllinux_1_2_x86_64.whl",url = "https://files.pythonhosted.org/packages/2e/97/2b09ad149081d75534fe063ff6a1b4b91fffe7e17816a7d9261aa7456788/duckdb-1.3.2-cp39-cp39-musllinux_1_2_x86_64.whl",hashes = {sha256 = "4389fc3812e26977034fe3ff08d1f7dbfe6d2d8337487b4686f2b50e254d7ee3"}},
-    {name = "duckdb-1.3.2-cp39-cp39-win_amd64.whl",url = "https://files.pythonhosted.org/packages/6d/78/8c096f1ef46205f561e7e62d1aff749a079cf57f5c433485f55e15463041/duckdb-1.3.2-cp39-cp39-win_amd64.whl",hashes = {sha256 = "07952ec6f45dd3c7db0f825d231232dc889f1f2490b97a4e9b7abb6830145a19"}},
-]
-marker = "\"default\" in dependency_groups"
 
 [packages.tool.pdm]
 dependencies = []
@@ -501,11 +501,11 @@ dependencies = [
 
 [[packages]]
 name = "types-psycopg2"
-version = "2.9.21.20250809"
+version = "2.9.21.20250915"
 requires-python = ">=3.9"
-sdist = {name = "types_psycopg2-2.9.21.20250809.tar.gz", url = "https://files.pythonhosted.org/packages/17/d0/66f3f04bab48bfdb2c8b795b2b3e75eb20c7d1fb0516916db3be6aa4a683/types_psycopg2-2.9.21.20250809.tar.gz", hashes = {sha256 = "b7c2cbdcf7c0bd16240f59ba694347329b0463e43398de69784ea4dee45f3c6d"}}
+sdist = {name = "types_psycopg2-2.9.21.20250915.tar.gz", url = "https://files.pythonhosted.org/packages/8f/20/3dcb89df8d1661cf6c4c2d9f84d4ba94dde48559cdcf7b536a380a9c387f/types_psycopg2-2.9.21.20250915.tar.gz", hashes = {sha256 = "bfeb8f54c32490e7b5edc46215ab4163693192bc90407b4a023822de9239f5c8"}}
 wheels = [
-    {name = "types_psycopg2-2.9.21.20250809-py3-none-any.whl",url = "https://files.pythonhosted.org/packages/7b/98/182497602921c47fadc8470d51a32e5c75343c8931c0b572a5c4ae3b948b/types_psycopg2-2.9.21.20250809-py3-none-any.whl",hashes = {sha256 = "59b7b0ed56dcae9efae62b8373497274fc1a0484bdc5135cdacbe5a8f44e1d7b"}},
+    {name = "types_psycopg2-2.9.21.20250915-py3-none-any.whl",url = "https://files.pythonhosted.org/packages/93/4d/ebf1c72809a30150ad142074e1ad5101304f7569c0df2fa872906d76d0af/types_psycopg2-2.9.21.20250915-py3-none-any.whl",hashes = {sha256 = "eefe5ccdc693fc086146e84c9ba437bb278efe1ef330b299a0cb71169dc6c55f"}},
 ]
 marker = "\"types\" in dependency_groups"
 
@@ -529,11 +529,11 @@ dependencies = [
 
 [[packages]]
 name = "xlsxwriter"
-version = "3.2.5"
+version = "3.2.9"
 requires-python = ">=3.8"
-sdist = {name = "xlsxwriter-3.2.5.tar.gz", url = "https://files.pythonhosted.org/packages/a7/47/7704bac42ac6fe1710ae099b70e6a1e68ed173ef14792b647808c357da43/xlsxwriter-3.2.5.tar.gz", hashes = {sha256 = "7e88469d607cdc920151c0ab3ce9cf1a83992d4b7bc730c5ffdd1a12115a7dbe"}}
+sdist = {name = "xlsxwriter-3.2.9.tar.gz", url = "https://files.pythonhosted.org/packages/46/2c/c06ef49dc36e7954e55b802a8b231770d286a9758b3d936bd1e04ce5ba88/xlsxwriter-3.2.9.tar.gz", hashes = {sha256 = "254b1c37a368c444eac6e2f867405cc9e461b0ed97a3233b2ac1e574efb4140c"}}
 wheels = [
-    {name = "xlsxwriter-3.2.5-py3-none-any.whl",url = "https://files.pythonhosted.org/packages/fa/34/a22e6664211f0c8879521328000bdcae9bf6dbafa94a923e531f6d5b3f73/xlsxwriter-3.2.5-py3-none-any.whl",hashes = {sha256 = "4f4824234e1eaf9d95df9a8fe974585ff91d0f5e3d3f12ace5b71e443c1c6abd"}},
+    {name = "xlsxwriter-3.2.9-py3-none-any.whl",url = "https://files.pythonhosted.org/packages/3a/0c/3662f4a66880196a590b202f0db82d919dd2f89e99a27fadef91c4a33d41/xlsxwriter-3.2.9-py3-none-any.whl",hashes = {sha256 = "9a5db42bc5dff014806c58a20b9eae7322a134abb6fce3c92c181bfb275ec5b3"}},
 ]
 marker = "\"default\" in dependency_groups"
 
@@ -925,11 +925,11 @@ dependencies = [
 
 [[packages]]
 name = "types-requests"
-version = "2.32.4.20250809"
+version = "2.32.4.20250913"
 requires-python = ">=3.9"
-sdist = {name = "types_requests-2.32.4.20250809.tar.gz", url = "https://files.pythonhosted.org/packages/ed/b0/9355adb86ec84d057fea765e4c49cce592aaf3d5117ce5609a95a7fc3dac/types_requests-2.32.4.20250809.tar.gz", hashes = {sha256 = "d8060de1c8ee599311f56ff58010fb4902f462a1470802cf9f6ed27bc46c4df3"}}
+sdist = {name = "types_requests-2.32.4.20250913.tar.gz", url = "https://files.pythonhosted.org/packages/36/27/489922f4505975b11de2b5ad07b4fe1dca0bca9be81a703f26c5f3acfce5/types_requests-2.32.4.20250913.tar.gz", hashes = {sha256 = "abd6d4f9ce3a9383f269775a9835a4c24e5cd6b9f647d64f88aa4613c33def5d"}}
 wheels = [
-    {name = "types_requests-2.32.4.20250809-py3-none-any.whl",url = "https://files.pythonhosted.org/packages/2b/6f/ec0012be842b1d888d46884ac5558fd62aeae1f0ec4f7a581433d890d4b5/types_requests-2.32.4.20250809-py3-none-any.whl",hashes = {sha256 = "f73d1832fb519ece02c85b1f09d5f0dd3108938e7d47e7f94bbfa18a6782b163"}},
+    {name = "types_requests-2.32.4.20250913-py3-none-any.whl",url = "https://files.pythonhosted.org/packages/2a/20/9a227ea57c1285986c4cf78400d0a91615d25b24e257fd9e2969606bdfae/types_requests-2.32.4.20250913-py3-none-any.whl",hashes = {sha256 = "78c9c1fffebbe0fa487a418e0fa5252017e9c60d1a2da394077f1780f655d7e1"}},
 ]
 marker = "\"types\" in dependency_groups"
 
@@ -965,7 +965,7 @@ marker = "sys_platform == \"win32\" and \"default\" in dependency_groups"
 dependencies = []
 
 [tool.pdm]
-hashes = {sha256 = "9cd31bd06db4ed0781a4f5b9f507c9fb109b9e48b412ee0b76a1115f841b603b"}
+hashes = {sha256 = "9edcf2127050cd04b1c55f2c5d0ef0c306790635417a4e7c2a0ed6e601c76e78"}
 strategy = ["inherit_metadata", "static_urls"]
 
 [[tool.pdm.targets]]
