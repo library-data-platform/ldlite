@@ -4,19 +4,27 @@ build-backend = "pdm.backend"
 
 [project]
 name = "ldlite"
-version = "3.1.4"
+version = "3.2.0"
 description = "Lightweight analytics tool for FOLIO services"
 authors = [
     {name = "Katherine Bargar", email = "kbargar@fivecolleges.edu"},
     {name = "Nassib Nassar", email = "nassib@indexdata.com"},
 ]
 dependencies = [
+    # 0.6.1 was the original pinned dependency version
+    # 1.4 slightly changes data formats and fails tests
     "duckdb>=0.6.1,<1.4",
+    # 2.9.5 was the original pinned dependency version
     "psycopg2-binary>=2.9.5",
+    # 4.64.1 was the original pinned dependency version
     "tqdm>=4.64.1",
+    # 3.0.6 was the original pinned dependency version
     "XlsxWriter>=3.0.6",
+    # 0.2 has query parameter handling, 0.2.3 is a required bug fix version
     "httpx-folio>=0.2.3",
+    # 3.9 introduces orjson.Fragment
     "orjson>=3.9",
+    # 3.2 changes the sql.SQL.format signature
     "psycopg>=3.2.0",
 ]
 requires-python = ">=3.9"
