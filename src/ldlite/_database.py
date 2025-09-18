@@ -173,31 +173,18 @@ class Database(ABC, Generic[DB]):
         self,
         prefix: Prefix,
         on_processed: Callable[[], bool],
-        records: Iterator[tuple[bytes, bytes] | tuple[int, str]],
+        records: Iterator[tuple[int, bytes]],
     ) -> None:
         with closing(self._conn_factory()) as conn:
             self._prepare_raw_table(conn, prefix)
+
             insert_sql = self._insert_record_sql.format(
                 table=prefix.raw_table_name,
             ).as_string()
             with closing(conn.cursor()) as cur:
-                fr = next(records)
-                if isinstance(fr[0], bytes):
-                    record = fr
-                    while record is not None:
-                        (pkey, rb) = record
-                        cur.execute(
-                            insert_sql,
-                            (int.from_bytes(pkey, "big"), rb.decode()),
-                        )
-                        if not on_processed():
-                            break
-                        record = cast("tuple[bytes, bytes]", next(records, None))
-                else:
-                    cur.execute(insert_sql, fr)
-                    for r in records:
-                        cur.execute(insert_sql, r)
-                        if not on_processed():
-                            break
+                for pkey, r in records:
+                    cur.execute(insert_sql, (pkey, r.decode()))
+                    if not on_processed():
+                        break
 
             conn.commit()

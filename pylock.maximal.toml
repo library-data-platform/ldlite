@@ -80,6 +80,25 @@ marker = "python_version >= \"3.13\" and \"lint\" in dependency_groups"
 dependencies = []
 
 [[packages]]
+name = "duckdb"
+version = "1.3.2"
+requires-python = ">=3.7.0"
+sdist = {name = "duckdb-1.3.2.tar.gz", url = "https://files.pythonhosted.org/packages/47/24/a2e7fb78fba577641c286fe33185789ab1e1569ccdf4d142e005995991d2/duckdb-1.3.2.tar.gz", hashes = {sha256 = "c658df8a1bc78704f702ad0d954d82a1edd4518d7a04f00027ec53e40f591ff5"}}
+wheels = [
+    {name = "duckdb-1.3.2-cp313-cp313-macosx_12_0_arm64.whl",url = "https://files.pythonhosted.org/packages/f5/f0/8cac9713735864899e8abc4065bbdb3d1617f2130006d508a80e1b1a6c53/duckdb-1.3.2-cp313-cp313-macosx_12_0_arm64.whl",hashes = {sha256 = "a3418c973b06ac4e97f178f803e032c30c9a9f56a3e3b43a866f33223dfbf60b"}},
+    {name = "duckdb-1.3.2-cp313-cp313-macosx_12_0_universal2.whl",url = "https://files.pythonhosted.org/packages/c5/26/6698bbb30b7bce8b8b17697599f1517611c61e4bd68b37eaeaf4f5ddd915/duckdb-1.3.2-cp313-cp313-macosx_12_0_universal2.whl",hashes = {sha256 = "2a741eae2cf110fd2223eeebe4151e22c0c02803e1cfac6880dbe8a39fecab6a"}},
+    {name = "duckdb-1.3.2-cp313-cp313-macosx_12_0_x86_64.whl",url = "https://files.pythonhosted.org/packages/10/75/8ab4da3099a2fac7335ecebce4246706d19bdd5dad167aa436b5b27c43c4/duckdb-1.3.2-cp313-cp313-macosx_12_0_x86_64.whl",hashes = {sha256 = "51e62541341ea1a9e31f0f1ade2496a39b742caf513bebd52396f42ddd6525a0"}},
+    {name = "duckdb-1.3.2-cp313-cp313-manylinux_2_27_aarch64.manylinux_2_28_aarch64.whl",url = "https://files.pythonhosted.org/packages/d1/46/af81b10d4a66a0f27c248df296d1b41ff2a305a235ed8488f93240f6f8b5/duckdb-1.3.2-cp313-cp313-manylinux_2_27_aarch64.manylinux_2_28_aarch64.whl",hashes = {sha256 = "b3e519de5640e5671f1731b3ae6b496e0ed7e4de4a1c25c7a2f34c991ab64d71"}},
+    {name = "duckdb-1.3.2-cp313-cp313-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl",url = "https://files.pythonhosted.org/packages/68/fc/259a54fc22111a847981927aa58528d766e8b228c6d41deb0ad8a1959f9f/duckdb-1.3.2-cp313-cp313-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl",hashes = {sha256 = "4732fb8cc60566b60e7e53b8c19972cb5ed12d285147a3063b16cc64a79f6d9f"}},
+    {name = "duckdb-1.3.2-cp313-cp313-musllinux_1_2_x86_64.whl",url = "https://files.pythonhosted.org/packages/ab/dc/5d5140383e40661173dacdceaddee2a97c3f6721a5e8d76e08258110595e/duckdb-1.3.2-cp313-cp313-musllinux_1_2_x86_64.whl",hashes = {sha256 = "97f7a22dcaa1cca889d12c3dc43a999468375cdb6f6fe56edf840e062d4a8293"}},
+    {name = "duckdb-1.3.2-cp313-cp313-win_amd64.whl",url = "https://files.pythonhosted.org/packages/51/c9/2fcd86ab7530a5b6caff42dbe516ce7a86277e12c499d1c1f5acd266ffb2/duckdb-1.3.2-cp313-cp313-win_amd64.whl",hashes = {sha256 = "cd3d717bf9c49ef4b1016c2216517572258fa645c2923e91c5234053defa3fb5"}},
+]
+marker = "python_version >= \"3.13\" and \"default\" in dependency_groups"
+
+[packages.tool.pdm]
+dependencies = []
+
+[[packages]]
 name = "coverage"
 version = "7.10.6"
 requires-python = ">=3.9"
@@ -132,25 +151,6 @@ wheels = [
     {name = "coverage-7.10.6-py3-none-any.whl",url = "https://files.pythonhosted.org/packages/44/0c/50db5379b615854b5cf89146f8f5bd1d5a9693d7f3a987e269693521c404/coverage-7.10.6-py3-none-any.whl",hashes = {sha256 = "92c4ecf6bf11b2e85fd4d8204814dc26e6a19f0c9d938c207c5cb0eadfcabbe3"}},
 ]
 marker = "python_version >= \"3.13\" and \"test\" in dependency_groups"
-
-[packages.tool.pdm]
-dependencies = []
-
-[[packages]]
-name = "duckdb"
-version = "1.3.2"
-requires-python = ">=3.7.0"
-sdist = {name = "duckdb-1.3.2.tar.gz", url = "https://files.pythonhosted.org/packages/47/24/a2e7fb78fba577641c286fe33185789ab1e1569ccdf4d142e005995991d2/duckdb-1.3.2.tar.gz", hashes = {sha256 = "c658df8a1bc78704f702ad0d954d82a1edd4518d7a04f00027ec53e40f591ff5"}}
-wheels = [
-    {name = "duckdb-1.3.2-cp313-cp313-macosx_12_0_arm64.whl",url = "https://files.pythonhosted.org/packages/f5/f0/8cac9713735864899e8abc4065bbdb3d1617f2130006d508a80e1b1a6c53/duckdb-1.3.2-cp313-cp313-macosx_12_0_arm64.whl",hashes = {sha256 = "a3418c973b06ac4e97f178f803e032c30c9a9f56a3e3b43a866f33223dfbf60b"}},
-    {name = "duckdb-1.3.2-cp313-cp313-macosx_12_0_universal2.whl",url = "https://files.pythonhosted.org/packages/c5/26/6698bbb30b7bce8b8b17697599f1517611c61e4bd68b37eaeaf4f5ddd915/duckdb-1.3.2-cp313-cp313-macosx_12_0_universal2.whl",hashes = {sha256 = "2a741eae2cf110fd2223eeebe4151e22c0c02803e1cfac6880dbe8a39fecab6a"}},
-    {name = "duckdb-1.3.2-cp313-cp313-macosx_12_0_x86_64.whl",url = "https://files.pythonhosted.org/packages/10/75/8ab4da3099a2fac7335ecebce4246706d19bdd5dad167aa436b5b27c43c4/duckdb-1.3.2-cp313-cp313-macosx_12_0_x86_64.whl",hashes = {sha256 = "51e62541341ea1a9e31f0f1ade2496a39b742caf513bebd52396f42ddd6525a0"}},
-    {name = "duckdb-1.3.2-cp313-cp313-manylinux_2_27_aarch64.manylinux_2_28_aarch64.whl",url = "https://files.pythonhosted.org/packages/d1/46/af81b10d4a66a0f27c248df296d1b41ff2a305a235ed8488f93240f6f8b5/duckdb-1.3.2-cp313-cp313-manylinux_2_27_aarch64.manylinux_2_28_aarch64.whl",hashes = {sha256 = "b3e519de5640e5671f1731b3ae6b496e0ed7e4de4a1c25c7a2f34c991ab64d71"}},
-    {name = "duckdb-1.3.2-cp313-cp313-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl",url = "https://files.pythonhosted.org/packages/68/fc/259a54fc22111a847981927aa58528d766e8b228c6d41deb0ad8a1959f9f/duckdb-1.3.2-cp313-cp313-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl",hashes = {sha256 = "4732fb8cc60566b60e7e53b8c19972cb5ed12d285147a3063b16cc64a79f6d9f"}},
-    {name = "duckdb-1.3.2-cp313-cp313-musllinux_1_2_x86_64.whl",url = "https://files.pythonhosted.org/packages/ab/dc/5d5140383e40661173dacdceaddee2a97c3f6721a5e8d76e08258110595e/duckdb-1.3.2-cp313-cp313-musllinux_1_2_x86_64.whl",hashes = {sha256 = "97f7a22dcaa1cca889d12c3dc43a999468375cdb6f6fe56edf840e062d4a8293"}},
-    {name = "duckdb-1.3.2-cp313-cp313-win_amd64.whl",url = "https://files.pythonhosted.org/packages/51/c9/2fcd86ab7530a5b6caff42dbe516ce7a86277e12c499d1c1f5acd266ffb2/duckdb-1.3.2-cp313-cp313-win_amd64.whl",hashes = {sha256 = "cd3d717bf9c49ef4b1016c2216517572258fa645c2923e91c5234053defa3fb5"}},
-]
-marker = "python_version >= \"3.13\" and \"default\" in dependency_groups"
 
 [packages.tool.pdm]
 dependencies = []
@@ -304,11 +304,11 @@ dependencies = [
 
 [[packages]]
 name = "types-psycopg2"
-version = "2.9.21.20250809"
+version = "2.9.21.20250915"
 requires-python = ">=3.9"
-sdist = {name = "types_psycopg2-2.9.21.20250809.tar.gz", url = "https://files.pythonhosted.org/packages/17/d0/66f3f04bab48bfdb2c8b795b2b3e75eb20c7d1fb0516916db3be6aa4a683/types_psycopg2-2.9.21.20250809.tar.gz", hashes = {sha256 = "b7c2cbdcf7c0bd16240f59ba694347329b0463e43398de69784ea4dee45f3c6d"}}
+sdist = {name = "types_psycopg2-2.9.21.20250915.tar.gz", url = "https://files.pythonhosted.org/packages/8f/20/3dcb89df8d1661cf6c4c2d9f84d4ba94dde48559cdcf7b536a380a9c387f/types_psycopg2-2.9.21.20250915.tar.gz", hashes = {sha256 = "bfeb8f54c32490e7b5edc46215ab4163693192bc90407b4a023822de9239f5c8"}}
 wheels = [
-    {name = "types_psycopg2-2.9.21.20250809-py3-none-any.whl",url = "https://files.pythonhosted.org/packages/7b/98/182497602921c47fadc8470d51a32e5c75343c8931c0b572a5c4ae3b948b/types_psycopg2-2.9.21.20250809-py3-none-any.whl",hashes = {sha256 = "59b7b0ed56dcae9efae62b8373497274fc1a0484bdc5135cdacbe5a8f44e1d7b"}},
+    {name = "types_psycopg2-2.9.21.20250915-py3-none-any.whl",url = "https://files.pythonhosted.org/packages/93/4d/ebf1c72809a30150ad142074e1ad5101304f7569c0df2fa872906d76d0af/types_psycopg2-2.9.21.20250915-py3-none-any.whl",hashes = {sha256 = "eefe5ccdc693fc086146e84c9ba437bb278efe1ef330b299a0cb71169dc6c55f"}},
 ]
 marker = "python_version >= \"3.13\" and \"types\" in dependency_groups"
 
@@ -332,11 +332,11 @@ dependencies = [
 
 [[packages]]
 name = "xlsxwriter"
-version = "3.2.5"
+version = "3.2.9"
 requires-python = ">=3.8"
-sdist = {name = "xlsxwriter-3.2.5.tar.gz", url = "https://files.pythonhosted.org/packages/a7/47/7704bac42ac6fe1710ae099b70e6a1e68ed173ef14792b647808c357da43/xlsxwriter-3.2.5.tar.gz", hashes = {sha256 = "7e88469d607cdc920151c0ab3ce9cf1a83992d4b7bc730c5ffdd1a12115a7dbe"}}
+sdist = {name = "xlsxwriter-3.2.9.tar.gz", url = "https://files.pythonhosted.org/packages/46/2c/c06ef49dc36e7954e55b802a8b231770d286a9758b3d936bd1e04ce5ba88/xlsxwriter-3.2.9.tar.gz", hashes = {sha256 = "254b1c37a368c444eac6e2f867405cc9e461b0ed97a3233b2ac1e574efb4140c"}}
 wheels = [
-    {name = "xlsxwriter-3.2.5-py3-none-any.whl",url = "https://files.pythonhosted.org/packages/fa/34/a22e6664211f0c8879521328000bdcae9bf6dbafa94a923e531f6d5b3f73/xlsxwriter-3.2.5-py3-none-any.whl",hashes = {sha256 = "4f4824234e1eaf9d95df9a8fe974585ff91d0f5e3d3f12ace5b71e443c1c6abd"}},
+    {name = "xlsxwriter-3.2.9-py3-none-any.whl",url = "https://files.pythonhosted.org/packages/3a/0c/3662f4a66880196a590b202f0db82d919dd2f89e99a27fadef91c4a33d41/xlsxwriter-3.2.9-py3-none-any.whl",hashes = {sha256 = "9a5db42bc5dff014806c58a20b9eae7322a134abb6fce3c92c181bfb275ec5b3"}},
 ]
 marker = "python_version >= \"3.13\" and \"default\" in dependency_groups"
 
@@ -634,11 +634,11 @@ dependencies = [
 
 [[packages]]
 name = "types-requests"
-version = "2.32.4.20250809"
+version = "2.32.4.20250913"
 requires-python = ">=3.9"
-sdist = {name = "types_requests-2.32.4.20250809.tar.gz", url = "https://files.pythonhosted.org/packages/ed/b0/9355adb86ec84d057fea765e4c49cce592aaf3d5117ce5609a95a7fc3dac/types_requests-2.32.4.20250809.tar.gz", hashes = {sha256 = "d8060de1c8ee599311f56ff58010fb4902f462a1470802cf9f6ed27bc46c4df3"}}
+sdist = {name = "types_requests-2.32.4.20250913.tar.gz", url = "https://files.pythonhosted.org/packages/36/27/489922f4505975b11de2b5ad07b4fe1dca0bca9be81a703f26c5f3acfce5/types_requests-2.32.4.20250913.tar.gz", hashes = {sha256 = "abd6d4f9ce3a9383f269775a9835a4c24e5cd6b9f647d64f88aa4613c33def5d"}}
 wheels = [
-    {name = "types_requests-2.32.4.20250809-py3-none-any.whl",url = "https://files.pythonhosted.org/packages/2b/6f/ec0012be842b1d888d46884ac5558fd62aeae1f0ec4f7a581433d890d4b5/types_requests-2.32.4.20250809-py3-none-any.whl",hashes = {sha256 = "f73d1832fb519ece02c85b1f09d5f0dd3108938e7d47e7f94bbfa18a6782b163"}},
+    {name = "types_requests-2.32.4.20250913-py3-none-any.whl",url = "https://files.pythonhosted.org/packages/2a/20/9a227ea57c1285986c4cf78400d0a91615d25b24e257fd9e2969606bdfae/types_requests-2.32.4.20250913-py3-none-any.whl",hashes = {sha256 = "78c9c1fffebbe0fa487a418e0fa5252017e9c60d1a2da394077f1780f655d7e1"}},
 ]
 marker = "python_version >= \"3.13\" and \"types\" in dependency_groups"
 
@@ -674,7 +674,7 @@ marker = "sys_platform == \"win32\" and python_version >= \"3.13\" and \"default
 dependencies = []
 
 [tool.pdm]
-hashes = {sha256 = "9cd31bd06db4ed0781a4f5b9f507c9fb109b9e48b412ee0b76a1115f841b603b"}
+hashes = {sha256 = "9edcf2127050cd04b1c55f2c5d0ef0c306790635417a4e7c2a0ed6e601c76e78"}
 strategy = ["inherit_metadata", "static_urls"]
 
 [[tool.pdm.targets]]
