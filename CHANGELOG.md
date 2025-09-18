@@ -15,6 +15,8 @@ Please see [MIGRATING.md](./MIGRATING.md) for information on breaking changes.
 
 ### Fixed
 
+- Source Storage endpoints now stream only if streaming is available.
+
 ### Changed
 
 - psycopg3 is now used for internal operations. LDLite.connect_db_postgres will return a psycopg3 connection instead of psycopg2 in the next major release.
