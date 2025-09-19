@@ -367,7 +367,7 @@ class LDLite:
             if self._verbose:
                 print("ldlite: estimated row count: " + str(total), file=sys.stderr)
 
-            p_count = count(0)
+            p_count = count(1)
             processed = 0
             pbar: tqdm | PbarNoop  # type:ignore[type-arg]
             if not self._quiet:
@@ -396,9 +396,9 @@ class LDLite:
 
             def on_processed_limit() -> bool:
                 pbar.update(1)
-                nonlocal processed
+                nonlocal processed, limit
                 processed = next(p_count)
-                return limit is None or processed >= limit
+                return limit is None or processed < limit
 
             self._db.ingest_records(
                 prefix,

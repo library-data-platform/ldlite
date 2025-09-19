@@ -1,4 +1,5 @@
 from dataclasses import astuple, dataclass
+from typing import cast
 
 import httpx
 import pytest
@@ -14,6 +15,21 @@ def test_ok_legacy(folio_params: tuple[bool, FolioParams]) -> None:
     ld.connect_db()
     ld.query(table="g", path="/groups", query="cql.allRecords=1 sortby id")
     ld.select(table="g__t")
+
+
+def test_ok_limit(folio_params: tuple[bool, FolioParams]) -> None:
+    from ldlite import LDLite as uut
+
+    ld = uut()
+    db = ld.connect_db()
+
+    ld.connect_folio(*astuple(folio_params[1]))
+    ld.page_size = 2
+    ld.query(table="g", path="/groups", query="cql.allRecords=1 sortby id", limit=5)
+
+    db.execute("SELECT COUNT(DISTINCT COLUMNS(*)) FROM g__t;")
+    actual = cast("tuple[int]", db.fetchone())[0]
+    assert actual == 5
 
 
 def test_ok_trailing_slash(folio_params: tuple[bool, FolioParams]) -> None:
