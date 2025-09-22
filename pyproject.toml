@@ -11,9 +11,9 @@ authors = [
     {name = "Nassib Nassar", email = "nassib@indexdata.com"},
 ]
 dependencies = [
-    # 0.6.1 was the original pinned dependency version
+    # 0.7.0 makes numpy an optional dependency
     # 1.4 slightly changes data formats and fails tests
-    "duckdb>=0.6.1,<1.4",
+    "duckdb>=0.7.0,<1.4",
     # 4.64.0 is the first release with type stubs
     "tqdm>=4.64.0",
     # 0.2 has query parameter handling, 0.2.3 is a required bug fix version
