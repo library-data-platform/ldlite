@@ -848,7 +848,7 @@ marker = "sys_platform == \"win32\" and \"default\" in dependency_groups"
 dependencies = []
 
 [tool.pdm]
-hashes = {sha256 = "9d273f1ebacd699b6e5626627614672f945cab8b74c662856337c49cfe0894bb"}
+hashes = {sha256 = "f41cee4895442b905a0fa8fe84189c460dff00eec403795e10a6ff2120675686"}
 strategy = ["inherit_metadata", "static_urls"]
 
 [[tool.pdm.targets]]
