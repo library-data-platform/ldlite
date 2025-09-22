@@ -34,16 +34,12 @@ Example:
 
 """
 
-from __future__ import annotations
-
-import sqlite3
 import sys
 from itertools import count
 from typing import TYPE_CHECKING, NoReturn, cast
 
 import duckdb
 import psycopg
-import psycopg2
 from httpx_folio.auth import FolioParams
 from tqdm import tqdm
 
@@ -59,7 +55,6 @@ from ._sqlx import (
     autocommit,
     sqlid,
 )
-from ._xlsx import to_xlsx
 
 if TYPE_CHECKING:
     from _typeshed import dbapi
@@ -140,14 +135,12 @@ class LDLite:
 
         return db.cursor()
 
-    def connect_db_postgresql(self, dsn: str) -> psycopg2.extensions.connection:
+    def connect_db_postgresql(self, dsn: str) -> psycopg.Connection:
         """Connects to a PostgreSQL database for storing data.
 
         The data source name is specified by *dsn*.  This method returns a
         connection to the database which can be used to submit SQL queries.
         The returned connection defaults to autocommit mode.
-
-        This will return a psycopg3 connection in the next major release of LDLite.
 
         Example:
             db = ld.connect_db_postgresql(dsn='dbname=ld host=localhost user=ldlite')
@@ -161,42 +154,10 @@ class LDLite:
             lambda: cast("dbapi.DBAPIConnection", psycopg.connect(dsn)),
         )
 
-        ret_db = psycopg2.connect(dsn)
+        ret_db = psycopg.connect(dsn)
         ret_db.rollback()
-        ret_db.set_session(autocommit=True)
+        ret_db.set_autocommit(True)
         return ret_db
-
-    def experimental_connect_db_sqlite(
-        self,
-        filename: str | None = None,
-    ) -> sqlite3.Connection:
-        """Deprecated; this will be removed in the next major release of LDLite.
-
-        Connects to an embedded SQLite database for storing data.
-
-        The optional *filename* designates a local file containing the SQLite
-        database or where the database will be created if it does not exist.
-        If *filename* is not specified, the database will be stored in memory
-        and will not be persisted to disk.
-
-        This method returns a connection to the database which can be used to
-        submit SQL queries.
-
-        Example:
-            db = ld.connect_db_sqlite(filename='ldlite.db')
-
-        """
-        self.dbtype = DBType.SQLITE
-        fn = filename if filename is not None else "file::memory:?cache=shared"
-        self.db = sqlite3.connect(fn)
-        self._db = DBTypeDatabase(
-            DBType.SQLITE,
-            lambda: cast("dbapi.DBAPIConnection", sqlite3.connect(fn)),
-        )
-
-        db = sqlite3.connect(fn)
-        autocommit(db, self.dbtype, True)
-        return self.db
 
     def _check_folio(self) -> None:
         if self._folio is None:
@@ -242,8 +203,6 @@ class LDLite:
         schema_table = table.strip().split(".")
         if len(schema_table) != 1 and len(schema_table) != 2:
             raise ValueError("invalid table name: " + table)
-        if len(schema_table) == 2 and self.dbtype == DBType.SQLITE:
-            table = schema_table[0] + "_" + schema_table[1]
         prefix = Prefix(table)
         self._db.drop_prefix(prefix)
 
@@ -292,10 +251,7 @@ class LDLite:
         """Submits a query to a FOLIO module, and transforms and stores the result.
 
         The retrieved result is stored in *table* within the reporting
-        database.  the *table* name may include a schema name;
-        however, if the database is SQLite, which does not support
-        schemas, the schema name will be added to the table name as a
-        prefix.
+        database.  the *table* name may include a schema name.
 
         The *path* parameter is the request path.
 
@@ -348,8 +304,6 @@ class LDLite:
         if self.db is None or self._db is None:
             self._check_db()
             return []
-        if len(schema_table) == 2 and self.dbtype == DBType.SQLITE:
-            table = schema_table[0] + "_" + schema_table[1]
         prefix = Prefix(table)
         if not self._quiet:
             print("ldlite: querying: " + path, file=sys.stderr)
@@ -367,6 +321,10 @@ class LDLite:
             if self._verbose:
                 print("ldlite: estimated row count: " + str(total), file=sys.stderr)
 
+            class PbarNoop:
+                def update(self, _: int) -> None: ...
+                def close(self) -> None: ...
+
             p_count = count(1)
             processed = 0
             pbar: tqdm | PbarNoop  # type:ignore[type-arg]
@@ -381,11 +339,6 @@ class LDLite:
                     bar_format="{desc} {bar}{postfix}",
                 )
             else:
-
-                class PbarNoop:
-                    def update(self, _: int) -> None: ...
-                    def close(self) -> None: ...
-
                 pbar = PbarNoop()
 
             def on_processed() -> bool:
@@ -545,43 +498,6 @@ class LDLite:
     def to_csv(self) -> NoReturn:  # pragma: nocover
         """Deprecated; use export_csv()."""
         msg = "to_csv() is no longer supported: use export_csv()"
-        raise ValueError(msg)
-
-    def export_excel(
-        self,
-        filename: str,
-        table: str,
-        header: bool = True,
-    ) -> None:  # pragma: nocover
-        """Deprecated; this will be removed in the next major release of LDLite.
-
-        Export a table in the reporting database to an Excel file.
-
-        All rows of *table* are exported to *filename*, or *filename*.xlsx if
-        *filename* does not have an extension.
-
-        If *header* is True (the default), the worksheet will begin with a row
-        containing the column names.
-
-        Example:
-            ld.export_excel(table='g', filename='g')
-
-        """
-        if self.db is None:
-            self._check_db()
-            return
-
-        autocommit(self.db, self.dbtype, False)
-        try:
-            to_xlsx(self.db, self.dbtype, table, filename, header)
-            if (pgdb := as_postgres(self.db, self.dbtype)) is not None:
-                pgdb.rollback()
-        finally:
-            autocommit(self.db, self.dbtype, True)
-
-    def to_xlsx(self) -> NoReturn:  # pragma: nocover
-        """Deprecated; use export_excel()."""
-        msg = "to_xlsx() is no longer supported: use export_excel()"
         raise ValueError(msg)
 
     def verbose(self, enable: bool) -> None:

@@ -1,9 +1,7 @@
-from __future__ import annotations
-
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from ._sqlx import DBType, as_sqlite, server_cursor, sqlid
+from ._sqlx import DBType, server_cursor, sqlid
 
 if TYPE_CHECKING:
     from _typeshed import dbapi
@@ -19,8 +17,8 @@ def _escape_csv(field: str) -> str:
     return b
 
 
-def to_csv(  # noqa: PLR0912
-    db: dbapi.DBAPIConnection,
+def to_csv(
+    db: "dbapi.DBAPIConnection",
     dbtype: DBType,
     table: str,
     filename: str,
@@ -29,25 +27,15 @@ def to_csv(  # noqa: PLR0912
     # Read attributes
     attrs: list[tuple[str, dbapi.DBAPITypeCode]] = [("__id", "NUMBER")]
 
-    if sql3db := as_sqlite(db, dbtype):
-        sql3cur = sql3db.cursor()
-        try:
-            sql3cur.execute("PRAGMA table_info(" + sqlid(table) + ")")
-            t_attrs = [(a[1], a[2]) for a in sql3cur.fetchall()[1:]]
+    cur = server_cursor(db, dbtype)
+    try:
+        cur.execute("SELECT * FROM " + sqlid(table) + " LIMIT 1")
+        cur.fetchall()
+        if cur.description is not None:
+            t_attrs = [(a[0], a[1]) for a in cur.description[1:]]
             attrs.extend(sorted(t_attrs, key=lambda a: a[0]))
-        finally:
-            sql3cur.close()
-
-    else:
-        cur = server_cursor(db, dbtype)
-        try:
-            cur.execute("SELECT * FROM " + sqlid(table) + " LIMIT 1")
-            cur.fetchall()
-            if cur.description is not None:
-                t_attrs = [(a[0], a[1]) for a in cur.description[1:]]
-                attrs.extend(sorted(t_attrs, key=lambda a: a[0]))
-        finally:
-            cur.close()
+    finally:
+        cur.close()
 
     # Write data
     cur = server_cursor(db, dbtype)

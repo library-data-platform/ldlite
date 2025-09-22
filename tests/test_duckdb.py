@@ -67,7 +67,7 @@ def test_query(
 
     for table, (cols, values) in tc.expected_values.items():
         with duckdb.connect(dsn) as res:
-            res.execute(f"SELECT {','.join(cols)} FROM {table};")
+            res.execute(f"SELECT {'::text,'.join(cols)}::text FROM {table};")
             for v in values:
                 assert res.fetchone() == v
 

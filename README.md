@@ -20,6 +20,8 @@ LDLite supports two modes of usage.
 
 See the [Five Colleges Setup](https://github.com/Five-Colleges-Incorporated/ldlite-scripts) for an example of automating overnight data loads.
 
+It is recommended to install the `psycopg[c]` package for optimal reliability and performance in a server context.
+
 ### Usage for ad-hoc local querying
 
 To install LDLite or upgrade to the latest version:
@@ -30,6 +32,11 @@ $ python -m pip install --upgrade ldlite
 
 (On some systems it might be `python3` rather than `python`.)
 Check out the [migration guide](./MIGRATING.md) for more information about major version upgrades.
+
+*Optional* If you intend to use the `connect_db_postgres()` method install the binary provider:
+```
+$ python -m pip install --upgrade psycopg[binary]
+```
 
 To extract and transform data:
 

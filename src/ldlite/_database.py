@@ -1,14 +1,11 @@
-from __future__ import annotations
-
 from abc import ABC, abstractmethod
+from collections.abc import Callable, Iterator, Sequence
 from contextlib import closing
-from typing import TYPE_CHECKING, Any, Callable, Generic, TypeVar, cast
+from typing import TYPE_CHECKING, Any, Generic, TypeVar, cast
 
 from psycopg import sql
 
 if TYPE_CHECKING:
-    from collections.abc import Iterator, Sequence
-
     from _typeshed import dbapi
 
 DB = TypeVar("DB", bound="dbapi.DBAPIConnection")

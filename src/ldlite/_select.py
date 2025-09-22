@@ -1,17 +1,14 @@
-from __future__ import annotations
-
 import sys
+from collections.abc import Sequence
 from typing import TYPE_CHECKING, TextIO
 
 from ._sqlx import DBType, server_cursor, sqlid
 
 if TYPE_CHECKING:
-    from collections.abc import Sequence
-
     from _typeshed import dbapi
 
 
-def _format_attr(attr: tuple[str, dbapi.DBAPITypeCode], width: int) -> str:
+def _format_attr(attr: tuple[str, "dbapi.DBAPITypeCode"], width: int) -> str:
     s = ""
     a = attr[0]
     len_a = len(a)
@@ -36,7 +33,7 @@ def _rstrip_lines(lines: list[str]) -> list[str]:
     return [s.rstrip() for s in lines]
 
 
-def _format_value(value: list[str], dtype: dbapi.DBAPITypeCode) -> list[str]:
+def _format_value(value: list[str], dtype: "dbapi.DBAPITypeCode") -> list[str]:
     if len(value) > 1:
         return value
     if dtype in {"bool", 16}:
@@ -46,7 +43,7 @@ def _format_value(value: list[str], dtype: dbapi.DBAPITypeCode) -> list[str]:
 
 def _format_row(
     row: Sequence[str],
-    attrs: list[tuple[str, dbapi.DBAPITypeCode]],
+    attrs: list[tuple[str, "dbapi.DBAPITypeCode"]],
     width: list[int],
 ) -> str:
     s = ""
@@ -82,7 +79,7 @@ def _format_row(
 
 
 def select(  # noqa: C901, PLR0912, PLR0913, PLR0915
-    db: dbapi.DBAPIConnection,
+    db: "dbapi.DBAPIConnection",
     dbtype: DBType,
     table: str,
     columns: list[str] | None,

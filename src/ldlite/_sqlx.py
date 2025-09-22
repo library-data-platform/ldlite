@@ -1,10 +1,8 @@
-from __future__ import annotations
-
 import secrets
-import sqlite3
+from collections.abc import Callable, Iterator
 from contextlib import closing
 from enum import Enum
-from typing import TYPE_CHECKING, Callable, cast
+from typing import TYPE_CHECKING, cast
 
 import duckdb
 import psycopg
@@ -13,8 +11,6 @@ from psycopg import sql
 from ._database import Database
 
 if TYPE_CHECKING:
-    from collections.abc import Iterator
-
     from _typeshed import dbapi
 
     from ._database import Prefix
@@ -25,11 +21,10 @@ class DBType(Enum):
     UNDEFINED = 0
     DUCKDB = 1
     POSTGRES = 2
-    SQLITE = 4
 
 
 class DBTypeDatabase(Database["dbapi.DBAPIConnection"]):
-    def __init__(self, dbtype: DBType, factory: Callable[[], dbapi.DBAPIConnection]):
+    def __init__(self, dbtype: DBType, factory: Callable[[], "dbapi.DBAPIConnection"]):
         self._dbtype = dbtype
         super().__init__(factory)
 
@@ -37,13 +32,10 @@ class DBTypeDatabase(Database["dbapi.DBAPIConnection"]):
     def _missing_table_error(self) -> tuple[type[Exception], ...]:
         return (
             psycopg.errors.UndefinedTable,
-            sqlite3.OperationalError,
             duckdb.CatalogException,
         )
 
-    def _rollback(self, conn: dbapi.DBAPIConnection) -> None:
-        if sql3db := as_sqlite(conn, self._dbtype):
-            sql3db.rollback()
+    def _rollback(self, conn: "dbapi.DBAPIConnection") -> None:
         if pgdb := as_postgres(conn, self._dbtype):
             pgdb.rollback()
 
@@ -60,8 +52,6 @@ class DBTypeDatabase(Database["dbapi.DBAPIConnection"]):
     @property
     def _truncate_raw_table_sql(self) -> sql.SQL:
         truncate_sql = "TRUNCATE TABLE {table};"
-        if self._dbtype == DBType.SQLITE:
-            truncate_sql = "DELETE FROM {table};"
 
         return sql.SQL(truncate_sql)
 
@@ -75,7 +65,7 @@ class DBTypeDatabase(Database["dbapi.DBAPIConnection"]):
 
     def ingest_records(
         self,
-        prefix: Prefix,
+        prefix: "Prefix",
         on_processed: Callable[[], bool],
         records: Iterator[tuple[int, bytes]],
     ) -> None:
@@ -110,7 +100,7 @@ class DBTypeDatabase(Database["dbapi.DBAPIConnection"]):
 
 
 def as_duckdb(
-    db: dbapi.DBAPIConnection,
+    db: "dbapi.DBAPIConnection",
     dbtype: DBType,
 ) -> duckdb.DuckDBPyConnection | None:
     if dbtype != DBType.DUCKDB:
@@ -120,7 +110,7 @@ def as_duckdb(
 
 
 def as_postgres(
-    db: dbapi.DBAPIConnection,
+    db: "dbapi.DBAPIConnection",
     dbtype: DBType,
 ) -> psycopg.Connection | None:
     if dbtype != DBType.POSTGRES:
@@ -129,30 +119,13 @@ def as_postgres(
     return cast("psycopg.Connection", db)
 
 
-def as_sqlite(
-    db: dbapi.DBAPIConnection,
-    dbtype: DBType,
-) -> sqlite3.Connection | None:
-    if dbtype != DBType.SQLITE:
-        return None
-
-    return cast("sqlite3.Connection", db)
-
-
-def autocommit(db: dbapi.DBAPIConnection, dbtype: DBType, enable: bool) -> None:
+def autocommit(db: "dbapi.DBAPIConnection", dbtype: DBType, enable: bool) -> None:
     if (pgdb := as_postgres(db, dbtype)) is not None:
         pgdb.rollback()
         pgdb.set_autocommit(enable)
 
-    if (sql3db := as_sqlite(db, dbtype)) is not None:
-        sql3db.rollback()
-        if enable:
-            sql3db.isolation_level = None
-        else:
-            sql3db.isolation_level = "DEFERRED"
 
-
-def server_cursor(db: dbapi.DBAPIConnection, dbtype: DBType) -> dbapi.DBAPICursor:
+def server_cursor(db: "dbapi.DBAPIConnection", dbtype: DBType) -> "dbapi.DBAPICursor":
     if (pgdb := as_postgres(db, dbtype)) is not None:
         return cast(
             "dbapi.DBAPICursor",
@@ -168,14 +141,12 @@ def sqlid(ident: str) -> str:
     return ".".join(['"' + s + '"' for s in sp])
 
 
-def cast_to_varchar(ident: str, dbtype: DBType) -> str:
-    if dbtype == DBType.SQLITE:
-        return "CAST(" + ident + " as TEXT)"
+def cast_to_varchar(ident: str) -> str:
     return ident + "::varchar"
 
 
 def varchar_type(dbtype: DBType) -> str:
-    if dbtype == DBType.POSTGRES or DBType.SQLITE:
+    if dbtype == DBType.POSTGRES:
         return "text"
     return "varchar"
 
@@ -185,7 +156,7 @@ def encode_sql_str(dbtype: DBType, s: str | bytes) -> str:  # noqa: C901, PLR091
         s = s.decode("utf-8")
 
     b = "E'" if dbtype == DBType.POSTGRES else "'"
-    if dbtype in (DBType.SQLITE, DBType.DUCKDB):
+    if dbtype == DBType.DUCKDB:
         for c in s:
             if c == "'":
                 b += "''"
@@ -213,7 +184,7 @@ def encode_sql_str(dbtype: DBType, s: str | bytes) -> str:  # noqa: C901, PLR091
     return b
 
 
-def encode_sql(dbtype: DBType, data: JsonValue) -> str:
+def encode_sql(dbtype: DBType, data: "JsonValue") -> str:
     if data is None:
         return "NULL"
     if isinstance(data, str):
