@@ -18,8 +18,6 @@ dependencies = [
     "psycopg2-binary>=2.9.5",
     # 4.64.1 was the original pinned dependency version
     "tqdm>=4.64.1",
-    # 3.0.6 was the original pinned dependency version
-    "XlsxWriter>=3.0.6",
     # 0.2 has query parameter handling, 0.2.3 is a required bug fix version
     "httpx-folio>=0.2.3",
     # 3.9 introduces orjson.Fragment
@@ -49,9 +47,6 @@ addopts = [
 [tool.mypy]
 python_version = "3.9"
 strict = true
-[[tool.mypy.overrides]]
-module = ["xlsxwriter.*"]
-ignore_missing_imports = true
 
 [tool.ruff]
 target-version = "py39"
@@ -63,7 +58,7 @@ pydocstyle.convention = "google"
 [tool.ruff.lint.per-file-ignores]
 "examples/*" = ["D", "INP001", "T201", "S106", "ERA001", "PERF203"]
 "tests/*" = ["D", "S", "INP001", "N813", "PLC0415"]
-"src/ldlite/{_csv.py,_jsonx.py,_select.py,_xlsx.py}" = ["S608"]
+"src/ldlite/{_csv.py,_jsonx.py,_select.py}" = ["S608"]
 "src/ldlite/__init__.py" = ["T201"]
 [tool.ruff.lint.flake8-annotations]
 mypy-init-return = true
@@ -71,7 +66,6 @@ mypy-init-return = true
 [tool.coverage.run]
 branch = true
 include = ["src/**"]
-omit = ["src/ldlite/_xlsx.py"]
 
 [tool.pdm]
 distribution = true
