@@ -42,7 +42,6 @@ from typing import TYPE_CHECKING, NoReturn, cast
 
 import duckdb
 import psycopg
-import psycopg2
 from httpx_folio.auth import FolioParams
 from tqdm import tqdm
 
@@ -138,14 +137,12 @@ class LDLite:
 
         return db.cursor()
 
-    def connect_db_postgresql(self, dsn: str) -> psycopg2.extensions.connection:
+    def connect_db_postgresql(self, dsn: str) -> psycopg.Connection:
         """Connects to a PostgreSQL database for storing data.
 
         The data source name is specified by *dsn*.  This method returns a
         connection to the database which can be used to submit SQL queries.
         The returned connection defaults to autocommit mode.
-
-        This will return a psycopg3 connection in the next major release of LDLite.
 
         Example:
             db = ld.connect_db_postgresql(dsn='dbname=ld host=localhost user=ldlite')
@@ -159,9 +156,9 @@ class LDLite:
             lambda: cast("dbapi.DBAPIConnection", psycopg.connect(dsn)),
         )
 
-        ret_db = psycopg2.connect(dsn)
+        ret_db = psycopg.connect(dsn)
         ret_db.rollback()
-        ret_db.set_session(autocommit=True)
+        ret_db.set_autocommit(True)
         return ret_db
 
     def _check_folio(self) -> None:

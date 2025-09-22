@@ -7,8 +7,9 @@ from typing import TYPE_CHECKING, Callable, cast
 from unittest import mock
 from unittest.mock import MagicMock
 
-import psycopg2
+import psycopg
 import pytest
+from psycopg import sql
 from pytest_cases import parametrize_with_cases
 
 from tests.test_cases import drop_tables_cases as dtc
@@ -27,10 +28,12 @@ def pg_dsn(pytestconfig: pytest.Config) -> None | Callable[[str], str]:
 
     def setup(db: str) -> str:
         base_dsn = f"host={host} user=ldlite password=ldlite"
-        with contextlib.closing(psycopg2.connect(base_dsn)) as base_conn:
+        with contextlib.closing(psycopg.connect(base_dsn)) as base_conn:
             base_conn.autocommit = True
             with base_conn.cursor() as curr:
-                curr.execute(f"CREATE DATABASE {db};")
+                curr.execute(
+                    sql.SQL("CREATE DATABASE {db};").format(db=sql.Identifier(db)),
+                )
 
         return base_dsn + f" dbname={db}"
 
@@ -61,7 +64,7 @@ def test_drop_tables(
         ld.query(table=prefix, path="/patched", keep_raw=tc.keep_raw)
     ld.drop_tables(tc.drop)
 
-    with psycopg2.connect(dsn) as conn, conn.cursor() as res:
+    with psycopg.connect(dsn) as conn, conn.cursor() as res:
         res.execute(
             """
                 SELECT table_name
@@ -100,7 +103,7 @@ def test_query(
             keep_raw=tc.keep_raw,
         )
 
-    with psycopg2.connect(dsn) as conn:
+    with psycopg.connect(dsn) as conn:
         with conn.cursor() as res:
             res.execute(
                 """
@@ -113,7 +116,14 @@ def test_query(
 
         for table, (cols, values) in tc.expected_values.items():
             with conn.cursor() as res:
-                res.execute(f"SELECT {','.join(cols)} FROM {table};")
+                res.execute(
+                    sql.SQL("SELECT {cols}::text FROM {table};").format(
+                        cols=sql.SQL("::text, ").join(
+                            [sql.Identifier(c) for c in cols],
+                        ),
+                        table=sql.Identifier(table),
+                    ),
+                )
                 for v in values:
                     assert res.fetchone() == v
 
@@ -127,10 +137,11 @@ def test_query(
                 assert cast("tuple[int]", res.fetchone())[0] == len(tc.expected_indexes)
 
                 for t, c in tc.expected_indexes:
+                    # this requires specific formatting to match the postgres strings
                     res.execute(f"""
 SELECT COUNT(*) FROM pg_indexes
 WHERE indexdef LIKE 'CREATE INDEX % ON public.{t} USING btree ({c})';
-""")
+                                """)
                     assert cast("tuple[int]", res.fetchone())[0] == 1, f"{t}, {c}"
 
 

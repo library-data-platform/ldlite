@@ -14,8 +14,6 @@ dependencies = [
     # 0.6.1 was the original pinned dependency version
     # 1.4 slightly changes data formats and fails tests
     "duckdb>=0.6.1,<1.4",
-    # 2.9.5 was the original pinned dependency version
-    "psycopg2-binary>=2.9.5",
     # 4.64.1 was the original pinned dependency version
     "tqdm>=4.64.1",
     # 0.2 has query parameter handling, 0.2.3 is a required bug fix version
@@ -88,6 +86,5 @@ test = [
     "coverage>=7.9.2",
 ]
 types = [
-    "types-psycopg2>=2.9.21.20",
     "types-tqdm>=4.66.0.5",
 ]

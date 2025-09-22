@@ -180,12 +180,14 @@ class QueryTestCases:
             ],
             expected_values={
                 "prefix__t__sub_objects": (
-                    ["*"],
+                    [
+                        "id",
+                        "sub_objects__id",
+                        "sub_objects__value",
+                    ],
                     [
                         (
-                            1,
                             "b096504a-3d54-4664-9bf5-1b872466fd66",
-                            1,
                             "2b94c631-fca9-4892-a730-03ee529ffe2a",
                             "sub-value",
                         ),
@@ -488,15 +490,15 @@ class QueryTestCases:
                     ["__id", "id", "sub_objects__o", "sub_objects__id"],
                     [
                         (
-                            1,
+                            "1",
                             "b096504a-3d54-4664-9bf5-1b872466fd66",
-                            1,
+                            "1",
                             "2b94c631-fca9-4892-a730-03ee529ffe2a",
                         ),
                         (
-                            2,
+                            "2",
                             "b096504a-3d54-4664-9bf5-1b872466fd66",
-                            2,
+                            "2",
                             "b5d8cdc4-9441-487c-90cf-0c7ec97728eb",
                         ),
                     ],
@@ -504,10 +506,10 @@ class QueryTestCases:
                 "prefix__t__sub_objects__sub_sub_objects": (
                     ["__id", "sub_objects__o", "sub_objects__sub_sub_objects__o"],
                     [
-                        (1, 1, 1),
-                        (2, 1, 2),
-                        (3, 2, 1),
-                        (4, 2, 2),
+                        ("1", "1", "1"),
+                        ("2", "1", "2"),
+                        ("3", "2", "1"),
+                        ("4", "2", "2"),
                     ],
                 ),
             },
