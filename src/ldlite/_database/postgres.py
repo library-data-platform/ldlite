@@ -1,4 +1,5 @@
-from collections.abc import Callable, Iterator
+from collections.abc import Iterator
+from itertools import count
 
 import psycopg
 from psycopg import sql
@@ -23,9 +24,9 @@ class PostgresDatabase(TypedDatabase[psycopg.Connection]):
     def ingest_records(
         self,
         prefix: Prefix,
-        on_processed: Callable[[], bool],
-        records: Iterator[tuple[int, bytes]],
-    ) -> None:
+        records: Iterator[bytes],
+    ) -> int:
+        pkey = count(1)
         with self._conn_factory() as conn:
             self._prepare_raw_table(conn, prefix)
 
@@ -40,12 +41,11 @@ class PostgresDatabase(TypedDatabase[psycopg.Connection]):
                 # postgres jsonb is always version 1
                 # and it always goes in front
                 jver = (1).to_bytes(1, "big")
-                for pkey, r in records:
+                for r in records:
                     rb = bytearray()
                     rb.extend(jver)
                     rb.extend(r)
-                    copy.write_row((pkey.to_bytes(4, "big"), rb))
-                    if not on_processed():
-                        break
+                    copy.write_row((next(pkey).to_bytes(4, "big"), rb))
 
             conn.commit()
+        return next(pkey) - 1

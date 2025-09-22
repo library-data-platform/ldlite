@@ -64,9 +64,8 @@ class Database(ABC):
     def ingest_records(
         self,
         prefix: Prefix,
-        on_processed: Callable[[], bool],
-        records: Iterator[tuple[int, bytes]],
-    ) -> None: ...
+        records: Iterator[bytes],
+    ) -> int: ...
 
 
 DB = TypeVar("DB", bound="duckdb.DuckDBPyConnection | psycopg.Connection")
@@ -189,11 +188,3 @@ class TypedDatabase(Database, Generic[DB]):
                     table=prefix.raw_table_name,
                 ).as_string(),
             )
-
-    @abstractmethod
-    def ingest_records(
-        self,
-        prefix: Prefix,
-        on_processed: Callable[[], bool],
-        records: Iterator[tuple[int, bytes]],
-    ) -> None: ...

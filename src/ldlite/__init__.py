@@ -35,7 +35,6 @@ Example:
 """
 
 import sys
-from itertools import count
 from typing import TYPE_CHECKING, NoReturn, cast
 
 import duckdb
@@ -56,6 +55,8 @@ from ._sqlx import (
 )
 
 if TYPE_CHECKING:
+    from collections.abc import Iterator
+
     from _typeshed import dbapi
     from httpx_folio.query import QueryType
 
@@ -305,57 +306,39 @@ class LDLite:
         if not self._quiet:
             print("ldlite: querying: " + path, file=sys.stderr)
         try:
-            # First get total number of records
-            records = self._folio.iterate_records(
+            (total_records, records) = self._folio.iterate_records(
                 path,
                 self._okapi_timeout,
                 self._okapi_max_retries,
                 self.page_size,
                 query=cast("QueryType", query),
             )
-            (total_records, _) = next(records)
-            total = min(total_records, limit or total_records)
+            if limit is not None:
+                total_records = min(total_records, limit)
+                records = (x for _, x in zip(range(limit), records, strict=False))
             if self._verbose:
-                print("ldlite: estimated row count: " + str(total), file=sys.stderr)
-
-            class PbarNoop:
-                def update(self, _: int) -> None: ...
-                def close(self) -> None: ...
-
-            p_count = count(1)
-            processed = 0
-            pbar: tqdm | PbarNoop  # type:ignore[type-arg]
-            if not self._quiet:
-                pbar = tqdm(
-                    desc="reading",
-                    total=total,
-                    leave=False,
-                    mininterval=3,
-                    smoothing=0,
-                    colour="#A9A9A9",
-                    bar_format="{desc} {bar}{postfix}",
+                print(
+                    "ldlite: estimated row count: " + str(total_records),
+                    file=sys.stderr,
                 )
-            else:
-                pbar = PbarNoop()
 
-            def on_processed() -> bool:
-                pbar.update(1)
-                nonlocal processed
-                processed = next(p_count)
-                return True
-
-            def on_processed_limit() -> bool:
-                pbar.update(1)
-                nonlocal processed, limit
-                processed = next(p_count)
-                return limit is None or processed < limit
-
-            self._db.ingest_records(
+            processed = self._db.ingest_records(
                 prefix,
-                on_processed_limit if limit is not None else on_processed,
-                records,
+                cast(
+                    "Iterator[bytes]",
+                    tqdm(
+                        records,
+                        desc="downloading",
+                        total=total_records,
+                        leave=False,
+                        mininterval=5,
+                        disable=self._quiet,
+                        unit=table.split(".")[-1],
+                        unit_scale=True,
+                        delay=5,
+                    ),
+                ),
             )
-            pbar.close()
 
             self._db.drop_extracted_tables(prefix)
             newtables = [table]
@@ -383,6 +366,13 @@ class LDLite:
             autocommit(self.db, self.dbtype, True)
         # Create indexes on id columns (for postgres)
         if self.dbtype == DBType.POSTGRES:
+
+            class PbarNoop:
+                def update(self, _: int) -> None: ...
+                def close(self) -> None: ...
+
+            pbar: tqdm | PbarNoop = PbarNoop()  # type:ignore[type-arg]
+
             indexable_attrs = [
                 (t, a)
                 for t, attrs in newattrs.items()

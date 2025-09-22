@@ -1,4 +1,5 @@
-from collections.abc import Callable, Iterator
+from collections.abc import Iterator
+from itertools import count
 
 import duckdb
 from psycopg import sql
@@ -21,9 +22,9 @@ class DuckDbDatabase(TypedDatabase[duckdb.DuckDBPyConnection]):
     def ingest_records(
         self,
         prefix: Prefix,
-        on_processed: Callable[[], bool],
-        records: Iterator[tuple[int, bytes]],
-    ) -> None:
+        records: Iterator[bytes],
+    ) -> int:
+        pkey = count(1)
         with self._conn_factory() as conn:
             self._prepare_raw_table(conn, prefix)
 
@@ -35,7 +36,7 @@ class DuckDbDatabase(TypedDatabase[duckdb.DuckDBPyConnection]):
                 .as_string()
             )
             with conn.cursor() as cur:
-                for pkey, r in records:
-                    cur.execute(insert_sql, (pkey, r.decode()))
-                    if not on_processed():
-                        break
+                for r in records:
+                    cur.execute(insert_sql, (next(pkey), r.decode()))
+
+        return next(pkey) - 1
