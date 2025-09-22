@@ -3,7 +3,7 @@ from __future__ import annotations
 import secrets
 from contextlib import closing
 from enum import Enum
-from typing import TYPE_CHECKING, Callable, cast
+from typing import TYPE_CHECKING, cast
 
 import duckdb
 import psycopg
@@ -12,7 +12,7 @@ from psycopg import sql
 from ._database import Database
 
 if TYPE_CHECKING:
-    from collections.abc import Iterator
+    from collections.abc import Callable, Iterator
 
     from _typeshed import dbapi
 
