@@ -1,9 +1,8 @@
-from __future__ import annotations
-
 import contextlib
+from collections.abc import Callable
 from difflib import unified_diff
 from pathlib import Path
-from typing import TYPE_CHECKING, cast
+from typing import cast
 from unittest import mock
 from unittest.mock import MagicMock
 
@@ -15,10 +14,6 @@ from pytest_cases import parametrize_with_cases
 from tests.test_cases import drop_tables_cases as dtc
 from tests.test_cases import query_cases as qc
 from tests.test_cases import to_csv_cases as csvc
-
-if TYPE_CHECKING:
-    from collections.abc import Callable
-    from unittest.mock import MagicMock
 
 
 @pytest.fixture(scope="session")

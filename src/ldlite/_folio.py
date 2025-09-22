@@ -1,9 +1,5 @@
-"""Utilities for connecting to FOLIO."""
-
-from __future__ import annotations
-
+from collections.abc import Iterator
 from itertools import count
-from typing import TYPE_CHECKING
 
 import orjson
 from httpx_folio.factories import (
@@ -12,9 +8,6 @@ from httpx_folio.factories import (
     default_client_factory,
 )
 from httpx_folio.query import QueryParams, QueryType
-
-if TYPE_CHECKING:
-    from collections.abc import Iterator
 
 _SOURCESTATS = {
     "/source-storage/records": "/source-storage/records",

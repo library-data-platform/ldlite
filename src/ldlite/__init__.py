@@ -34,8 +34,6 @@ Example:
 
 """
 
-from __future__ import annotations
-
 import sys
 from itertools import count
 from typing import TYPE_CHECKING, NoReturn, cast
@@ -323,6 +321,10 @@ class LDLite:
             if self._verbose:
                 print("ldlite: estimated row count: " + str(total), file=sys.stderr)
 
+            class PbarNoop:
+                def update(self, _: int) -> None: ...
+                def close(self) -> None: ...
+
             p_count = count(1)
             processed = 0
             pbar: tqdm | PbarNoop  # type:ignore[type-arg]
@@ -337,11 +339,6 @@ class LDLite:
                     bar_format="{desc} {bar}{postfix}",
                 )
             else:
-
-                class PbarNoop:
-                    def update(self, _: int) -> None: ...
-                    def close(self) -> None: ...
-
                 pbar = PbarNoop()
 
             def on_processed() -> bool:

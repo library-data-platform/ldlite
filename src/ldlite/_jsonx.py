@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 import json
 import uuid
 from typing import TYPE_CHECKING, Literal, Union
@@ -226,7 +224,7 @@ def _compile_attrs(  # noqa: C901, PLR0912, PLR0913
 def _transform_array_data(  # noqa: PLR0913
     dbtype: DBType,
     prefix: str,
-    cur: dbapi.DBAPICursor,
+    cur: "dbapi.DBAPICursor",
     parents: list[tuple[int, str]],
     jarray: list[JsonValue],
     newattrs: dict[str, dict[str, Attr]],
@@ -289,7 +287,7 @@ def _transform_array_data(  # noqa: PLR0913
 def _compile_data(  # noqa: C901, PLR0912, PLR0913
     dbtype: DBType,
     prefix: str,
-    cur: dbapi.DBAPICursor,
+    cur: "dbapi.DBAPICursor",
     parents: list[tuple[int, str]],
     jdict: Json,
     newattrs: dict[str, dict[str, Attr]],
@@ -363,7 +361,7 @@ def _compile_data(  # noqa: C901, PLR0912, PLR0913
 def _transform_data(  # noqa: PLR0913
     dbtype: DBType,
     prefix: str,
-    cur: dbapi.DBAPICursor,
+    cur: "dbapi.DBAPICursor",
     parents: list[tuple[int, str]],
     jdict: Json,
     newattrs: dict[str, dict[str, Attr]],
@@ -403,7 +401,7 @@ def _transform_data(  # noqa: PLR0913
 
 
 def transform_json(  # noqa: C901, PLR0912, PLR0913, PLR0915
-    db: dbapi.DBAPIConnection,
+    db: "dbapi.DBAPIConnection",
     dbtype: DBType,
     table: str,
     total: int,

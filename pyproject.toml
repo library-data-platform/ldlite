@@ -7,29 +7,29 @@ name = "ldlite"
 version = "3.2.0"
 description = "Lightweight analytics tool for FOLIO services"
 authors = [
-    {name = "Katherine Bargar", email = "kbargar@fivecolleges.edu"},
-    {name = "Nassib Nassar", email = "nassib@indexdata.com"},
+  { name = "Katherine Bargar", email = "kbargar@fivecolleges.edu" },
+  { name = "Nassib Nassar", email = "nassib@indexdata.com" },
 ]
 dependencies = [
-    # 0.7.0 makes numpy an optional dependency
-    # 1.4 slightly changes data formats and fails tests
-    "duckdb>=0.7.0,<1.4",
-    # 4.64.0 is the first release with type stubs
-    "tqdm>=4.64.0",
-    # 0.2 has query parameter handling, 0.2.3 is a required bug fix version
-    "httpx-folio>=0.2.3",
-    # 3.9 introduces orjson.Fragment
-    "orjson>=3.9",
-    # 3.2 changes the sql.SQL.format signature
-    "psycopg>=3.2.0",
+  # 0.7.0 makes numpy an optional dependency
+  # 1.4 slightly changes data formats and fails tests
+  "duckdb>=0.7.0,<1.4",
+  # 4.64.0 is the first release with type stubs
+  "tqdm>=4.64.0",
+  # 0.2 has query parameter handling, 0.2.3 is a required bug fix version
+  "httpx-folio>=0.2.3",
+  # 3.9 introduces orjson.Fragment
+  "orjson>=3.9",
+  # 3.2 changes the sql.SQL.format signature
+  "psycopg>=3.2.0",
 ]
 requires-python = ">=3.10"
 readme = "README.md"
-license = {text = "Apache-2.0"}
+license = { text = "Apache-2.0" }
 classifiers = [
-    "License :: OSI Approved :: Apache Software License",
-    "Operating System :: OS Independent",
-    "Programming Language :: Python :: 3",
+  "License :: OSI Approved :: Apache Software License",
+  "Operating System :: OS Independent",
+  "Programming Language :: Python :: 3",
 ]
 
 [project.urls]
@@ -38,12 +38,10 @@ Homepage = "https://github.com/library-data-platform/ldlite"
 
 [tool.pytest.ini_options]
 pythonpath = "src"
-addopts = [
-    "--import-mode=importlib",
-]
+addopts = ["--import-mode=importlib"]
 
 [tool.mypy]
-python_version = "3.9"
+python_version = "3.10"
 strict = true
 
 [tool.ruff]
@@ -70,21 +68,23 @@ distribution = true
 package-dir = "src"
 
 [tool.pdm.scripts]
-test.composite = ["rm -f .coverage", "python -m coverage run -m pytest -vv {args}", "python -m coverage report"]
-lock.composite = ["rm -f pylock.toml pylock.maximal.toml pylock.minimal.toml", "pdm lock --python=3.10", "pdm lock --lockfile pylock.maximal.toml --python=3.13", "pdm lock --strategy direct_minimal_versions --lockfile pylock.minimal.toml --python=3.10"]
-test-install.composite = ["pdm sync --lockfile=pylock.minimal.toml", "pdm sync --lockfile=pylock.toml"]
+test.composite = [
+  "rm -f .coverage",
+  "python -m coverage run -m pytest -vv {args}",
+  "python -m coverage report",
+]
+lock.composite = [
+  "rm -f pylock.toml pylock.maximal.toml pylock.minimal.toml",
+  "pdm lock --python=3.10",
+  "pdm lock --lockfile pylock.maximal.toml --python=3.13",
+  "pdm lock --strategy direct_minimal_versions --lockfile pylock.minimal.toml --python=3.10",
+]
+test-install.composite = [
+  "pdm sync --lockfile=pylock.minimal.toml",
+  "pdm sync --lockfile=pylock.toml",
+]
 
 [dependency-groups]
-lint = [
-    "mypy==1.18.2",
-    "ruff==0.13.1",
-    "pre-commit-hooks==6.0.0",
-]
-test = [
-    "pytest>=8.4.2",
-    "pytest-cases>=3.9.1",
-    "coverage>=7.10.7",
-]
-types = [
-    "types-tqdm>=4.64.0",
-]
+lint = ["mypy==1.18.2", "ruff==0.13.1", "pre-commit-hooks==6.0.0"]
+test = ["pytest>=8.4.2", "pytest-cases>=3.9.1", "coverage>=7.10.7"]
+types = ["types-tqdm>=4.64.0"]

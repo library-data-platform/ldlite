@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -20,7 +18,7 @@ def _escape_csv(field: str) -> str:
 
 
 def to_csv(
-    db: dbapi.DBAPIConnection,
+    db: "dbapi.DBAPIConnection",
     dbtype: DBType,
     table: str,
     filename: str,

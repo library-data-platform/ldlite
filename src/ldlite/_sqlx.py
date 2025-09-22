@@ -1,6 +1,5 @@
-from __future__ import annotations
-
 import secrets
+from collections.abc import Callable, Iterator
 from contextlib import closing
 from enum import Enum
 from typing import TYPE_CHECKING, cast
@@ -12,8 +11,6 @@ from psycopg import sql
 from ._database import Database
 
 if TYPE_CHECKING:
-    from collections.abc import Callable, Iterator
-
     from _typeshed import dbapi
 
     from ._database import Prefix
@@ -27,7 +24,7 @@ class DBType(Enum):
 
 
 class DBTypeDatabase(Database["dbapi.DBAPIConnection"]):
-    def __init__(self, dbtype: DBType, factory: Callable[[], dbapi.DBAPIConnection]):
+    def __init__(self, dbtype: DBType, factory: Callable[[], "dbapi.DBAPIConnection"]):
         self._dbtype = dbtype
         super().__init__(factory)
 
@@ -38,7 +35,7 @@ class DBTypeDatabase(Database["dbapi.DBAPIConnection"]):
             duckdb.CatalogException,
         )
 
-    def _rollback(self, conn: dbapi.DBAPIConnection) -> None:
+    def _rollback(self, conn: "dbapi.DBAPIConnection") -> None:
         if pgdb := as_postgres(conn, self._dbtype):
             pgdb.rollback()
 
@@ -68,7 +65,7 @@ class DBTypeDatabase(Database["dbapi.DBAPIConnection"]):
 
     def ingest_records(
         self,
-        prefix: Prefix,
+        prefix: "Prefix",
         on_processed: Callable[[], bool],
         records: Iterator[tuple[int, bytes]],
     ) -> None:
@@ -103,7 +100,7 @@ class DBTypeDatabase(Database["dbapi.DBAPIConnection"]):
 
 
 def as_duckdb(
-    db: dbapi.DBAPIConnection,
+    db: "dbapi.DBAPIConnection",
     dbtype: DBType,
 ) -> duckdb.DuckDBPyConnection | None:
     if dbtype != DBType.DUCKDB:
@@ -113,7 +110,7 @@ def as_duckdb(
 
 
 def as_postgres(
-    db: dbapi.DBAPIConnection,
+    db: "dbapi.DBAPIConnection",
     dbtype: DBType,
 ) -> psycopg.Connection | None:
     if dbtype != DBType.POSTGRES:
@@ -122,13 +119,13 @@ def as_postgres(
     return cast("psycopg.Connection", db)
 
 
-def autocommit(db: dbapi.DBAPIConnection, dbtype: DBType, enable: bool) -> None:
+def autocommit(db: "dbapi.DBAPIConnection", dbtype: DBType, enable: bool) -> None:
     if (pgdb := as_postgres(db, dbtype)) is not None:
         pgdb.rollback()
         pgdb.set_autocommit(enable)
 
 
-def server_cursor(db: dbapi.DBAPIConnection, dbtype: DBType) -> dbapi.DBAPICursor:
+def server_cursor(db: "dbapi.DBAPIConnection", dbtype: DBType) -> "dbapi.DBAPICursor":
     if (pgdb := as_postgres(db, dbtype)) is not None:
         return cast(
             "dbapi.DBAPICursor",
@@ -187,7 +184,7 @@ def encode_sql_str(dbtype: DBType, s: str | bytes) -> str:  # noqa: C901, PLR091
     return b
 
 
-def encode_sql(dbtype: DBType, data: JsonValue) -> str:
+def encode_sql(dbtype: DBType, data: "JsonValue") -> str:
     if data is None:
         return "NULL"
     if isinstance(data, str):
