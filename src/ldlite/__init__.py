@@ -36,7 +36,6 @@ Example:
 
 from __future__ import annotations
 
-import sqlite3
 import sys
 from itertools import count
 from typing import TYPE_CHECKING, NoReturn, cast
@@ -165,38 +164,6 @@ class LDLite:
         ret_db.set_session(autocommit=True)
         return ret_db
 
-    def experimental_connect_db_sqlite(
-        self,
-        filename: str | None = None,
-    ) -> sqlite3.Connection:
-        """Deprecated; this will be removed in the next major release of LDLite.
-
-        Connects to an embedded SQLite database for storing data.
-
-        The optional *filename* designates a local file containing the SQLite
-        database or where the database will be created if it does not exist.
-        If *filename* is not specified, the database will be stored in memory
-        and will not be persisted to disk.
-
-        This method returns a connection to the database which can be used to
-        submit SQL queries.
-
-        Example:
-            db = ld.connect_db_sqlite(filename='ldlite.db')
-
-        """
-        self.dbtype = DBType.SQLITE
-        fn = filename if filename is not None else "file::memory:?cache=shared"
-        self.db = sqlite3.connect(fn)
-        self._db = DBTypeDatabase(
-            DBType.SQLITE,
-            lambda: cast("dbapi.DBAPIConnection", sqlite3.connect(fn)),
-        )
-
-        db = sqlite3.connect(fn)
-        autocommit(db, self.dbtype, True)
-        return self.db
-
     def _check_folio(self) -> None:
         if self._folio is None:
             msg = "connection to folio not configured: use connect_folio()"
@@ -241,8 +208,6 @@ class LDLite:
         schema_table = table.strip().split(".")
         if len(schema_table) != 1 and len(schema_table) != 2:
             raise ValueError("invalid table name: " + table)
-        if len(schema_table) == 2 and self.dbtype == DBType.SQLITE:
-            table = schema_table[0] + "_" + schema_table[1]
         prefix = Prefix(table)
         self._db.drop_prefix(prefix)
 
@@ -291,10 +256,7 @@ class LDLite:
         """Submits a query to a FOLIO module, and transforms and stores the result.
 
         The retrieved result is stored in *table* within the reporting
-        database.  the *table* name may include a schema name;
-        however, if the database is SQLite, which does not support
-        schemas, the schema name will be added to the table name as a
-        prefix.
+        database.  the *table* name may include a schema name.
 
         The *path* parameter is the request path.
 
@@ -347,8 +309,6 @@ class LDLite:
         if self.db is None or self._db is None:
             self._check_db()
             return []
-        if len(schema_table) == 2 and self.dbtype == DBType.SQLITE:
-            table = schema_table[0] + "_" + schema_table[1]
         prefix = Prefix(table)
         if not self._quiet:
             print("ldlite: querying: " + path, file=sys.stderr)

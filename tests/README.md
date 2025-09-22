@@ -1,6 +1,6 @@
 # Test Setup
 
-Sqlite and Duckdb tests "just work".
+Duckdb tests "just work".
 Postgres tests will be skipped unless you set them up first.
 
 The postgres tests expect a database with user/password ldlite/ldlite.
