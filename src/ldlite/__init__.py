@@ -42,8 +42,8 @@ import psycopg
 from httpx_folio.auth import FolioParams
 from tqdm import tqdm
 
-from . import _database as _db
 from ._csv import to_csv
+from ._database import Database, Prefix
 from ._folio import FolioClient
 from ._jsonx import Attr, transform_json
 from ._select import select
@@ -77,7 +77,7 @@ class LDLite:
         self._quiet = False
         self.dbtype: DBType = DBType.UNDEFINED
         self.db: dbapi.DBAPIConnection | None = None
-        self._db: _db.Database | None = None
+        self._db: Database | None = None
         self._folio: FolioClient | None = None
         self.page_size = 1000
         self._okapi_timeout = 60
@@ -198,10 +198,7 @@ class LDLite:
         if self.db is None or self._db is None:
             self._check_db()
             return
-        schema_table = table.strip().split(".")
-        if len(schema_table) != 1 and len(schema_table) != 2:
-            raise ValueError("invalid table name: " + table)
-        prefix = _db.Prefix(table)
+        prefix = Prefix(table)
         self._db.drop_prefix(prefix)
 
     def set_folio_max_retries(self, max_retries: int) -> None:
@@ -291,9 +288,6 @@ class LDLite:
                 "use json_depth=0 to disable JSON transformation"
             )
             raise ValueError(msg)
-        schema_table = table.split(".")
-        if len(schema_table) != 1 and len(schema_table) != 2:
-            raise ValueError("invalid table name: " + table)
         if json_depth is None or json_depth < 0 or json_depth > 4:
             raise ValueError("invalid value for json_depth: " + str(json_depth))
         if self._folio is None:
@@ -302,7 +296,7 @@ class LDLite:
         if self.db is None or self._db is None:
             self._check_db()
             return []
-        prefix = _db.Prefix(table)
+        prefix = Prefix(table)
         if not self._quiet:
             print("ldlite: querying: " + path, file=sys.stderr)
         try:

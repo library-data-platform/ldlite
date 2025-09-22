@@ -11,9 +11,13 @@ if TYPE_CHECKING:
 
 
 class Prefix:
-    def __init__(self, table: str):
+    def __init__(self, prefix: str):
         self._schema: str | None = None
-        sandt = table.split(".")
+        sandt = prefix.split(".")
+        if len(sandt) > 2:
+            msg = f"Expected one or two identifiers but got {prefix}"
+            raise ValueError(msg)
+
         if len(sandt) == 1:
             (self._prefix,) = sandt
         else:
@@ -43,29 +47,16 @@ class Prefix:
 
 class Database(ABC):
     @abstractmethod
-    def drop_prefix(
-        self,
-        prefix: Prefix,
-    ) -> None: ...
+    def drop_prefix(self, prefix: Prefix) -> None: ...
 
     @abstractmethod
-    def drop_raw_table(
-        self,
-        prefix: Prefix,
-    ) -> None: ...
+    def drop_raw_table(self, prefix: Prefix) -> None: ...
 
     @abstractmethod
-    def drop_extracted_tables(
-        self,
-        prefix: Prefix,
-    ) -> None: ...
+    def drop_extracted_tables(self, prefix: Prefix) -> None: ...
 
     @abstractmethod
-    def ingest_records(
-        self,
-        prefix: Prefix,
-        records: Iterator[bytes],
-    ) -> int: ...
+    def ingest_records(self, prefix: Prefix, records: Iterator[bytes]) -> int: ...
 
 
 DB = TypeVar("DB", bound="duckdb.DuckDBPyConnection | psycopg.Connection")

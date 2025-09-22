@@ -38,12 +38,6 @@ class FolioClient:
         page_size: int,
         query: QueryType | None = None,
     ) -> tuple[int, Iterator[bytes]]:
-        """Iterates all records for a given path.
-
-        Returns:
-            A tuple of the autoincrementing key + the json for each record.
-            The first result will be the total record count.
-        """
         is_srs = path.lower() in _SOURCESTATS
         # this is Java's max size of int because we want all the source records
         params = QueryParams(query, 2_147_483_647 - 1 if is_srs else page_size)

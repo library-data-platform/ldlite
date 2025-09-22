@@ -35,8 +35,10 @@ class DuckDbDatabase(TypedDatabase[duckdb.DuckDBPyConnection]):
                 )
                 .as_string()
             )
-            with conn.cursor() as cur:
+            # duckdb has better performance bulk inserting in a transaction
+            with conn.begin() as tx, tx.cursor() as cur:
                 for r in records:
                     cur.execute(insert_sql, (next(pkey), r.decode()))
+                tx.commit()
 
         return next(pkey) - 1
