@@ -41,12 +41,43 @@ class Prefix:
         return self.identifier(f"{self._prefix}_jtable")
 
 
+class Database(ABC):
+    @abstractmethod
+    def drop_prefix(
+        self,
+        prefix: Prefix,
+    ) -> None: ...
+
+    @abstractmethod
+    def drop_raw_table(
+        self,
+        prefix: Prefix,
+    ) -> None: ...
+
+    @abstractmethod
+    def drop_extracted_tables(
+        self,
+        prefix: Prefix,
+    ) -> None: ...
+
+    @abstractmethod
+    def ingest_records(
+        self,
+        prefix: Prefix,
+        on_processed: Callable[[], bool],
+        records: Iterator[tuple[int, bytes]],
+    ) -> None: ...
+
+
 DB = TypeVar("DB", bound="duckdb.DuckDBPyConnection | psycopg.Connection")
 
 
-class Database(ABC, Generic[DB]):
+class TypedDatabase(Database, Generic[DB]):
     def __init__(self, conn_factory: Callable[[], DB]):
         self._conn_factory = conn_factory
+
+    @abstractmethod
+    def _rollback(self, conn: DB) -> None: ...
 
     def drop_prefix(
         self,
@@ -85,6 +116,7 @@ class Database(ABC, Generic[DB]):
             self._drop_extracted_tables(conn, prefix)
             conn.commit()
 
+    @property
     @abstractmethod
     def _missing_table_error(self) -> type[Exception]: ...
     def _drop_extracted_tables(
@@ -101,7 +133,7 @@ class Database(ABC, Generic[DB]):
                     .as_string(),
                 )
             except self._missing_table_error:
-                conn.rollback()
+                self._rollback(conn)
             else:
                 tables.extend(cur.fetchall())
 
@@ -113,7 +145,7 @@ class Database(ABC, Generic[DB]):
                     .as_string(),
                 )
             except self._missing_table_error:
-                conn.rollback()
+                self._rollback(conn)
             else:
                 tables.extend(cur.fetchall())
 

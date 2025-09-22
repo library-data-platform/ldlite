@@ -43,14 +43,13 @@ import psycopg
 from httpx_folio.auth import FolioParams
 from tqdm import tqdm
 
+from . import _database as _db
 from ._csv import to_csv
-from ._database import Prefix
 from ._folio import FolioClient
 from ._jsonx import Attr, transform_json
 from ._select import select
 from ._sqlx import (
     DBType,
-    DBTypeDatabase,
     as_postgres,
     autocommit,
     sqlid,
@@ -77,7 +76,7 @@ class LDLite:
         self._quiet = False
         self.dbtype: DBType = DBType.UNDEFINED
         self.db: dbapi.DBAPIConnection | None = None
-        self._db: DBTypeDatabase | None = None
+        self._db: _db.Database | None = None
         self._folio: FolioClient | None = None
         self.page_size = 1000
         self._okapi_timeout = 60
@@ -124,14 +123,13 @@ class LDLite:
             db = ld.connect_db_duckdb(filename='ldlite.db')
 
         """
+        from ._database.duckdb import DuckDbDatabase  # noqa: PLC0415
+
         self.dbtype = DBType.DUCKDB
         fn = filename if filename is not None else ":memory:"
         db = duckdb.connect(database=fn)
         self.db = cast("dbapi.DBAPIConnection", db.cursor())
-        self._db = DBTypeDatabase(
-            DBType.DUCKDB,
-            lambda: cast("dbapi.DBAPIConnection", db.cursor()),
-        )
+        self._db = DuckDbDatabase(lambda: db.cursor())
 
         return db.cursor()
 
@@ -146,13 +144,12 @@ class LDLite:
             db = ld.connect_db_postgresql(dsn='dbname=ld host=localhost user=ldlite')
 
         """
+        from ._database.postgres import PostgresDatabase  # noqa: PLC0415
+
         self.dbtype = DBType.POSTGRES
         db = psycopg.connect(dsn)
         self.db = cast("dbapi.DBAPIConnection", db)
-        self._db = DBTypeDatabase(
-            DBType.POSTGRES,
-            lambda: cast("dbapi.DBAPIConnection", psycopg.connect(dsn)),
-        )
+        self._db = PostgresDatabase(lambda: psycopg.connect(dsn))
 
         ret_db = psycopg.connect(dsn)
         ret_db.rollback()
@@ -203,7 +200,7 @@ class LDLite:
         schema_table = table.strip().split(".")
         if len(schema_table) != 1 and len(schema_table) != 2:
             raise ValueError("invalid table name: " + table)
-        prefix = Prefix(table)
+        prefix = _db.Prefix(table)
         self._db.drop_prefix(prefix)
 
     def set_folio_max_retries(self, max_retries: int) -> None:
@@ -304,7 +301,7 @@ class LDLite:
         if self.db is None or self._db is None:
             self._check_db()
             return []
-        prefix = Prefix(table)
+        prefix = _db.Prefix(table)
         if not self._quiet:
             print("ldlite: querying: " + path, file=sys.stderr)
         try:
