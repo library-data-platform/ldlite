@@ -6,9 +6,8 @@ from typing import TYPE_CHECKING, Any, Generic, TypeVar, cast
 from psycopg import sql
 
 if TYPE_CHECKING:
-    from _typeshed import dbapi
-
-DB = TypeVar("DB", bound="dbapi.DBAPIConnection")
+    import duckdb
+    import psycopg
 
 
 class Prefix:
@@ -42,12 +41,12 @@ class Prefix:
         return self.identifier(f"{self._prefix}_jtable")
 
 
+DB = TypeVar("DB", bound="duckdb.DuckDBPyConnection | psycopg.Connection")
+
+
 class Database(ABC, Generic[DB]):
     def __init__(self, conn_factory: Callable[[], DB]):
         self._conn_factory = conn_factory
-
-    @abstractmethod
-    def _rollback(self, conn: DB) -> None: ...
 
     def drop_prefix(
         self,
@@ -86,9 +85,8 @@ class Database(ABC, Generic[DB]):
             self._drop_extracted_tables(conn, prefix)
             conn.commit()
 
-    @property
     @abstractmethod
-    def _missing_table_error(self) -> tuple[type[Exception], ...]: ...
+    def _missing_table_error(self) -> type[Exception]: ...
     def _drop_extracted_tables(
         self,
         conn: DB,
@@ -103,7 +101,7 @@ class Database(ABC, Generic[DB]):
                     .as_string(),
                 )
             except self._missing_table_error:
-                self._rollback(conn)
+                conn.rollback()
             else:
                 tables.extend(cur.fetchall())
 
@@ -115,7 +113,7 @@ class Database(ABC, Generic[DB]):
                     .as_string(),
                 )
             except self._missing_table_error:
-                self._rollback(conn)
+                conn.rollback()
             else:
                 tables.extend(cur.fetchall())
 
@@ -139,9 +137,6 @@ class Database(ABC, Generic[DB]):
 
     @property
     @abstractmethod
-    def _truncate_raw_table_sql(self) -> sql.SQL: ...
-    @property
-    @abstractmethod
     def _create_raw_table_sql(self) -> sql.SQL: ...
     def _prepare_raw_table(
         self,
@@ -163,25 +158,10 @@ class Database(ABC, Generic[DB]):
                 ).as_string(),
             )
 
-    @property
     @abstractmethod
-    def _insert_record_sql(self) -> sql.SQL: ...
     def ingest_records(
         self,
         prefix: Prefix,
         on_processed: Callable[[], bool],
         records: Iterator[tuple[int, bytes]],
-    ) -> None:
-        with closing(self._conn_factory()) as conn:
-            self._prepare_raw_table(conn, prefix)
-
-            insert_sql = self._insert_record_sql.format(
-                table=prefix.raw_table_name,
-            ).as_string()
-            with closing(conn.cursor()) as cur:
-                for pkey, r in records:
-                    cur.execute(insert_sql, (pkey, r.decode()))
-                    if not on_processed():
-                        break
-
-            conn.commit()
+    ) -> None: ...
