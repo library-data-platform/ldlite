@@ -54,14 +54,22 @@ def test_endtoend(
     assert actual == expected
 
 
-def test_endtoend_srs(folio_params: tuple[bool, FolioParams]) -> None:
+@parametrize(
+    srs=[
+        "/source-storage/records",
+        "/source-storage/stream/records",
+        "/source-storage/source-records",
+        "/source-storage/stream/source-records",
+    ],
+)
+def test_endtoend_srs(folio_params: tuple[bool, FolioParams], srs: str) -> None:
     from ldlite import LDLite as uut
 
     ld = uut()
     db = ld.connect_db()
 
     ld.connect_folio(*astuple(folio_params[1]))
-    ld.query(table="test", path="/source-storage/source-records", limit=10)
+    ld.query(table="test", path=srs, limit=10)
 
     db.execute("SELECT COUNT(DISTINCT COLUMNS(*)) FROM test__t;")
     actual = cast("tuple[int]", db.fetchone())[0]

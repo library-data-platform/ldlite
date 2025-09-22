@@ -16,6 +16,21 @@ from httpx_folio.query import QueryParams, QueryType
 if TYPE_CHECKING:
     from collections.abc import Iterator
 
+_SOURCESTATS = {
+    "/source-storage/records": "/source-storage/records",
+    "/source-storage/stream/records": "/source-storage/records",
+    "/source-storage/source-records": "/source-storage/source-records",
+    "/source-storage/stream/source-records": "/source-storage/source-records",
+    # This endpoint is in the docs but not actually in FOLIO?
+    # "/source-storage/stream/marc-record-identifiers": "???",
+}
+_SOURCESTREAM = {
+    "/source-storage/records": "/source-storage/stream/records",
+    "/source-storage/stream/records": "/source-storage/stream/records",
+    "/source-storage/source-records": "/source-storage/stream/source-records",
+    "/source-storage/stream/source-records": "/source-storage/stream/source-records",
+}
+
 
 class FolioClient:
     def __init__(self, params: FolioParams):
@@ -28,14 +43,14 @@ class FolioClient:
         retries: int,
         page_size: int,
         query: QueryType | None = None,
-    ) -> Iterator[tuple[int, str | bytes]]:
+    ) -> Iterator[tuple[int, bytes]]:
         """Iterates all records for a given path.
 
         Returns:
             A tuple of the autoincrementing key + the json for each record.
             The first result will be the total record count.
         """
-        is_srs = path.startswith("/source-storage")
+        is_srs = path.lower() in _SOURCESTATS
         # this is Java's max size of int because we want all the source records
         params = QueryParams(query, 2_147_483_647 - 1 if is_srs else page_size)
 
@@ -46,9 +61,7 @@ class FolioClient:
             ),
         ) as client:
             res = client.get(
-                # Hardcode the source storage endpoint that returns stats
-                # even if the user passes in the stream endpoint
-                path if not is_srs else "/source-storage/source-records",
+                path if not is_srs else _SOURCESTATS[path.lower()],
                 params=params.stats(),
             )
             res.raise_for_status()
@@ -61,11 +74,10 @@ class FolioClient:
 
             pkey = count(start=1)
             if is_srs:
-                # this is a more stable endpoint for srs
-                # we want it to be transparent so if the user wants srs we just use it
+                # streaming is a more stable endpoint for source records
                 with client.stream(
                     "GET",
-                    "/source-storage/stream/source-records",
+                    _SOURCESTREAM[path.lower()],
                     params=params.normalized(),
                 ) as res:
                     res.raise_for_status()
@@ -76,7 +88,7 @@ class FolioClient:
                         record += f
                         if len(f) == 0 or f[-1] != "}":
                             continue
-                        yield (next(pkey), record)
+                        yield (next(pkey), orjson.dumps(orjson.Fragment(record)))
                         record = ""
                     return
 

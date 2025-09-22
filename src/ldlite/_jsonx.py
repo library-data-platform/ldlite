@@ -6,7 +6,7 @@ import uuid
 from typing import TYPE_CHECKING, Literal, Union
 
 import duckdb
-import psycopg2
+import psycopg
 from tqdm import tqdm
 
 from ._camelcase import decode_camel_case
@@ -86,87 +86,8 @@ class Attr:
         )
 
 
-def _old_jtable(table: str) -> str:
-    return table + "_jtable"
-
-
 def _tcatalog(table: str) -> str:
     return table + "__tcatalog"
-
-
-# noinspection DuplicatedCode
-def _old_drop_json_tables(db: dbapi.DBAPIConnection, table: str) -> None:
-    jtable_sql = sqlid(_old_jtable(table))
-    cur = db.cursor()
-    try:
-        cur.execute("SELECT table_name FROM " + jtable_sql)
-        rows = list(cur.fetchall())
-        for row in rows:
-            t = row[0]
-            cur2 = db.cursor()
-            try:
-                cur2.execute("DROP TABLE " + sqlid(t))
-            except (psycopg2.Error, duckdb.CatalogException, sqlite3.OperationalError):
-                continue
-            finally:
-                cur2.close()
-    except (
-        psycopg2.Error,
-        sqlite3.OperationalError,
-        duckdb.CatalogException,
-    ):
-        pass
-    finally:
-        cur.close()
-    cur = db.cursor()
-    try:
-        cur.execute("DROP TABLE " + jtable_sql)
-    except (
-        psycopg2.Error,
-        duckdb.CatalogException,
-        sqlite3.OperationalError,
-    ):
-        pass
-    finally:
-        cur.close()
-
-
-# noinspection DuplicatedCode
-def drop_json_tables(db: dbapi.DBAPIConnection, table: str) -> None:
-    tcatalog_sql = sqlid(_tcatalog(table))
-    cur = db.cursor()
-    try:
-        cur.execute("SELECT table_name FROM " + tcatalog_sql)
-        rows = list(cur.fetchall())
-        for row in rows:
-            t = row[0]
-            cur2 = db.cursor()
-            try:
-                cur2.execute("DROP TABLE " + sqlid(t))
-            except (psycopg2.Error, duckdb.CatalogException, sqlite3.OperationalError):
-                continue
-            finally:
-                cur2.close()
-    except (
-        psycopg2.Error,
-        duckdb.CatalogException,
-        sqlite3.OperationalError,
-    ):
-        pass
-    finally:
-        cur.close()
-    cur = db.cursor()
-    try:
-        cur.execute("DROP TABLE " + tcatalog_sql)
-    except (
-        psycopg2.Error,
-        duckdb.CatalogException,
-        sqlite3.OperationalError,
-    ):
-        pass
-    finally:
-        cur.close()
-    _old_drop_json_tables(db, table)
 
 
 def _table_name(parents: list[tuple[int, str]]) -> str:
@@ -361,7 +282,7 @@ def _transform_array_data(  # noqa: PLR0913
         q += "," + str(i + 1) + "," + encode_sql(dbtype, value) + ")"
         try:
             cur.execute(q)
-        except (RuntimeError, psycopg2.Error) as e:
+        except (RuntimeError, psycopg.Error) as e:
             raise RuntimeError("error executing SQL: " + q) from e
         row_ids[table] += 1
 
@@ -477,7 +398,7 @@ def _transform_data(  # noqa: PLR0913
     q += ")"
     try:
         cur.execute(q)
-    except (RuntimeError, psycopg2.Error) as e:
+    except (RuntimeError, psycopg.Error) as e:
         raise RuntimeError("error executing SQL: " + q) from e
     row_ids[table] += 1
 
@@ -656,7 +577,7 @@ def transform_json(  # noqa: C901, PLR0912, PLR0913, PLR0915
             pbar.close()
     except (
         RuntimeError,
-        psycopg2.Error,
+        psycopg.Error,
         sqlite3.OperationalError,
         duckdb.CatalogException,
     ) as e:
@@ -684,7 +605,7 @@ def transform_json(  # noqa: C901, PLR0912, PLR0913, PLR0915
             )
     except (
         RuntimeError,
-        psycopg2.Error,
+        psycopg.Error,
         sqlite3.OperationalError,
         duckdb.CatalogException,
     ) as e:

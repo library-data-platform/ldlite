@@ -17,6 +17,22 @@ Please see [MIGRATING.md](./MIGRATING.md) for information on breaking changes.
 
 ### Removed
 
+## [3.2.0] - September 2025
+
+### Added
+
+- Source Storage endpoints now stream only if streaming is available.
+- Connections returned from the LDLite.connect_db methods are now isolated from the ones used internally.
+
+### Changed
+
+- psycopg3 is now used for internal operations. LDLite.connect_db_postgres will return a psycopg3 connection instead of psycopg2 in the next major release.
+- psycopg2 is now installed as the binary version.
+- Refactored internal table management to be safer and more resilient.
+- Ingesting data into postgres now uses COPY FROM which significantly improves the download performance.
+
+### Removed
+
 ## [3.1.4] - September 2025
 
 ### Fixed
