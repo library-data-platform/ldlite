@@ -56,6 +56,7 @@ def test_drop_tables(
     dsn = pg_dsn(tc.db)
     ld.connect_folio("https://doesnt.matter", "", "", "")
     ld.connect_db_postgresql(dsn)
+    ld.drop_tables(tc.drop)
 
     for prefix in tc.values:
         ld.query(table=prefix, path="/patched", keep_raw=tc.keep_raw)
