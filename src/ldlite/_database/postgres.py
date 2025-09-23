@@ -40,7 +40,7 @@ class PostgresDatabase(TypedDatabase[psycopg.Connection]):
                 cur.copy(
                     sql.SQL(
                         "COPY {table} (__id, jsonb) FROM STDIN (FORMAT BINARY)",
-                    ).format(table=prefix.raw_table_name),
+                    ).format(table=prefix.raw_table_identifier),
                 ) as copy,
             ):
                 # postgres jsonb is always version 1

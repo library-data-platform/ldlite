@@ -33,7 +33,31 @@ class LoadHistoryTestCases:
             },
             queries={"prefix": [query]},
             expected_loads={
-                "public.prefix": (query, 2),
+                "prefix": (query, 2),
+            },
+        )
+
+    def case_schema_load(self) -> LoadHistoryCase:
+        return LoadHistoryCase(
+            values={
+                "schema.prefix": [
+                    {
+                        "purchaseOrders": [
+                            {
+                                "id": "b096504a-3d54-4664-9bf5-1b872466fd66",
+                                "value": "value",
+                            },
+                            {
+                                "id": "b096504a-9999-4664-9bf5-1b872466fd66",
+                                "value": "value-2",
+                            },
+                        ],
+                    },
+                ],
+            },
+            queries={"schema.prefix": [None]},
+            expected_loads={
+                "schema.prefix": (None, 2),
             },
         )
 
@@ -69,6 +93,6 @@ class LoadHistoryTestCases:
             },
             queries={"prefix": [None, "a query"]},
             expected_loads={
-                "public.prefix": ("a query", 2),
+                "prefix": ("a query", 2),
             },
         )

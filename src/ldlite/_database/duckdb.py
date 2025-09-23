@@ -31,7 +31,7 @@ class DuckDbDatabase(TypedDatabase[duckdb.DuckDBPyConnection]):
             insert_sql = (
                 sql.SQL("INSERT INTO {table} VALUES(?, ?);")
                 .format(
-                    table=prefix.raw_table_name,
+                    table=prefix.raw_table_identifier,
                 )
                 .as_string()
             )
