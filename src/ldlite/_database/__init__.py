@@ -91,13 +91,13 @@ class TypedDatabase(Database, Generic[DB]):
             cur.execute('CREATE SCHEMA IF NOT EXISTS "ldlite_system";')
             cur.execute("""
 CREATE TABLE IF NOT EXISTS "ldlite_system"."load_history" (
-    "table_name" TEXT
+    "table_name" TEXT UNIQUE
     ,"query" TEXT
-    ,"start_utc" TIMESTAMPTZ
-    ,"download_complete_utc" TIMESTAMPTZ
-    ,"scan_complete_utc" TIMESTAMPTZ
-    ,"transformation_complete_utc" TIMESTAMPTZ
-    ,"index_complete_utc" TIMESTAMPTZ
+    ,"start_utc" TIMESTAMP
+    ,"download_complete_utc" TIMESTAMP
+    ,"scan_complete_utc" TIMESTAMP
+    ,"transformation_complete_utc" TIMESTAMP
+    ,"index_complete_utc" TIMESTAMP
     ,"row_count" INTEGER
 );""")
             conn.commit()
@@ -223,8 +223,17 @@ CREATE TABLE IF NOT EXISTS "ldlite_system"."load_history" (
     def record_history(self, history: LoadHistory) -> None:
         with closing(self._conn_factory()) as conn, conn.cursor() as cur:
             cur.execute(
-                'INSERT INTO "ldlite_system"."load_history" '
-                "VALUES($1,$2,$3,$4,$5,$6,$7,$8)",
+                """
+INSERT INTO "ldlite_system"."load_history" VALUES($1,$2,$3,$4,$5,$6,$7,$8)
+ON CONFLICT ("table_name") DO UPDATE SET
+    "query" = EXCLUDED."query"
+    ,"start_utc" = EXCLUDED."start_utc"
+    ,"download_complete_utc" = EXCLUDED."download_complete_utc"
+    ,"scan_complete_utc" = EXCLUDED."scan_complete_utc"
+    ,"transformation_complete_utc" = EXCLUDED."transformation_complete_utc"
+    ,"index_complete_utc" = EXCLUDED."index_complete_utc"
+    ,"row_count" = EXCLUDED."row_count"
+""",
                 (
                     history.table_name.load_history_key,
                     history.query,
