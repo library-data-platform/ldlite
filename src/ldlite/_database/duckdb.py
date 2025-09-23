@@ -8,12 +8,9 @@ from . import Prefix, TypedDatabase
 
 
 class DuckDbDatabase(TypedDatabase[duckdb.DuckDBPyConnection]):
-    def _rollback(self, conn: duckdb.DuckDBPyConnection) -> None:
-        pass
-
     @property
-    def _missing_table_error(self) -> type[Exception]:
-        return duckdb.CatalogException
+    def _default_schema(self) -> str:
+        return "main"
 
     @property
     def _create_raw_table_sql(self) -> sql.SQL:
@@ -31,7 +28,7 @@ class DuckDbDatabase(TypedDatabase[duckdb.DuckDBPyConnection]):
             insert_sql = (
                 sql.SQL("INSERT INTO {table} VALUES(?, ?);")
                 .format(
-                    table=prefix.raw_table_name,
+                    table=prefix.raw_table_identifier,
                 )
                 .as_string()
             )

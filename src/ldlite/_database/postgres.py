@@ -13,12 +13,9 @@ class PostgresDatabase(TypedDatabase[psycopg.Connection]):
         # same sql between duckdb and postgres
         super().__init__(lambda: psycopg.connect(dsn, cursor_factory=psycopg.RawCursor))
 
-    def _rollback(self, conn: psycopg.Connection) -> None:
-        conn.rollback()
-
     @property
-    def _missing_table_error(self) -> type[Exception]:
-        return psycopg.errors.UndefinedTable
+    def _default_schema(self) -> str:
+        return "public"
 
     @property
     def _create_raw_table_sql(self) -> sql.SQL:
@@ -40,7 +37,7 @@ class PostgresDatabase(TypedDatabase[psycopg.Connection]):
                 cur.copy(
                     sql.SQL(
                         "COPY {table} (__id, jsonb) FROM STDIN (FORMAT BINARY)",
-                    ).format(table=prefix.raw_table_name),
+                    ).format(table=prefix.raw_table_identifier),
                 ) as copy,
             ):
                 # postgres jsonb is always version 1

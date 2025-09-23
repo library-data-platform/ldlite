@@ -15,7 +15,7 @@ if TYPE_CHECKING:
 
 class Prefix:
     def __init__(self, prefix: str):
-        self._schema: str | None = None
+        self.schema: str | None = None
         sandt = prefix.split(".")
         if len(sandt) > 2:
             msg = f"Expected one or two identifiers but got {prefix}"
@@ -24,32 +24,43 @@ class Prefix:
         if len(sandt) == 1:
             (self._prefix,) = sandt
         else:
-            (self._schema, self._prefix) = sandt
-
-    @property
-    def schema_name(self) -> sql.Identifier | None:
-        return None if self._schema is None else sql.Identifier(self._schema)
+            (self.schema, self._prefix) = sandt
 
     def _identifier(self, table: str) -> sql.Identifier:
-        if self._schema is None:
+        if self.schema is None:
             return sql.Identifier(table)
-        return sql.Identifier(self._schema, table)
+        return sql.Identifier(self.schema, table)
 
     @property
-    def load_history_key(self) -> str:
-        return (self._schema or "public") + "." + self._prefix
+    def schema_identifier(self) -> sql.Identifier | None:
+        return None if self.schema is None else sql.Identifier(self.schema)
 
     @property
-    def raw_table_name(self) -> sql.Identifier:
+    def raw_table_identifier(self) -> sql.Identifier:
         return self._identifier(self._prefix)
 
     @property
-    def catalog_table_name(self) -> sql.Identifier:
-        return self._identifier(f"{self._prefix}__tcatalog")
+    def catalog_table_name(self) -> str:
+        return f"{self._prefix}__tcatalog"
 
     @property
-    def legacy_jtable(self) -> sql.Identifier:
-        return self._identifier(f"{self._prefix}_jtable")
+    def catalog_table_identifier(self) -> sql.Identifier:
+        return self._identifier(self.catalog_table_name)
+
+    @property
+    def legacy_jtable_name(self) -> str:
+        return f"{self._prefix}_jtable"
+
+    @property
+    def legacy_jtable_identifier(self) -> sql.Identifier:
+        return self._identifier(self.legacy_jtable_name)
+
+    @property
+    def load_history_key(self) -> str:
+        if self.schema is None:
+            return self._prefix
+
+        return self.schema + "." + self._prefix
 
 
 @dataclass(frozen=True)
@@ -102,8 +113,9 @@ CREATE TABLE IF NOT EXISTS "ldlite_system"."load_history" (
 );""")
             conn.commit()
 
+    @property
     @abstractmethod
-    def _rollback(self, conn: DB) -> None: ...
+    def _default_schema(self) -> str: ...
 
     def drop_prefix(
         self,
@@ -134,7 +146,7 @@ CREATE TABLE IF NOT EXISTS "ldlite_system"."load_history" (
         with closing(conn.cursor()) as cur:
             cur.execute(
                 sql.SQL("DROP TABLE IF EXISTS {table};")
-                .format(table=prefix.raw_table_name)
+                .format(table=prefix.raw_table_identifier)
                 .as_string(),
             )
 
@@ -146,9 +158,6 @@ CREATE TABLE IF NOT EXISTS "ldlite_system"."load_history" (
             self._drop_extracted_tables(conn, prefix)
             conn.commit()
 
-    @property
-    @abstractmethod
-    def _missing_table_error(self) -> type[Exception]: ...
     def _drop_extracted_tables(
         self,
         conn: DB,
@@ -156,28 +165,32 @@ CREATE TABLE IF NOT EXISTS "ldlite_system"."load_history" (
     ) -> None:
         tables: list[Sequence[Sequence[Any]]] = []
         with closing(conn.cursor()) as cur:
-            try:
-                cur.execute(
-                    sql.SQL("SELECT table_name FROM {catalog};")
-                    .format(catalog=prefix.catalog_table_name)
-                    .as_string(),
-                )
-            except self._missing_table_error:
-                self._rollback(conn)
-            else:
-                tables.extend(cur.fetchall())
+            cur.execute(
+                """
+SELECT table_name FROM information_schema.tables
+WHERE table_schema = $1 and table_name IN ($2, $3);""",
+                (
+                    prefix.schema or self._default_schema,
+                    prefix.catalog_table_name,
+                    prefix.legacy_jtable_name,
+                ),
+            )
+            for (tname,) in cur.fetchall():
+                if tname == prefix.catalog_table_name:
+                    cur.execute(
+                        sql.SQL("SELECT table_name FROM {catalog};")
+                        .format(catalog=prefix.catalog_table_identifier)
+                        .as_string(),
+                    )
+                    tables.extend(cur.fetchall())
 
-        with closing(conn.cursor()) as cur:
-            try:
-                cur.execute(
-                    sql.SQL("SELECT table_name FROM {catalog};")
-                    .format(catalog=prefix.legacy_jtable)
-                    .as_string(),
-                )
-            except self._missing_table_error:
-                self._rollback(conn)
-            else:
-                tables.extend(cur.fetchall())
+                if tname == prefix.legacy_jtable_name:
+                    cur.execute(
+                        sql.SQL("SELECT table_name FROM {catalog};")
+                        .format(catalog=prefix.legacy_jtable_identifier)
+                        .as_string(),
+                    )
+                    tables.extend(cur.fetchall())
 
         with closing(conn.cursor()) as cur:
             for (et,) in tables:
@@ -188,12 +201,12 @@ CREATE TABLE IF NOT EXISTS "ldlite_system"."load_history" (
                 )
             cur.execute(
                 sql.SQL("DROP TABLE IF EXISTS {catalog};")
-                .format(catalog=prefix.catalog_table_name)
+                .format(catalog=prefix.catalog_table_identifier)
                 .as_string(),
             )
             cur.execute(
                 sql.SQL("DROP TABLE IF EXISTS {catalog};")
-                .format(catalog=prefix.legacy_jtable)
+                .format(catalog=prefix.legacy_jtable_identifier)
                 .as_string(),
             )
 
@@ -206,17 +219,17 @@ CREATE TABLE IF NOT EXISTS "ldlite_system"."load_history" (
         prefix: Prefix,
     ) -> None:
         with closing(conn.cursor()) as cur:
-            if prefix.schema_name is not None:
+            if prefix.schema_identifier is not None:
                 cur.execute(
                     sql.SQL("CREATE SCHEMA IF NOT EXISTS {schema};")
-                    .format(schema=prefix.schema_name)
+                    .format(schema=prefix.schema_identifier)
                     .as_string(),
                 )
         self._drop_raw_table(conn, prefix)
         with closing(conn.cursor()) as cur:
             cur.execute(
                 self._create_raw_table_sql.format(
-                    table=prefix.raw_table_name,
+                    table=prefix.raw_table_identifier,
                 ).as_string(),
             )
 

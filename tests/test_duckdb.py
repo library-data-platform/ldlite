@@ -29,6 +29,7 @@ def test_drop_tables(
     dsn = f":memory:{tc.db}"
     ld.connect_folio("https://doesnt.matter", "", "", "")
     ld.connect_db(dsn)
+    ld.drop_tables(tc.drop)
 
     for prefix in tc.values:
         ld.query(table=prefix, path="/patched", keep_raw=tc.keep_raw)
