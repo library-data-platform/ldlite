@@ -35,7 +35,13 @@ def test_drop_tables(
     ld.drop_tables(tc.drop)
 
     with duckdb.connect(dsn) as res:
-        res.execute("SHOW TABLES;")
+        res.execute(
+            """
+                SELECT table_name
+                FROM information_schema.tables
+                WHERE table_schema='main'
+                """,
+        )
         assert sorted([r[0] for r in res.fetchall()]) == sorted(tc.expected_tables)
 
         res.execute('SELECT COUNT(*) FROM "ldlite_system"."load_history"')
@@ -75,7 +81,13 @@ def test_query(
         )
 
     with duckdb.connect(dsn) as res:
-        res.execute("SHOW TABLES;")
+        res.execute(
+            """
+                SELECT table_name
+                FROM information_schema.tables
+                WHERE table_schema='main'
+                """,
+        )
         assert sorted([r[0] for r in res.fetchall()]) == sorted(tc.expected_tables)
 
     for table, (cols, values) in tc.expected_values.items():
