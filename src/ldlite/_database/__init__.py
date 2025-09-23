@@ -27,22 +27,26 @@ class Prefix:
     def schema_name(self) -> sql.Identifier | None:
         return None if self._schema is None else sql.Identifier(self._schema)
 
-    def identifier(self, table: str) -> sql.Identifier:
+    def _identifier(self, table: str) -> sql.Identifier:
         if self._schema is None:
             return sql.Identifier(table)
         return sql.Identifier(self._schema, table)
 
     @property
+    def load_history_key(self) -> str:
+        return (self._schema or "public") + "." + self._prefix
+
+    @property
     def raw_table_name(self) -> sql.Identifier:
-        return self.identifier(self._prefix)
+        return self._identifier(self._prefix)
 
     @property
     def catalog_table_name(self) -> sql.Identifier:
-        return self.identifier(f"{self._prefix}__tcatalog")
+        return self._identifier(f"{self._prefix}__tcatalog")
 
     @property
     def legacy_jtable(self) -> sql.Identifier:
-        return self.identifier(f"{self._prefix}_jtable")
+        return self._identifier(f"{self._prefix}_jtable")
 
 
 class Database(ABC):
@@ -65,6 +69,19 @@ DB = TypeVar("DB", bound="duckdb.DuckDBPyConnection | psycopg.Connection")
 class TypedDatabase(Database, Generic[DB]):
     def __init__(self, conn_factory: Callable[[], DB]):
         self._conn_factory = conn_factory
+        with closing(self._conn_factory()) as conn, conn.cursor() as cur:
+            cur.execute('CREATE SCHEMA IF NOT EXISTS "ldlite_system";')
+            cur.execute("""
+CREATE TABLE IF NOT EXISTS "ldlite_system"."load_history" (
+    "table" TEXT
+    ,"query" TEXT
+    ,"start_utc" TIMESTAMPTZ
+    ,"download_complete_utc" TIMESTAMPTZ
+    ,"scan_complete_utc" TIMESTAMPTZ
+    ,"transformation_complete_utc" TIMESTAMPTZ
+    ,"row_count" INTEGER
+);""")
+            conn.commit()
 
     @abstractmethod
     def _rollback(self, conn: DB) -> None: ...
@@ -76,6 +93,10 @@ class TypedDatabase(Database, Generic[DB]):
         with closing(self._conn_factory()) as conn:
             self._drop_extracted_tables(conn, prefix)
             self._drop_raw_table(conn, prefix)
+            conn.execute(
+                'DELETE FROM "ldlite_system"."load_history" WHERE table = ?',
+                prefix.load_history_key,
+            )
             conn.commit()
 
     def drop_raw_table(
