@@ -113,9 +113,6 @@ CREATE TABLE IF NOT EXISTS "ldlite_system"."load_history" (
 );""")
             conn.commit()
 
-    @abstractmethod
-    def _rollback(self, conn: DB) -> None: ...
-
     @property
     @abstractmethod
     def _default_schema(self) -> str: ...
@@ -161,9 +158,6 @@ CREATE TABLE IF NOT EXISTS "ldlite_system"."load_history" (
             self._drop_extracted_tables(conn, prefix)
             conn.commit()
 
-    @property
-    @abstractmethod
-    def _missing_table_error(self) -> type[Exception]: ...
     def _drop_extracted_tables(
         self,
         conn: DB,

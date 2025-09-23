@@ -8,16 +8,9 @@ from . import Prefix, TypedDatabase
 
 
 class DuckDbDatabase(TypedDatabase[duckdb.DuckDBPyConnection]):
-    def _rollback(self, conn: duckdb.DuckDBPyConnection) -> None:
-        pass
-
     @property
     def _default_schema(self) -> str:
         return "main"
-
-    @property
-    def _missing_table_error(self) -> type[Exception]:
-        return duckdb.CatalogException
 
     @property
     def _create_raw_table_sql(self) -> sql.SQL:

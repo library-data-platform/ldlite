@@ -13,16 +13,9 @@ class PostgresDatabase(TypedDatabase[psycopg.Connection]):
         # same sql between duckdb and postgres
         super().__init__(lambda: psycopg.connect(dsn, cursor_factory=psycopg.RawCursor))
 
-    def _rollback(self, conn: psycopg.Connection) -> None:
-        conn.rollback()
-
     @property
     def _default_schema(self) -> str:
         return "public"
-
-    @property
-    def _missing_table_error(self) -> type[Exception]:
-        return psycopg.errors.UndefinedTable
 
     @property
     def _create_raw_table_sql(self) -> sql.SQL:
