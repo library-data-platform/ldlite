@@ -36,20 +36,24 @@ class Prefix:
         return None if self.schema is None else sql.Identifier(self.schema)
 
     @property
-    def raw_table_name(self) -> str:
-        return self._prefix
-
-    @property
     def raw_table_identifier(self) -> sql.Identifier:
         return self._identifier(self._prefix)
 
     @property
+    def catalog_table_name(self) -> str:
+        return f"{self._prefix}__tcatalog"
+
+    @property
     def catalog_table_identifier(self) -> sql.Identifier:
-        return self._identifier(f"{self._prefix}__tcatalog")
+        return self._identifier(self.catalog_table_name)
+
+    @property
+    def legacy_jtable_name(self) -> str:
+        return f"{self._prefix}_jtable"
 
     @property
     def legacy_jtable_identifier(self) -> sql.Identifier:
-        return self._identifier(f"{self._prefix}_jtable")
+        return self._identifier(self.legacy_jtable_name)
 
     @property
     def load_history_key(self) -> str:
@@ -112,6 +116,10 @@ CREATE TABLE IF NOT EXISTS "ldlite_system"."load_history" (
     @abstractmethod
     def _rollback(self, conn: DB) -> None: ...
 
+    @property
+    @abstractmethod
+    def _default_schema(self) -> str: ...
+
     def drop_prefix(
         self,
         prefix: Prefix,
@@ -163,28 +171,32 @@ CREATE TABLE IF NOT EXISTS "ldlite_system"."load_history" (
     ) -> None:
         tables: list[Sequence[Sequence[Any]]] = []
         with closing(conn.cursor()) as cur:
-            try:
-                cur.execute(
-                    sql.SQL("SELECT table_name FROM {catalog};")
-                    .format(catalog=prefix.catalog_table_identifier)
-                    .as_string(),
-                )
-            except self._missing_table_error:
-                self._rollback(conn)
-            else:
-                tables.extend(cur.fetchall())
+            cur.execute(
+                """
+SELECT table_name FROM information_schema.tables
+WHERE table_schema = $1 and table_name IN ($2, $3);""",
+                (
+                    prefix.schema or self._default_schema,
+                    prefix.catalog_table_name,
+                    prefix.legacy_jtable_name,
+                ),
+            )
+            for (tname,) in cur.fetchall():
+                if tname == prefix.catalog_table_name:
+                    cur.execute(
+                        sql.SQL("SELECT table_name FROM {catalog};")
+                        .format(catalog=prefix.catalog_table_identifier)
+                        .as_string(),
+                    )
+                    tables.extend(cur.fetchall())
 
-        with closing(conn.cursor()) as cur:
-            try:
-                cur.execute(
-                    sql.SQL("SELECT table_name FROM {catalog};")
-                    .format(catalog=prefix.legacy_jtable_identifier)
-                    .as_string(),
-                )
-            except self._missing_table_error:
-                self._rollback(conn)
-            else:
-                tables.extend(cur.fetchall())
+                if tname == prefix.legacy_jtable_name:
+                    cur.execute(
+                        sql.SQL("SELECT table_name FROM {catalog};")
+                        .format(catalog=prefix.legacy_jtable_identifier)
+                        .as_string(),
+                    )
+                    tables.extend(cur.fetchall())
 
         with closing(conn.cursor()) as cur:
             for (et,) in tables:

@@ -17,6 +17,10 @@ class PostgresDatabase(TypedDatabase[psycopg.Connection]):
         conn.rollback()
 
     @property
+    def _default_schema(self) -> str:
+        return "public"
+
+    @property
     def _missing_table_error(self) -> type[Exception]:
         return psycopg.errors.UndefinedTable
 
