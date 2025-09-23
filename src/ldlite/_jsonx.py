@@ -1,5 +1,6 @@
 import json
 import uuid
+from datetime import datetime, timezone
 from typing import TYPE_CHECKING, Literal, Union
 
 import duckdb
@@ -407,7 +408,7 @@ def transform_json(  # noqa: C901, PLR0912, PLR0913, PLR0915
     total: int,
     quiet: bool,
     max_depth: int,
-) -> tuple[list[str], dict[str, dict[str, Attr]]]:
+) -> tuple[list[str], dict[str, dict[str, Attr]], datetime]:
     # Scan all fields for JSON data
     # First get a list of the string attributes
     str_attrs: list[str] = []
@@ -420,7 +421,7 @@ def transform_json(  # noqa: C901, PLR0912, PLR0913, PLR0915
         cur.close()
     # Scan data for JSON objects
     if len(str_attrs) == 0:
-        return [], {}
+        return [], {}, datetime.now(timezone.utc)
     json_attrs: list[str] = []
     json_attrs_set: set[str] = set()
     newattrs: dict[str, dict[str, Attr]] = {}
@@ -511,6 +512,7 @@ def transform_json(  # noqa: C901, PLR0912, PLR0913, PLR0915
     finally:
         cur.close()
     db.commit()
+    scan = datetime.now(timezone.utc)
     # Set all row IDs to 1
     row_ids = {}
     for t in newattrs:
@@ -518,7 +520,7 @@ def transform_json(  # noqa: C901, PLR0912, PLR0913, PLR0915
     # Run transformation
     # Select only JSON columns
     if len(json_attrs) == 0:
-        return [], {}
+        return [], {}, scan
     cur = server_cursor(db, dbtype)
     try:
         cur.execute(
@@ -608,4 +610,4 @@ def transform_json(  # noqa: C901, PLR0912, PLR0913, PLR0915
     finally:
         cur.close()
     db.commit()
-    return sorted([*list(newattrs.keys()), tcatalog]), newattrs
+    return sorted([*list(newattrs.keys()), tcatalog]), newattrs, scan

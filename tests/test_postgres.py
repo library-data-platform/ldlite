@@ -2,7 +2,7 @@ import contextlib
 from collections.abc import Callable
 from difflib import unified_diff
 from pathlib import Path
-from typing import cast
+from typing import Any, cast
 from unittest import mock
 from unittest.mock import MagicMock
 
@@ -12,6 +12,7 @@ from psycopg import sql
 from pytest_cases import parametrize_with_cases
 
 from tests.test_cases import drop_tables_cases as dtc
+from tests.test_cases import load_history_cases as lhc
 from tests.test_cases import query_cases as qc
 from tests.test_cases import to_csv_cases as csvc
 
@@ -69,6 +70,17 @@ def test_drop_tables(
                 """,
         )
         assert sorted([r[0] for r in res.fetchall()]) == sorted(tc.expected_tables)
+
+        res.execute('SELECT COUNT(*) FROM "ldlite_system"."load_history"')
+        assert (ud := res.fetchone()) is not None
+        assert ud[0] == len(tc.values) - 1
+        res.execute(
+            'SELECT COUNT(*) FROM "ldlite_system"."load_history"'
+            'WHERE "table_name" = %s',
+            (tc.drop,),
+        )
+        assert (d := res.fetchone()) is not None
+        assert d[0] == 0
 
 
 @mock.patch("httpx_folio.auth.httpx.post")
@@ -178,3 +190,50 @@ def test_to_csv(
         diff = list(unified_diff(expected_lines, actual_lines))
         if len(diff) > 0:
             pytest.fail("".join(diff))
+
+
+@mock.patch("httpx_folio.auth.httpx.post")
+@mock.patch("httpx_folio.factories.httpx.Client.get")
+@parametrize_with_cases("tc", cases=lhc.LoadHistoryTestCases)
+def test_history(
+    client_get_mock: MagicMock,
+    httpx_post_mock: MagicMock,
+    pg_dsn: None | Callable[[str], str],
+    tc: lhc.LoadHistoryCase,
+) -> None:
+    if pg_dsn is None:
+        pytest.skip("Specify the pg host using --pg-host to run")
+
+    from ldlite import LDLite as uut
+
+    ld = uut()
+    tc.patch_request_get(ld, httpx_post_mock, client_get_mock)
+    dsn = pg_dsn(tc.db)
+    ld.connect_folio("https://doesnt.matter", "", "", "")
+    ld.connect_db_postgresql(dsn)
+
+    for prefix, calls in cast(
+        "dict[str, list[list[dict[str, Any]]]]",
+        tc.values,
+    ).items():
+        for i in range(len(calls)):
+            ld.query(
+                table=prefix,
+                path="/patched",
+                query=tc.queries[prefix][i],
+            )
+
+    with psycopg.connect(dsn) as conn, conn.cursor() as res:
+        res.execute('SELECT COUNT(*) FROM "ldlite_system"."load_history"')
+        assert (ud := res.fetchone()) is not None
+        assert ud[0] == len(tc.expected_loads)
+
+        for tn, (q, t) in tc.expected_loads.items():
+            res.execute(
+                'SELECT * FROM "ldlite_system"."load_history" WHERE "table_name" = %s',
+                (tn,),
+            )
+            assert (d := res.fetchone()) is not None
+            assert d[1] == q
+            assert d[7] == t
+            assert d[6] > d[5] > d[4] > d[3] > d[2]

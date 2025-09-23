@@ -8,6 +8,11 @@ from . import Prefix, TypedDatabase
 
 
 class PostgresDatabase(TypedDatabase[psycopg.Connection]):
+    def __init__(self, dsn: str):
+        # RawCursor lets us use $1, $2, etc to use the
+        # same sql between duckdb and postgres
+        super().__init__(lambda: psycopg.connect(dsn, cursor_factory=psycopg.RawCursor))
+
     def _rollback(self, conn: psycopg.Connection) -> None:
         conn.rollback()
 

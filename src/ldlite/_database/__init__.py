@@ -1,6 +1,9 @@
+import datetime
 from abc import ABC, abstractmethod
 from collections.abc import Callable, Iterator, Sequence
 from contextlib import closing
+from dataclasses import dataclass
+from datetime import timezone
 from typing import TYPE_CHECKING, Any, Generic, TypeVar, cast
 
 from psycopg import sql
@@ -27,22 +30,38 @@ class Prefix:
     def schema_name(self) -> sql.Identifier | None:
         return None if self._schema is None else sql.Identifier(self._schema)
 
-    def identifier(self, table: str) -> sql.Identifier:
+    def _identifier(self, table: str) -> sql.Identifier:
         if self._schema is None:
             return sql.Identifier(table)
         return sql.Identifier(self._schema, table)
 
     @property
+    def load_history_key(self) -> str:
+        return (self._schema or "public") + "." + self._prefix
+
+    @property
     def raw_table_name(self) -> sql.Identifier:
-        return self.identifier(self._prefix)
+        return self._identifier(self._prefix)
 
     @property
     def catalog_table_name(self) -> sql.Identifier:
-        return self.identifier(f"{self._prefix}__tcatalog")
+        return self._identifier(f"{self._prefix}__tcatalog")
 
     @property
     def legacy_jtable(self) -> sql.Identifier:
-        return self.identifier(f"{self._prefix}_jtable")
+        return self._identifier(f"{self._prefix}_jtable")
+
+
+@dataclass(frozen=True)
+class LoadHistory:
+    table_name: Prefix
+    query: str | None
+    start: datetime.datetime
+    download: datetime.datetime
+    scan: datetime.datetime
+    transform: datetime.datetime
+    index: datetime.datetime
+    total: int
 
 
 class Database(ABC):
@@ -58,6 +77,9 @@ class Database(ABC):
     @abstractmethod
     def ingest_records(self, prefix: Prefix, records: Iterator[bytes]) -> int: ...
 
+    @abstractmethod
+    def record_history(self, history: LoadHistory) -> None: ...
+
 
 DB = TypeVar("DB", bound="duckdb.DuckDBPyConnection | psycopg.Connection")
 
@@ -65,6 +87,20 @@ DB = TypeVar("DB", bound="duckdb.DuckDBPyConnection | psycopg.Connection")
 class TypedDatabase(Database, Generic[DB]):
     def __init__(self, conn_factory: Callable[[], DB]):
         self._conn_factory = conn_factory
+        with closing(self._conn_factory()) as conn, conn.cursor() as cur:
+            cur.execute('CREATE SCHEMA IF NOT EXISTS "ldlite_system";')
+            cur.execute("""
+CREATE TABLE IF NOT EXISTS "ldlite_system"."load_history" (
+    "table_name" TEXT UNIQUE
+    ,"query" TEXT
+    ,"start_utc" TIMESTAMP
+    ,"download_complete_utc" TIMESTAMP
+    ,"scan_complete_utc" TIMESTAMP
+    ,"transformation_complete_utc" TIMESTAMP
+    ,"index_complete_utc" TIMESTAMP
+    ,"row_count" INTEGER
+);""")
+            conn.commit()
 
     @abstractmethod
     def _rollback(self, conn: DB) -> None: ...
@@ -76,6 +112,10 @@ class TypedDatabase(Database, Generic[DB]):
         with closing(self._conn_factory()) as conn:
             self._drop_extracted_tables(conn, prefix)
             self._drop_raw_table(conn, prefix)
+            conn.execute(
+                'DELETE FROM "ldlite_system"."load_history" WHERE "table_name" = $1',
+                (prefix.load_history_key,),
+            )
             conn.commit()
 
     def drop_raw_table(
@@ -179,3 +219,30 @@ class TypedDatabase(Database, Generic[DB]):
                     table=prefix.raw_table_name,
                 ).as_string(),
             )
+
+    def record_history(self, history: LoadHistory) -> None:
+        with closing(self._conn_factory()) as conn, conn.cursor() as cur:
+            cur.execute(
+                """
+INSERT INTO "ldlite_system"."load_history" VALUES($1,$2,$3,$4,$5,$6,$7,$8)
+ON CONFLICT ("table_name") DO UPDATE SET
+    "query" = EXCLUDED."query"
+    ,"start_utc" = EXCLUDED."start_utc"
+    ,"download_complete_utc" = EXCLUDED."download_complete_utc"
+    ,"scan_complete_utc" = EXCLUDED."scan_complete_utc"
+    ,"transformation_complete_utc" = EXCLUDED."transformation_complete_utc"
+    ,"index_complete_utc" = EXCLUDED."index_complete_utc"
+    ,"row_count" = EXCLUDED."row_count"
+""",
+                (
+                    history.table_name.load_history_key,
+                    history.query,
+                    history.start.astimezone(timezone.utc),
+                    history.download.astimezone(timezone.utc),
+                    history.scan.astimezone(timezone.utc),
+                    history.transform.astimezone(timezone.utc),
+                    history.index.astimezone(timezone.utc),
+                    history.total,
+                ),
+            )
+            conn.commit()
