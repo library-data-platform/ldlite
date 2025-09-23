@@ -35,6 +35,7 @@ Example:
 """
 
 import sys
+from datetime import datetime, timezone
 from typing import TYPE_CHECKING, NoReturn, cast
 
 import duckdb
@@ -43,7 +44,7 @@ from httpx_folio.auth import FolioParams
 from tqdm import tqdm
 
 from ._csv import to_csv
-from ._database import Database, Prefix
+from ._database import Database, LoadHistory, Prefix
 from ._folio import FolioClient
 from ._jsonx import Attr, transform_json
 from ._select import select
@@ -150,7 +151,7 @@ class LDLite:
         self.dbtype = DBType.POSTGRES
         db = psycopg.connect(dsn)
         self.db = cast("dbapi.DBAPIConnection", db)
-        self._db = PostgresDatabase(lambda: psycopg.connect(dsn))
+        self._db = PostgresDatabase(dsn)
 
         ret_db = psycopg.connect(dsn)
         ret_db.rollback()
@@ -296,6 +297,7 @@ class LDLite:
         if self.db is None or self._db is None:
             self._check_db()
             return []
+        start = datetime.now(timezone.utc)
         prefix = Prefix(table)
         if not self._quiet:
             print("ldlite: querying: " + path, file=sys.stderr)
@@ -333,13 +335,15 @@ class LDLite:
                     ),
                 ),
             )
+            download = datetime.now(timezone.utc)
+            scan = datetime.now(timezone.utc)
 
             self._db.drop_extracted_tables(prefix)
             newtables = [table]
             newattrs = {}
             if json_depth > 0:
                 autocommit(self.db, self.dbtype, False)
-                jsontables, jsonattrs = transform_json(
+                (jsontables, jsonattrs, scan) = transform_json(
                     self.db,
                     self.dbtype,
                     table,
@@ -357,6 +361,7 @@ class LDLite:
                 self._db.drop_raw_table(prefix)
 
         finally:
+            transformed = datetime.now(timezone.utc)
             autocommit(self.db, self.dbtype, True)
         # Create indexes on id columns (for postgres)
         if self.dbtype == DBType.POSTGRES:
@@ -398,6 +403,19 @@ class LDLite:
                     cur.close()
                 pbar.update(1)
             pbar.close()
+        index = datetime.now(timezone.utc)
+        self._db.record_history(
+            LoadHistory(
+                prefix,
+                query if query and isinstance(query, str) else None,
+                start,
+                download,
+                scan,
+                transformed,
+                index,
+                processed,
+            ),
+        )
         # Return table names
         if not self._quiet:
             print("ldlite: created tables: " + ", ".join(newtables), file=sys.stderr)

@@ -36,6 +36,17 @@ def test_drop_tables(
         res.execute("SHOW TABLES;")
         assert sorted([r[0] for r in res.fetchall()]) == sorted(tc.expected_tables)
 
+        res.execute('SELECT COUNT(*) FROM "ldlite_system"."load_history"')
+        assert (ud := res.fetchone()) is not None
+        assert ud[0] == len(tc.values) - 1
+        res.execute(
+            'SELECT COUNT(*) FROM "ldlite_system"."load_history" '
+            'WHERE "table_name" = $1',
+            (tc.drop,),
+        )
+        assert (d := res.fetchone()) is not None
+        assert d[0] == 0
+
 
 @mock.patch("httpx_folio.auth.httpx.post")
 @mock.patch("httpx_folio.factories.httpx.Client.get")
