@@ -15,7 +15,7 @@ class DropTablesCases:
     @parametrize(keep_raw=[True, False])
     def case_one_table(self, keep_raw: bool) -> DropTablesCase:
         return DropTablesCase(
-            calls=Call(
+            Call(
                 "prefix",
                 returns={"purchaseOrders": [{"id": "1"}]},
                 keep_raw=keep_raw,
@@ -27,7 +27,7 @@ class DropTablesCases:
     @parametrize(keep_raw=[True, False])
     def case_two_tables(self, keep_raw: bool) -> DropTablesCase:
         return DropTablesCase(
-            calls=Call(
+            Call(
                 "prefix",
                 returns={
                     "purchaseOrders": [
@@ -53,7 +53,7 @@ class DropTablesCases:
             expected_tables = ["notdropped", *expected_tables]
 
         return DropTablesCase(
-            calls=[
+            [
                 Call(
                     "prefix",
                     returns={"purchaseOrders": [{"id": "1"}]},

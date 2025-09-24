@@ -151,16 +151,8 @@ def test_history(
     ld.connect_folio("https://doesnt.matter", "", "", "")
     ld.connect_db(dsn)
 
-    for prefix, calls in cast(
-        "dict[str, list[list[dict[str, Any]]]]",
-        tc.values,
-    ).items():
-        for i in range(len(calls)):
-            ld.query(
-                table=prefix,
-                path="/patched",
-                query=tc.queries[prefix][i],
-            )
+    for call in tc.calls_list:
+        ld.query(table=call.prefix, path="/patched", query=call.query)
 
     with duckdb.connect(dsn) as res:
         res.execute('SELECT COUNT(*) FROM "ldlite_system"."load_history"')
