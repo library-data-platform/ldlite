@@ -5,8 +5,22 @@ from typing import TYPE_CHECKING, Any, cast
 from unittest.mock import MagicMock
 from uuid import uuid4
 
+from ldlite._jsonx import Json
+
 if TYPE_CHECKING:
     import ldlite
+
+
+@dataclass(frozen=True)
+class Call:
+    prefix: str
+    returns: list[Json]
+
+    # duplicate of LDLite.query default params
+    query: str | dict[str, str] | None = None
+    json_depth: int = 3
+    limit: int | None = None
+    keep_raw: bool = True
 
 
 @dataclass(frozen=True)
