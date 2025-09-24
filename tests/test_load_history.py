@@ -136,8 +136,8 @@ def _assert(
             )
             assert (d := cur.fetchone()) is not None
             assert d[1] == q
-            assert d[7] == t
-            assert d[6] > d[5] > d[4] > d[3] > d[2]
+            assert d[6] == t
+            assert d[5] > d[4] > d[3] > d[2]
 
 
 @mock.patch("httpx_folio.auth.httpx.post")

@@ -336,14 +336,13 @@ class LDLite:
                 ),
             )
             download = datetime.now(timezone.utc)
-            scan = datetime.now(timezone.utc)
 
             self._db.drop_extracted_tables(prefix)
             newtables = [table]
             newattrs = {}
             if json_depth > 0:
                 autocommit(self.db, self.dbtype, False)
-                (jsontables, jsonattrs, scan) = transform_json(
+                (jsontables, jsonattrs) = transform_json(
                     self.db,
                     self.dbtype,
                     table,
@@ -410,7 +409,6 @@ class LDLite:
                 query if query and isinstance(query, str) else None,
                 start,
                 download,
-                scan,
                 transformed,
                 index,
                 processed,
