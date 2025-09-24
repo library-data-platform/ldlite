@@ -47,6 +47,24 @@ def case_jextract(p: Sequence[Any]) -> JsonTC:
     )
 
 
+@parametrize(
+    p=[
+        ("str", "str_val"),
+        ("num", "12"),
+        ("obj", '{"k1":"v1","k2":"v2"}'),
+        ("arr_str", '["s1","s2","s3"]'),
+        ("arr_obj", '[{"k1":"v1"},{"k2":"v2"}]'),
+    ],
+)
+def case_jextract_string(p: Sequence[Any]) -> JsonTC:
+    return JsonTC(
+        """SELECT ldlite_system.jextract_string(jc, $1) = $2 FROM j;""",
+        p,
+        """SELECT ldlite_system.jextract_string(jc, $1) FROM j;""",
+        p[:1],
+    )
+
+
 def _assert(conn: "dbapi.DBAPIConnection", jtype: str, tc: JsonTC) -> None:
     with closing(conn.cursor()) as cur:
         if tc.format_type:
