@@ -34,13 +34,21 @@ class NonSrsCases:
         return NonSrsCase(True, "/groups", "cql.allRecords=1 sortBy group desc")
 
 
+SrsCases = [
+    "/source-storage/records",
+    "/source-storage/stream/records",
+    "/source-storage/source-records",
+    "/source-storage/stream/source-records",
+]
+
+
 class TestIntegration:
-    def _nonsrs_arrange(
+    def _arrange(
         self,
         folio_params: tuple[bool, FolioParams],
-        tc: NonSrsCase,
+        snapshot_ok: bool = True,
     ) -> "ldlite.LDLite":
-        if not tc.snapshot_ok and folio_params[0]:
+        if not snapshot_ok and folio_params[0]:
             pytest.skip(
                 "Specify an environment having data with --folio-base-url to run",
             )
@@ -83,7 +91,7 @@ class TestIntegration:
         folio_params: tuple[bool, FolioParams],
         tc: NonSrsCase,
     ) -> None:
-        uut = self._nonsrs_arrange(folio_params, tc)
+        uut = self._arrange(folio_params, tc.snapshot_ok)
         uut.connect_db()
 
         uut.query(table="test", path=tc.path, query=tc.query)
@@ -99,42 +107,60 @@ class TestIntegration:
         if pg_dsn is None:
             pytest.skip("Specify the pg host using --pg-host to run")
 
-        uut = self._nonsrs_arrange(folio_params, tc)
+        uut = self._arrange(folio_params, tc.snapshot_ok)
         db = "db" + str(uuid4()).split("-")[0]
         print(db)  # noqa: T201
         dsn = pg_dsn(db)
         uut.connect_db_postgresql(dsn)
 
         uut.query(table="test", path=tc.path, query=tc.query)
+
         self._nonsrs_assert(uut, folio_params, tc)
 
-    @parametrize(
-        srs=[
-            "/source-storage/records",
-            "/source-storage/stream/records",
-            "/source-storage/source-records",
-            "/source-storage/stream/source-records",
-        ],
-    )
-    def test_endtoend_srs(
+    def _srs_assert(self, uut: "ldlite.LDLite", is_snapshot: bool) -> None:
+        if uut.db is None:
+            pytest.fail("No active database connection.")
+
+        with closing(uut.db.cursor()) as cur:
+            cur.execute("SELECT COUNT(*) FROM (SELECT DISTINCT * FROM test__t) t;")
+            actual = cast("tuple[int]", cur.fetchone())[0]
+
+            # snapshot has a variable number of records
+            assert actual >= 1
+            if is_snapshot:
+                assert actual <= 10
+            else:
+                assert actual == 10
+
+    @parametrize(path=SrsCases)
+    def test_srs_duckdb(
         self,
         folio_params: tuple[bool, FolioParams],
-        srs: str,
+        path: str,
     ) -> None:
-        from ldlite import LDLite as uut
+        uut = self._arrange(folio_params)
+        uut.connect_db()
 
-        ld = uut()
-        db = ld.connect_db()
+        uut.query(table="test", path=path, limit=10)
 
-        ld.connect_folio(*astuple(folio_params[1]))
-        ld.query(table="test", path=srs, limit=10)
+        self._srs_assert(uut, folio_params[0])
 
-        db.execute("SELECT COUNT(DISTINCT COLUMNS(*)) FROM test__t;")
-        actual = cast("tuple[int]", db.fetchone())[0]
+    @parametrize(path=SrsCases)
+    def test_srs_postgres(
+        self,
+        folio_params: tuple[bool, FolioParams],
+        pg_dsn: None | Callable[[str], str],
+        path: str,
+    ) -> None:
+        if pg_dsn is None:
+            pytest.skip("Specify the pg host using --pg-host to run")
 
-        # snapshot a variable number of records
-        assert actual >= 1
-        if folio_params[0]:
-            assert actual <= 10
-        else:
-            assert actual == 10
+        uut = self._arrange(folio_params)
+        db = "db" + str(uuid4()).split("-")[0]
+        print(db)  # noqa: T201
+        dsn = pg_dsn(db)
+        uut.connect_db_postgresql(dsn)
+
+        uut.query(table="test", path=path, limit=10)
+
+        self._srs_assert(uut, folio_params[0])
