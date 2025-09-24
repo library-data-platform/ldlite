@@ -1,5 +1,4 @@
 import json
-from collections.abc import Sequence
 from dataclasses import dataclass
 from functools import cached_property
 from typing import TYPE_CHECKING
@@ -13,7 +12,7 @@ if TYPE_CHECKING:
 @dataclass(frozen=True)
 class Call:
     prefix: str
-    returns: list["ldlite._jsonx.Json"]
+    returns: "ldlite._jsonx.Json | list[ldlite._jsonx.Json]"
 
     # duplicate of LDLite.query default params
     query: str | dict[str, str] | None = None
@@ -21,10 +20,24 @@ class Call:
     limit: int | None = None
     keep_raw: bool = True
 
+    @property
+    def returns_list(self) -> list["ldlite._jsonx.Json"]:
+        if isinstance(self.returns, list):
+            return self.returns
+
+        return [self.returns]
+
 
 @dataclass(frozen=True)
 class EndToEndTestCase:
-    calls: Sequence[Call]
+    calls: Call | list[Call]
+
+    @property
+    def calls_list(self) -> list[Call]:
+        if isinstance(self.calls, list):
+            return self.calls
+
+        return [self.calls]
 
     @cached_property
     def db(self) -> str:
@@ -44,13 +57,13 @@ class EndToEndTestCase:
         httpx_post_mock.return_value.cookies.__getitem__.return_value = "token"
 
         side_effects = []
-        for call in self.calls:
-            key = next(iter(call.returns[0].keys()))
+        for call in self.calls_list:
+            key = next(iter(call.returns_list[0].keys()))
             total_mock = MagicMock()
             total_mock.text = f'{{"{key}": [{{"id": ""}}], "totalRecords": 100000}}'
 
             value_mocks = []
-            for v in call.returns:
+            for v in call.returns_list:
                 value_mock = MagicMock()
                 value_mock.text = json.dumps(v)
                 value_mocks.append(value_mock)

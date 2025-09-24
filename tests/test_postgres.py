@@ -58,8 +58,8 @@ def test_drop_tables(
     ld.connect_db_postgresql(dsn)
     ld.drop_tables(tc.drop)
 
-    for prefix in tc.values:
-        ld.query(table=prefix, path="/patched", keep_raw=tc.keep_raw)
+    for call in tc.calls_list:
+        ld.query(table=call.prefix, path="/patched", keep_raw=call.keep_raw)
     ld.drop_tables(tc.drop)
 
     with psycopg.connect(dsn) as conn, conn.cursor() as res:
@@ -74,7 +74,7 @@ def test_drop_tables(
 
         res.execute('SELECT COUNT(*) FROM "ldlite_system"."load_history"')
         assert (ud := res.fetchone()) is not None
-        assert ud[0] == len(tc.values) - 1
+        assert ud[0] == len(tc.calls) - 1
         res.execute(
             'SELECT COUNT(*) FROM "ldlite_system"."load_history"'
             'WHERE "table_name" = %s',
