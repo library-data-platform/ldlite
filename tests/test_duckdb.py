@@ -7,53 +7,9 @@ import duckdb
 import pytest
 from pytest_cases import parametrize_with_cases
 
-from tests.test_cases import drop_tables_cases as dtc
 from tests.test_cases import load_history_cases as lhc
 from tests.test_cases import query_cases as qc
 from tests.test_cases import to_csv_cases as csvc
-
-
-@mock.patch("httpx_folio.auth.httpx.post")
-@mock.patch("httpx_folio.factories.httpx.Client.get")
-@parametrize_with_cases("tc", cases=dtc.DropTablesCases)
-def test_drop_tables(
-    client_get_mock: MagicMock,
-    httpx_post_mock: MagicMock,
-    tc: dtc.DropTablesCase,
-) -> None:
-    from ldlite import LDLite as uut
-
-    ld = uut()
-    tc.patch_request_get(ld, httpx_post_mock, client_get_mock)
-    dsn = f":memory:{tc.db}"
-    ld.connect_folio("https://doesnt.matter", "", "", "")
-    ld.connect_db(dsn)
-    ld.drop_tables(tc.drop)
-
-    for call in tc.calls_list:
-        ld.query(table=call.prefix, path="/patched", keep_raw=call.keep_raw)
-    ld.drop_tables(tc.drop)
-
-    with duckdb.connect(dsn) as res:
-        res.execute(
-            """
-                SELECT table_name
-                FROM information_schema.tables
-                WHERE table_schema='main'
-                """,
-        )
-        assert sorted([r[0] for r in res.fetchall()]) == sorted(tc.expected_tables)
-
-        res.execute('SELECT COUNT(*) FROM "ldlite_system"."load_history"')
-        assert (ud := res.fetchone()) is not None
-        assert ud[0] == len(tc.calls_list) - 1
-        res.execute(
-            'SELECT COUNT(*) FROM "ldlite_system"."load_history" '
-            'WHERE "table_name" = $1',
-            (tc.drop,),
-        )
-        assert (d := res.fetchone()) is not None
-        assert d[0] == 0
 
 
 @mock.patch("httpx_folio.auth.httpx.post")

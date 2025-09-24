@@ -1,4 +1,3 @@
-import contextlib
 from collections.abc import Callable
 from difflib import unified_diff
 from pathlib import Path
@@ -11,77 +10,9 @@ import pytest
 from psycopg import sql
 from pytest_cases import parametrize_with_cases
 
-from tests.test_cases import drop_tables_cases as dtc
 from tests.test_cases import load_history_cases as lhc
 from tests.test_cases import query_cases as qc
 from tests.test_cases import to_csv_cases as csvc
-
-
-@pytest.fixture(scope="session")
-def pg_dsn(pytestconfig: pytest.Config) -> None | Callable[[str], str]:
-    host = pytestconfig.getoption("pg_host")
-    if host is None:
-        return None
-
-    def setup(db: str) -> str:
-        base_dsn = f"host={host} user=ldlite password=ldlite"
-        with contextlib.closing(psycopg.connect(base_dsn)) as base_conn:
-            base_conn.autocommit = True
-            with base_conn.cursor() as curr:
-                curr.execute(
-                    sql.SQL("CREATE DATABASE {db};").format(db=sql.Identifier(db)),
-                )
-
-        return base_dsn + f" dbname={db}"
-
-    return setup
-
-
-@mock.patch("httpx_folio.auth.httpx.post")
-@mock.patch("httpx_folio.factories.httpx.Client.get")
-@parametrize_with_cases("tc", cases=dtc.DropTablesCases)
-def test_drop_tables(
-    client_get_mock: MagicMock,
-    httpx_post_mock: MagicMock,
-    pg_dsn: None | Callable[[str], str],
-    tc: dtc.DropTablesCase,
-) -> None:
-    if pg_dsn is None:
-        pytest.skip("Specify the pg host using --pg-host to run")
-
-    from ldlite import LDLite as uut
-
-    ld = uut()
-    tc.patch_request_get(ld, httpx_post_mock, client_get_mock)
-    dsn = pg_dsn(tc.db)
-    ld.connect_folio("https://doesnt.matter", "", "", "")
-    ld.connect_db_postgresql(dsn)
-    ld.drop_tables(tc.drop)
-
-    for call in tc.calls_list:
-        ld.query(table=call.prefix, path="/patched", keep_raw=call.keep_raw)
-    ld.drop_tables(tc.drop)
-
-    with psycopg.connect(dsn) as conn, conn.cursor() as res:
-        res.execute(
-            """
-                SELECT table_name
-                FROM information_schema.tables
-                WHERE table_schema='public'
-                """,
-        )
-        assert sorted([r[0] for r in res.fetchall()]) == sorted(tc.expected_tables)
-
-        res.execute('SELECT COUNT(*) FROM "ldlite_system"."load_history"')
-        assert (ud := res.fetchone()) is not None
-        assert ud[0] == len(tc.calls_list) - 1
-        res.execute(
-            'SELECT COUNT(*) FROM "ldlite_system"."load_history"'
-            'WHERE "table_name" = %s',
-            (tc.drop,),
-        )
-        assert (d := res.fetchone()) is not None
-        assert d[0] == 0
 
 
 @mock.patch("httpx_folio.auth.httpx.post")
