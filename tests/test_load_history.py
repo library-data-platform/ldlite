@@ -19,37 +19,71 @@ if TYPE_CHECKING:
 
 
 @dataclass(frozen=True)
-class LoadHistoryCase(MockedResponseTestCase):
+class LoadHistoryTC(MockedResponseTestCase):
     expected_loads: dict[str, tuple[str | None, int]]
 
 
-class LoadHistoryTestCases:
-    @parametrize(query=[None, "poline.id=*A"])
-    def case_one_load(self, query: str | None) -> LoadHistoryCase:
-        return LoadHistoryCase(
+@parametrize(query=[None, "poline.id=*A"])
+def case_one_load(query: str | None) -> LoadHistoryTC:
+    return LoadHistoryTC(
+        Call(
+            "prefix",
+            query=query,
+            returns={
+                "purchaseOrders": [
+                    {
+                        "id": "b096504a-3d54-4664-9bf5-1b872466fd66",
+                        "value": "value",
+                    },
+                    {
+                        "id": "b096504a-9999-4664-9bf5-1b872466fd66",
+                        "value": "value-2",
+                    },
+                ],
+            },
+        ),
+        expected_loads={"prefix": (query, 2)},
+    )
+
+
+def case_schema_load() -> LoadHistoryTC:
+    return LoadHistoryTC(
+        Call(
+            "schema.prefix",
+            returns={
+                "purchaseOrders": [
+                    {
+                        "id": "b096504a-3d54-4664-9bf5-1b872466fd66",
+                        "value": "value",
+                    },
+                    {
+                        "id": "b096504a-9999-4664-9bf5-1b872466fd66",
+                        "value": "value-2",
+                    },
+                ],
+            },
+        ),
+        expected_loads={"schema.prefix": (None, 2)},
+    )
+
+
+def case_two_loads() -> LoadHistoryTC:
+    return LoadHistoryTC(
+        [
             Call(
                 "prefix",
-                query=query,
                 returns={
                     "purchaseOrders": [
                         {
                             "id": "b096504a-3d54-4664-9bf5-1b872466fd66",
                             "value": "value",
                         },
-                        {
-                            "id": "b096504a-9999-4664-9bf5-1b872466fd66",
-                            "value": "value-2",
-                        },
                     ],
                 },
             ),
-            expected_loads={"prefix": (query, 2)},
-        )
-
-    def case_schema_load(self) -> LoadHistoryCase:
-        return LoadHistoryCase(
             Call(
-                "schema.prefix",
+                "prefix",
+                query="a query",
                 returns={
                     "purchaseOrders": [
                         {
@@ -63,48 +97,15 @@ class LoadHistoryTestCases:
                     ],
                 },
             ),
-            expected_loads={"schema.prefix": (None, 2)},
-        )
-
-    def case_two_loads(self) -> LoadHistoryCase:
-        return LoadHistoryCase(
-            [
-                Call(
-                    "prefix",
-                    returns={
-                        "purchaseOrders": [
-                            {
-                                "id": "b096504a-3d54-4664-9bf5-1b872466fd66",
-                                "value": "value",
-                            },
-                        ],
-                    },
-                ),
-                Call(
-                    "prefix",
-                    query="a query",
-                    returns={
-                        "purchaseOrders": [
-                            {
-                                "id": "b096504a-3d54-4664-9bf5-1b872466fd66",
-                                "value": "value",
-                            },
-                            {
-                                "id": "b096504a-9999-4664-9bf5-1b872466fd66",
-                                "value": "value-2",
-                            },
-                        ],
-                    },
-                ),
-            ],
-            expected_loads={"prefix": ("a query", 2)},
-        )
+        ],
+        expected_loads={"prefix": ("a query", 2)},
+    )
 
 
 def _arrange(
     client_get_mock: MagicMock,
     httpx_post_mock: MagicMock,
-    tc: LoadHistoryCase,
+    tc: LoadHistoryTC,
 ) -> "ldlite.LDLite":
     from ldlite import LDLite
 
@@ -114,14 +115,14 @@ def _arrange(
     return uut
 
 
-def _act(uut: "ldlite.LDLite", tc: LoadHistoryCase) -> None:
+def _act(uut: "ldlite.LDLite", tc: LoadHistoryTC) -> None:
     for call in tc.calls_list:
         uut.query(table=call.prefix, path="/patched", query=call.query)
 
 
 def _assert(
     conn: "dbapi.DBAPIConnection",
-    tc: LoadHistoryCase,
+    tc: LoadHistoryTC,
 ) -> None:
     with closing(conn.cursor()) as cur:
         cur.execute('SELECT COUNT(*) FROM "ldlite_system"."load_history"')
@@ -141,11 +142,11 @@ def _assert(
 
 @mock.patch("httpx_folio.auth.httpx.post")
 @mock.patch("httpx_folio.factories.httpx.Client.get")
-@parametrize_with_cases("tc", cases=LoadHistoryTestCases)
+@parametrize_with_cases("tc", cases=".")
 def test_duckdb(
     client_get_mock: MagicMock,
     httpx_post_mock: MagicMock,
-    tc: LoadHistoryCase,
+    tc: LoadHistoryTC,
 ) -> None:
     uut = _arrange(client_get_mock, httpx_post_mock, tc)
     dsn = f":memory:{tc.db}"
@@ -158,12 +159,12 @@ def test_duckdb(
 
 @mock.patch("httpx_folio.auth.httpx.post")
 @mock.patch("httpx_folio.factories.httpx.Client.get")
-@parametrize_with_cases("tc", cases=LoadHistoryTestCases)
+@parametrize_with_cases("tc", cases=".")
 def test_postgres(
     client_get_mock: MagicMock,
     httpx_post_mock: MagicMock,
     pg_dsn: None | Callable[[str], str],
-    tc: LoadHistoryCase,
+    tc: LoadHistoryTC,
 ) -> None:
     if pg_dsn is None:
         pytest.skip("Specify the pg host using --pg-host to run")
