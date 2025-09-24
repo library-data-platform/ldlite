@@ -98,10 +98,11 @@ DB = TypeVar("DB", bound="duckdb.DuckDBPyConnection | psycopg.Connection")
 class TypedDatabase(Database, Generic[DB]):
     def __init__(self, conn_factory: Callable[[], DB]):
         self._conn_factory = conn_factory
-        with closing(self._conn_factory()) as conn, conn.cursor() as cur:
+        with closing(self._conn_factory()) as conn:
             try:
-                cur.execute('CREATE SCHEMA IF NOT EXISTS "ldlite_system";')
-                cur.execute("""
+                with conn.cursor() as cur:
+                    cur.execute('CREATE SCHEMA IF NOT EXISTS "ldlite_system";')
+                    cur.execute("""
 CREATE TABLE IF NOT EXISTS "ldlite_system"."load_history" (
     "table_name" TEXT UNIQUE
     ,"path" TEXT
@@ -112,6 +113,8 @@ CREATE TABLE IF NOT EXISTS "ldlite_system"."load_history" (
     ,"index_complete_utc" TIMESTAMP
     ,"row_count" INTEGER
 );""")
+
+                self._setup_jfuncs(conn)
             except psycopg.errors.UniqueViolation:
                 # postgres throws this when multiple threads try to create
                 # the same resource even if CREATE IF NOT EXISTS was used
@@ -121,6 +124,10 @@ CREATE TABLE IF NOT EXISTS "ldlite_system"."load_history" (
                 ...
             else:
                 conn.commit()
+
+    @staticmethod
+    @abstractmethod
+    def _setup_jfuncs(conn: DB) -> None: ...
 
     @property
     @abstractmethod

@@ -8,6 +8,20 @@ from . import Prefix, TypedDatabase
 
 
 class DuckDbDatabase(TypedDatabase[duckdb.DuckDBPyConnection]):
+    @staticmethod
+    def _setup_jfuncs(conn: duckdb.DuckDBPyConnection) -> None:
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+CREATE OR REPLACE FUNCTION ldlite_system.jextract(j, p) AS
+    main.json_extract(j, p)
+;
+CREATE OR REPLACE FUNCTION ldlite_system.jextract_string(j, p) AS
+    main.json_extract_string(j, p)
+;
+""",
+            )
+
     @property
     def _default_schema(self) -> str:
         return "main"
