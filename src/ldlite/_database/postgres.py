@@ -13,6 +13,19 @@ class PostgresDatabase(TypedDatabase[psycopg.Connection]):
         # same sql between duckdb and postgres
         super().__init__(lambda: psycopg.connect(dsn, cursor_factory=psycopg.RawCursor))
 
+    @staticmethod
+    def _setup_jfuncs(conn: psycopg.Connection) -> None:
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+CREATE OR REPLACE FUNCTION ldlite_system.jextract(j JSONB, p TEXT) RETURNS JSONB AS $$
+BEGIN
+    RETURN j->p;
+END
+$$ LANGUAGE plpgsql;
+""",
+            )
+
     @property
     def _default_schema(self) -> str:
         return "public"
