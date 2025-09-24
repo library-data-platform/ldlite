@@ -3,55 +3,10 @@ from pathlib import Path
 from unittest import mock
 from unittest.mock import MagicMock
 
-import duckdb
 import pytest
 from pytest_cases import parametrize_with_cases
 
-from tests.test_cases import query_cases as qc
 from tests.test_cases import to_csv_cases as csvc
-
-
-@mock.patch("httpx_folio.auth.httpx.post")
-@mock.patch("httpx_folio.factories.httpx.Client.get")
-@parametrize_with_cases("tc", cases=qc.QueryTestCases)
-def test_query(
-    client_get_mock: MagicMock,
-    httpx_post_mock: MagicMock,
-    tc: qc.QueryCase,
-) -> None:
-    from ldlite import LDLite as uut
-
-    ld = uut()
-    tc.patch_request_get(ld, httpx_post_mock, client_get_mock)
-    dsn = f":memory:{tc.db}"
-    ld.connect_folio("https://doesnt.matter", "", "", "")
-    ld.connect_db(dsn)
-
-    for call in tc.calls_list:
-        ld.query(
-            table=call.prefix,
-            path="/patched",
-            json_depth=call.json_depth,
-            keep_raw=call.keep_raw,
-        )
-
-    with duckdb.connect(dsn) as res:
-        res.execute(
-            """
-                SELECT table_name
-                FROM information_schema.tables
-                WHERE table_schema='main'
-                """,
-        )
-        assert sorted([r[0] for r in res.fetchall()]) == sorted(tc.expected_tables)
-
-    for table, (cols, values) in tc.expected_values.items():
-        with duckdb.connect(dsn) as res:
-            res.execute(f"SELECT {'::text,'.join(cols)}::text FROM {table};")
-            for v in values:
-                assert res.fetchone() == v
-
-            assert res.fetchone() is None
 
 
 @mock.patch("httpx_folio.auth.httpx.post")

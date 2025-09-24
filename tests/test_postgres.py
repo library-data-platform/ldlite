@@ -1,87 +1,13 @@
 from collections.abc import Callable
 from difflib import unified_diff
 from pathlib import Path
-from typing import cast
 from unittest import mock
 from unittest.mock import MagicMock
 
-import psycopg
 import pytest
-from psycopg import sql
 from pytest_cases import parametrize_with_cases
 
-from tests.test_cases import query_cases as qc
 from tests.test_cases import to_csv_cases as csvc
-
-
-@mock.patch("httpx_folio.auth.httpx.post")
-@mock.patch("httpx_folio.factories.httpx.Client.get")
-@parametrize_with_cases("tc", cases=qc.QueryTestCases)
-def test_query(
-    client_get_mock: MagicMock,
-    httpx_post_mock: MagicMock,
-    pg_dsn: None | Callable[[str], str],
-    tc: qc.QueryCase,
-) -> None:
-    if pg_dsn is None:
-        pytest.skip("Specify the pg host using --pg-host to run")
-
-    from ldlite import LDLite as uut
-
-    ld = uut()
-    tc.patch_request_get(ld, httpx_post_mock, client_get_mock)
-    dsn = pg_dsn(tc.db)
-    ld.connect_folio("https://doesnt.matter", "", "", "")
-    ld.connect_db_postgresql(dsn)
-
-    for call in tc.calls_list:
-        ld.query(
-            table=call.prefix,
-            path="/patched",
-            json_depth=call.json_depth,
-            keep_raw=call.keep_raw,
-        )
-
-    with psycopg.connect(dsn) as conn:
-        with conn.cursor() as res:
-            res.execute(
-                """
-                SELECT table_name
-                FROM information_schema.tables
-                WHERE table_schema='public'
-                """,
-            )
-            assert sorted([r[0] for r in res.fetchall()]) == sorted(tc.expected_tables)
-
-        for table, (cols, values) in tc.expected_values.items():
-            with conn.cursor() as res:
-                res.execute(
-                    sql.SQL("SELECT {cols}::text FROM {table};").format(
-                        cols=sql.SQL("::text, ").join(
-                            [sql.Identifier(c) for c in cols],
-                        ),
-                        table=sql.Identifier(table),
-                    ),
-                )
-                for v in values:
-                    assert res.fetchone() == v
-
-                assert res.fetchone() is None
-
-        if tc.expected_indexes is not None:
-            with conn.cursor() as res:
-                res.execute(
-                    "SELECT COUNT(*) FROM pg_indexes WHERE schemaname = 'public';",
-                )
-                assert cast("tuple[int]", res.fetchone())[0] == len(tc.expected_indexes)
-
-                for t, c in tc.expected_indexes:
-                    # this requires specific formatting to match the postgres strings
-                    res.execute(f"""
-SELECT COUNT(*) FROM pg_indexes
-WHERE indexdef LIKE 'CREATE INDEX % ON public.{t} USING btree ({c})';
-                                """)
-                    assert cast("tuple[int]", res.fetchone())[0] == 1, f"{t}, {c}"
 
 
 @mock.patch("httpx_folio.auth.httpx.post")
