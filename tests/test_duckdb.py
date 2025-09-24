@@ -1,6 +1,5 @@
 from difflib import unified_diff
 from pathlib import Path
-from typing import Any, cast
 from unittest import mock
 from unittest.mock import MagicMock
 
@@ -73,12 +72,12 @@ def test_query(
     ld.connect_folio("https://doesnt.matter", "", "", "")
     ld.connect_db(dsn)
 
-    for prefix in tc.values:
+    for call in tc.calls_list:
         ld.query(
-            table=prefix,
+            table=call.prefix,
             path="/patched",
-            json_depth=tc.json_depth,
-            keep_raw=tc.keep_raw,
+            json_depth=call.json_depth,
+            keep_raw=call.keep_raw,
         )
 
     with duckdb.connect(dsn) as res:

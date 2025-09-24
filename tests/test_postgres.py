@@ -2,7 +2,7 @@ import contextlib
 from collections.abc import Callable
 from difflib import unified_diff
 from pathlib import Path
-from typing import Any, cast
+from typing import cast
 from unittest import mock
 from unittest.mock import MagicMock
 
@@ -74,7 +74,7 @@ def test_drop_tables(
 
         res.execute('SELECT COUNT(*) FROM "ldlite_system"."load_history"')
         assert (ud := res.fetchone()) is not None
-        assert ud[0] == len(tc.calls) - 1
+        assert ud[0] == len(tc.calls_list) - 1
         res.execute(
             'SELECT COUNT(*) FROM "ldlite_system"."load_history"'
             'WHERE "table_name" = %s',
@@ -104,12 +104,12 @@ def test_query(
     ld.connect_folio("https://doesnt.matter", "", "", "")
     ld.connect_db_postgresql(dsn)
 
-    for prefix in tc.values:
+    for call in tc.calls_list:
         ld.query(
-            table=prefix,
+            table=call.prefix,
             path="/patched",
-            json_depth=tc.json_depth,
-            keep_raw=tc.keep_raw,
+            json_depth=call.json_depth,
+            keep_raw=call.keep_raw,
         )
 
     with psycopg.connect(dsn) as conn:
