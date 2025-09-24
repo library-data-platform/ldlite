@@ -29,7 +29,7 @@ class Call:
 
 
 @dataclass(frozen=True)
-class EndToEndTestCase:
+class MockedResponseTestCase:
     calls: Call | list[Call]
 
     @property

@@ -2,11 +2,11 @@ from dataclasses import dataclass
 
 from pytest_cases import parametrize
 
-from .base import Call, EndToEndTestCase
+from .base import Call, MockedResponseTestCase
 
 
 @dataclass(frozen=True)
-class DropTablesCase(EndToEndTestCase):
+class DropTablesCase(MockedResponseTestCase):
     drop: str
     expected_tables: list[str]
 

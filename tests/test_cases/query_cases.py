@@ -4,11 +4,11 @@ from typing import Any
 
 from pytest_cases import parametrize
 
-from .base import Call, EndToEndTestCase
+from .base import Call, MockedResponseTestCase
 
 
 @dataclass(frozen=True)
-class QueryCase(EndToEndTestCase):
+class QueryCase(MockedResponseTestCase):
     expected_tables: list[str]
     expected_values: dict[str, tuple[list[str], list[tuple[Any, ...]]]]
     expected_indexes: list[tuple[str, str]] | None = None
