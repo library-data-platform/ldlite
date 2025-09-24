@@ -9,7 +9,7 @@ from unittest.mock import MagicMock
 import pytest
 from pytest_cases import parametrize_with_cases
 
-from .test_cases.base import Call, MockedResponseTestCase
+from .mock_response_case import Call, MockedResponseTestCase
 
 if TYPE_CHECKING:
     import ldlite

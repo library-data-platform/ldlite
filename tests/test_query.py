@@ -12,7 +12,7 @@ import pytest
 from psycopg import sql
 from pytest_cases import parametrize, parametrize_with_cases
 
-from .test_cases.base import Call, MockedResponseTestCase
+from .mock_response_case import Call, MockedResponseTestCase
 
 if TYPE_CHECKING:
     from _typeshed import dbapi
