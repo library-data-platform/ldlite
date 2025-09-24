@@ -175,8 +175,8 @@ def test_to_csv(
     ld.connect_folio("https://doesnt.matter", "", "", "")
     ld.connect_db_postgresql(dsn)
 
-    for prefix in tc.values:
-        ld.query(table=prefix, path="/patched")
+    for call in tc.calls_list:
+        ld.query(table=call.prefix, path="/patched")
 
     for table, expected in tc.expected_csvs:
         actual = (Path(tmpdir) / table).with_suffix(".csv")
