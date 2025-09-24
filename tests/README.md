@@ -1,4 +1,18 @@
-# Test Setup
+# Tests
+
+## Running tests
+
+There is a pdm script which runs tests with code coverage `pdm run test`. Any additional parameters will be passed through to pytest.
+
+The -k parameter filters tests. Some useful examples:
+```
+pdm run test -k "Integration"
+pdm run test --pg-host 172.17.0.3 -k "postgres and not Integration"
+pdm run test -k "drop_tables and not postgres"
+pdm run test -k "duckdb"
+```
+
+## Test Setup
 
 Duckdb tests "just work".
 Postgres tests will be skipped unless you set them up first.
