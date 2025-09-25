@@ -160,6 +160,32 @@ FROM j;""",
     )
 
 
+@parametrize(
+    p=[
+        ("str", False),
+        ("str_empty", False),
+        ("num", False),
+        ("na", False),
+        ("na_str1", False),
+        ("na_str2", False),
+        ("uuid_nof", False),
+        ("uuid", False),
+        ("dt", False),
+        ("num", False),
+        ("float", True),
+    ],
+)
+def case_jis_float(p: tuple[Any, ...]) -> JsonTC:
+    return JsonTC(
+        """
+SELECT {assertion}ldlite_system.jis_float(jc->$1)
+FROM j;""",
+        p[:1],
+        "" if (p[1]) else """ NOT """,
+        (),
+    )
+
+
 def _assert(conn: "dbapi.DBAPIConnection", jtype: str, tc: JsonTC) -> None:
     with closing(conn.cursor()) as cur:
         query = tc.query.format(assertion="", jtype=jtype)

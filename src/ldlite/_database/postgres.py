@@ -78,6 +78,15 @@ BEGIN
 END
 $$ LANGUAGE plpgsql;
 
+
+CREATE OR REPLACE FUNCTION ldlite_system.jis_float(j JSONB) RETURNS BOOLEAN AS $$
+BEGIN
+    RETURN CASE
+        WHEN ldlite_system.jtype_of(j) = 'number' THEN j->>0 LIKE '%.%'
+        ELSE FALSE
+    END;
+END
+$$ LANGUAGE plpgsql;
 """,  # noqa: E501
             )
 

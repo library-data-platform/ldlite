@@ -71,6 +71,13 @@ CREATE OR REPLACE FUNCTION ldlite_system.jis_datetime(j) AS
     END
 ;
 
+CREATE OR REPLACE FUNCTION ldlite_system.jis_float(j) AS
+    CASE ldlite_system.jtype_of(j)
+        WHEN 'number' THEN contains(main.json_extract_string(j, '$'), '.')
+        ELSE FALSE
+    END
+;
+
 """,  # noqa: E501
             )
 
