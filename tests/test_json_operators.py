@@ -127,13 +127,9 @@ def _assert(conn: "dbapi.DBAPIConnection", jtype: str, tc: JsonTC) -> None:
         assert actual[0]
 
 
-@pytest.fixture(scope="session")
-def duckdb_jop_dsn() -> Iterator[str]:
-    dsn = f":memory:{_db()}"
-
-    with duckdb.connect(dsn) as conn:
-        conn.execute("CREATE TABLE j (jc JSON)")
-        conn.execute(
+def _arrange(conn: "dbapi.DBAPIConnection") -> None:
+    with closing(conn.cursor()) as cur:
+        cur.execute(
             "INSERT INTO j VALUES "
             "('{"
             """ "str": "str_val","""
@@ -141,11 +137,21 @@ def duckdb_jop_dsn() -> Iterator[str]:
             """ "float": 16.3,"""
             """ "bool": true,"""
             """ "obj": {"k1": "v1", "k2": "v2"},"""
+            """ "arr_zero": [],"""
             """ "arr_str": ["s1", "s2", "s3"],"""
             """ "arr_obj": [{"k1": "v1"}, {"k2": "v2"}],"""
             """ "na": null"""
             " }')",
         )
+
+
+@pytest.fixture(scope="session")
+def duckdb_jop_dsn() -> Iterator[str]:
+    dsn = f":memory:{_db()}"
+
+    with duckdb.connect(dsn) as conn:
+        conn.execute("CREATE TABLE j (jc JSON)")
+        _arrange(cast("dbapi.DBAPIConnection", conn))
 
         yield dsn
 
@@ -157,8 +163,8 @@ def test_duckdb(duckdb_jop_dsn: str, tc: JsonTC) -> None:
     ld = LDLite()
     ld.connect_db(duckdb_jop_dsn)
 
-    with duckdb.connect(duckdb_jop_dsn) as conn, conn.begin() as tx:
-        _assert(cast("dbapi.DBAPIConnection", tx), "JSON", tc)
+    with duckdb.connect(duckdb_jop_dsn) as conn:
+        _assert(cast("dbapi.DBAPIConnection", conn), "JSON", tc)
 
 
 @pytest.fixture(scope="session")
@@ -169,19 +175,7 @@ def pg_jop_dsn(pg_dsn: None | Callable[[str], str]) -> str:
     dsn = pg_dsn(_db())
     with psycopg.connect(dsn) as conn, conn.cursor() as cur:
         cur.execute("CREATE TABLE j (jc JSONB)")
-        cur.execute(
-            "INSERT INTO j VALUES "
-            "('{"
-            """ "str": "str_val","""
-            """ "num": 12,"""
-            """ "float": 16.3,"""
-            """ "bool": true,"""
-            """ "obj": {"k1": "v1", "k2": "v2"},"""
-            """ "arr_str": ["s1", "s2", "s3"],"""
-            """ "arr_obj": [{"k1": "v1"}, {"k2": "v2"}],"""
-            """ "na": null"""
-            " }')",
-        )
+        _arrange(cast("dbapi.DBAPIConnection", conn))
     return dsn
 
 
