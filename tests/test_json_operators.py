@@ -1,4 +1,4 @@
-from collections.abc import Callable
+from collections.abc import Callable, Iterator
 from contextlib import closing
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any, cast
@@ -78,13 +78,9 @@ def _assert(conn: "dbapi.DBAPIConnection", jtype: str, tc: JsonTC) -> None:
         pytest.fail(str(cur.fetchone()))
 
 
-@parametrize_with_cases("tc", cases=".")
-def test_duckdb(tc: JsonTC) -> None:
-    from ldlite import LDLite
-
-    ld = LDLite()
+@pytest.fixture(scope="session")
+def duckdb_jop_dsn() -> Iterator[str]:
     dsn = f":memory:{_db()}"
-    ld.connect_db(dsn)
 
     with duckdb.connect(dsn) as conn:
         conn.execute("CREATE TABLE j (jc JSON)")
@@ -99,7 +95,17 @@ def test_duckdb(tc: JsonTC) -> None:
             " }')",
         )
 
-    with duckdb.connect(dsn) as conn, conn.begin() as tx:
+        yield dsn
+
+
+@parametrize_with_cases("tc", cases=".")
+def test_duckdb(duckdb_jop_dsn: str, tc: JsonTC) -> None:
+    from ldlite import LDLite
+
+    ld = LDLite()
+    ld.connect_db(duckdb_jop_dsn)
+
+    with duckdb.connect(duckdb_jop_dsn) as conn, conn.begin() as tx:
         _assert(cast("dbapi.DBAPIConnection", tx), "JSON", tc)
 
 
