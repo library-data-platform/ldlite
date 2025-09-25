@@ -32,7 +32,9 @@ CREATE OR REPLACE FUNCTION ldlite_system.jtype_of(j) AS
         WHEN 'DOUBLE' THEN 'number'
         WHEN 'UBIGINT' THEN 'number'
         WHEN 'OBJECT' THEN 'object'
+        WHEN 'BOOLEAN' THEN 'boolean'
         WHEN 'ARRAY' THEN 'array'
+        WHEN 'NULL' THEN 'null'
         ELSE main.json_type(j)
     END
 ;

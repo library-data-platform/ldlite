@@ -32,9 +32,11 @@ class JsonTC:
         ("str", '"str_val"'),
         ("num", "12"),
         ("float", "16.3"),
+        ("bool", "true"),
         ("obj", '{"k1":"v1","k2":"v2"}'),
         ("arr_str", '["s1","s2","s3"]'),
         ("arr_obj", '[{"k1":"v1"},{"k2":"v2"}]'),
+        ("na", "null"),
     ],
 )
 def case_jextract(p: tuple[Any, ...]) -> JsonTC:
@@ -51,13 +53,15 @@ def case_jextract(p: tuple[Any, ...]) -> JsonTC:
         ("str", "str_val"),
         ("num", "12"),
         ("float", "16.3"),
+        ("bool", "true"),
+        ("na",),
     ],
 )
 def case_jextract_string(p: tuple[Any, ...]) -> JsonTC:
     return JsonTC(
         """SELECT ldlite_system.jextract_string(jc, $1){assertion} FROM j;""",
         p[:1],
-        """ = $2""",
+        """ = $2""" if p[0] != "na" else """ IS NULL""",
         p[1:],
     )
 
@@ -82,9 +86,11 @@ WHERE e.jkey IS NULL or a.jkey IS NULL);""",
         ("str", "string"),
         ("num", "number"),
         ("float", "number"),
+        ("bool", "boolean"),
         ("obj", "object"),
         ("arr_str", "array"),
         ("arr_obj", "array"),
+        ("na", "null"),
     ],
 )
 def case_jtypeof(p: tuple[Any, ...]) -> JsonTC:
@@ -133,9 +139,11 @@ def duckdb_jop_dsn() -> Iterator[str]:
             """ "str": "str_val","""
             """ "num": 12,"""
             """ "float": 16.3,"""
+            """ "bool": true,"""
             """ "obj": {"k1": "v1", "k2": "v2"},"""
             """ "arr_str": ["s1", "s2", "s3"],"""
-            """ "arr_obj": [{"k1": "v1"}, {"k2": "v2"}]"""
+            """ "arr_obj": [{"k1": "v1"}, {"k2": "v2"}],"""
+            """ "na": null"""
             " }')",
         )
 
@@ -167,9 +175,11 @@ def pg_jop_dsn(pg_dsn: None | Callable[[str], str]) -> str:
             """ "str": "str_val","""
             """ "num": 12,"""
             """ "float": 16.3,"""
+            """ "bool": true,"""
             """ "obj": {"k1": "v1", "k2": "v2"},"""
             """ "arr_str": ["s1", "s2", "s3"],"""
-            """ "arr_obj": [{"k1": "v1"}, {"k2": "v2"}]"""
+            """ "arr_obj": [{"k1": "v1"}, {"k2": "v2"}],"""
+            """ "na": null"""
             " }')",
         )
     return dsn
