@@ -103,17 +103,12 @@ def test_duckdb(tc: JsonTC) -> None:
         _assert(cast("dbapi.DBAPIConnection", tx), "JSON", tc)
 
 
-@parametrize_with_cases("tc", cases=".")
-def test_postgres(pg_dsn: None | Callable[[str], str], tc: JsonTC) -> None:
+@pytest.fixture(scope="session")
+def pg_jop_dsn(pg_dsn: None | Callable[[str], str]) -> str:
     if pg_dsn is None:
         pytest.skip("Specify the pg host using --pg-host to run")
 
-    from ldlite import LDLite
-
-    ld = LDLite()
     dsn = pg_dsn(_db())
-    ld.connect_db_postgresql(dsn)
-
     with psycopg.connect(dsn) as conn, conn.cursor() as cur:
         cur.execute("CREATE TABLE j (jc JSONB)")
         cur.execute(
@@ -126,6 +121,15 @@ def test_postgres(pg_dsn: None | Callable[[str], str], tc: JsonTC) -> None:
             """ "arr_obj": [{"k1": "v1"}, {"k2": "v2"}]"""
             " }')",
         )
+    return dsn
 
-    with psycopg.connect(dsn, cursor_factory=psycopg.RawCursor) as conn:
+
+@parametrize_with_cases("tc", cases=".")
+def test_postgres(pg_jop_dsn: str, tc: JsonTC) -> None:
+    from ldlite import LDLite
+
+    ld = LDLite()
+    ld.connect_db_postgresql(pg_jop_dsn)
+
+    with psycopg.connect(pg_jop_dsn, cursor_factory=psycopg.RawCursor) as conn:
         _assert(cast("dbapi.DBAPIConnection", conn), "JSONB", tc)
