@@ -41,6 +41,13 @@ BEGIN
     RETURN jsonb_typeof(j);
 END
 $$ LANGUAGE plpgsql;
+
+CREATE OR REPLACE FUNCTION ldlite_system.jarray_length(j JSONB) RETURNS INTEGER AS $$
+BEGIN
+    RETURN jsonb_array_length(j);
+END
+$$ LANGUAGE plpgsql;
+
 """,  # noqa: E501
             )
 

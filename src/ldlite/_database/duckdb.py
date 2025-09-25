@@ -38,6 +38,10 @@ CREATE OR REPLACE FUNCTION ldlite_system.jtype_of(j) AS
         ELSE main.json_type(j)
     END
 ;
+
+CREATE OR REPLACE FUNCTION ldlite_system.jarray_length(j) AS
+    main.json_array_length(j)
+;
 """,
             )
 

@@ -104,6 +104,24 @@ FROM j;""",
     )
 
 
+@parametrize(
+    p=[
+        ("arr_zero", 0),
+        ("arr_str", 3),
+        ("arr_obj", 2),
+    ],
+)
+def case_jarray_length(p: tuple[Any, ...]) -> JsonTC:
+    return JsonTC(
+        """
+SELECT ldlite_system.jarray_length(ldlite_system.jextract(jc, $1)){assertion}
+FROM j;""",
+        p[:1],
+        """ = $2""",
+        p[1:],
+    )
+
+
 def _assert(conn: "dbapi.DBAPIConnection", jtype: str, tc: JsonTC) -> None:
     with closing(conn.cursor()) as cur:
         query = tc.query.format(assertion="", jtype=jtype)
