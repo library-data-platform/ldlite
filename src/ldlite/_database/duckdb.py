@@ -12,7 +12,7 @@ class DuckDbDatabase(TypedDatabase[duckdb.DuckDBPyConnection]):
     def _setup_jfuncs(conn: duckdb.DuckDBPyConnection) -> None:
         with conn.cursor() as cur:
             cur.execute(
-                """
+                r"""
 CREATE OR REPLACE FUNCTION ldlite_system.jtype_of(j) AS
     CASE main.json_type(j)
         WHEN 'VARCHAR' THEN 'string'
@@ -56,9 +56,17 @@ CREATE OR REPLACE FUNCTION ldlite_system.jextract_string(j, p) AS
 CREATE OR REPLACE FUNCTION ldlite_system.jobject_keys(j) AS
     unnest(main.json_keys(j))
 ;
+
 CREATE OR REPLACE FUNCTION ldlite_system.jis_uuid(j) AS
     CASE ldlite_system.jtype_of(j)
         WHEN 'string' THEN regexp_full_match(main.json_extract_string(j, '$'), '^[a-fA-F0-9]{8}-[a-fA-F0-9]{4}-[1-5][a-fA-F0-9]{3}-[89abAB][a-fA-F0-9]{3}-[a-fA-F0-9]{12}$')
+        ELSE FALSE
+    END
+;
+
+CREATE OR REPLACE FUNCTION ldlite_system.jis_datetime(j) AS
+    CASE ldlite_system.jtype_of(j)
+        WHEN 'string' THEN try_strptime(main.json_extract_string(j, '$'), '%Y-%m-%dT%H:%M:%S.%g%z') IS NOT NULL
         ELSE FALSE
     END
 ;

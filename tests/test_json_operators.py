@@ -105,7 +105,7 @@ WHERE e.jkey IS NULL or a.jkey IS NULL);""",
 def case_jtypeof(p: tuple[Any, ...]) -> JsonTC:
     return JsonTC(
         """
-SELECT ldlite_system.jtype_of(ldlite_system.jextract(jc, $1)){assertion}
+SELECT ldlite_system.jtype_of(jc->$1){assertion}
 FROM j;""",
         p[:1],
         """ = $2""",
@@ -128,7 +128,31 @@ FROM j;""",
 def case_jis_uuid(p: tuple[Any, ...]) -> JsonTC:
     return JsonTC(
         """
-SELECT {assertion}ldlite_system.jis_uuid(ldlite_system.jextract(jc, $1))
+SELECT {assertion}ldlite_system.jis_uuid(jc->$1)
+FROM j;""",
+        p[:1],
+        "" if (p[1]) else """ NOT """,
+        (),
+    )
+
+
+@parametrize(
+    p=[
+        ("str", False),
+        ("str_empty", False),
+        ("num", False),
+        ("na", False),
+        ("na_str1", False),
+        ("na_str2", False),
+        ("uuid_nof", False),
+        ("uuid", False),
+        ("dt", True),
+    ],
+)
+def case_jis_datetime(p: tuple[Any, ...]) -> JsonTC:
+    return JsonTC(
+        """
+SELECT {assertion}ldlite_system.jis_datetime(jc->$1)
 FROM j;""",
         p[:1],
         "" if (p[1]) else """ NOT """,
@@ -179,6 +203,7 @@ def _arrange(conn: "dbapi.DBAPIConnection") -> None:
             """ "arr_str_some": ["s1", "s2", null],"""
             """ "arr_obj": [{"k1": "v1"}, {"k2": "v2"}],"""
             """ "arr_obj_some": [{"k1": "v1"}, null],"""
+            """ "dt": "2022-04-21T18:47:33.581+00:00","""
             """ "na": null,"""
             """ "na_str1": "null", """
             """ "na_str2": "NULL" """
