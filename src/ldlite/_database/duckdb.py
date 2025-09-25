@@ -13,18 +13,6 @@ class DuckDbDatabase(TypedDatabase[duckdb.DuckDBPyConnection]):
         with conn.cursor() as cur:
             cur.execute(
                 """
-CREATE OR REPLACE FUNCTION ldlite_system.jextract(j, p) AS
-    main.json_extract(j, p)
-;
-
-CREATE OR REPLACE FUNCTION ldlite_system.jextract_string(j, p) AS
-    main.json_extract_string(j, p)
-;
-
-CREATE OR REPLACE FUNCTION ldlite_system.jobject_keys(j) AS
-    unnest(main.json_keys(j))
-;
-
 CREATE OR REPLACE FUNCTION ldlite_system.jtype_of(j) AS
     CASE main.json_type(j)
         WHEN 'VARCHAR' THEN 'string'
@@ -39,10 +27,35 @@ CREATE OR REPLACE FUNCTION ldlite_system.jtype_of(j) AS
     END
 ;
 
-CREATE OR REPLACE FUNCTION ldlite_system.jarray_length(j) AS
-    main.json_array_length(j)
+CREATE OR REPLACE FUNCTION ldlite_system.jextract(j, p) AS
+    CASE ldlite_system.jtype_of(main.json_extract(j, p))
+        WHEN 'string' THEN
+            CASE
+                WHEN lower(main.json_extract_string(j, p)) = 'null' THEN 'null'::JSON
+                ELSE main.json_extract(j, p)
+            END
+        WHEN 'object' THEN
+            CASE
+                WHEN main.json_extract_string(j, p) = '{}' THEN 'null'::JSON
+                ELSE main.json_extract(j, p)
+            END
+        WHEN 'array' THEN
+            CASE
+                WHEN length(list_filter((main.json_extract(j, p))::JSON[], lambda x: x != 'null'::JSON)) = 0 THEN 'null'::JSON
+                ELSE list_filter((main.json_extract(j, p))::JSON[], lambda x: x != 'null'::JSON)
+            END
+        ELSE main.json_extract(j, p)
+    END
 ;
-""",
+
+CREATE OR REPLACE FUNCTION ldlite_system.jextract_string(j, p) AS
+    main.json_extract_string(ldlite_system.jextract(j, p), '$')
+;
+
+CREATE OR REPLACE FUNCTION ldlite_system.jobject_keys(j) AS
+    unnest(main.json_keys(j))
+;
+""",  # noqa: E501
             )
 
     @property

@@ -34,9 +34,15 @@ class JsonTC:
         ("float", "16.3"),
         ("bool", "true"),
         ("obj", '{"k1":"v1","k2":"v2"}'),
+        ("obj_some", '{"k1":"v1","k2":null}'),
+        ("obj_empty", "null"),
+        ("arr_zero", "null"),
         ("arr_str", '["s1","s2","s3"]'),
-        ("arr_obj", '[{"k1":"v1"},{"k2":"v2"}]'),
+        ("arr_str_some", '["s1","s2"]'),
+        ("arr_obj_some", '[{"k1":"v1"}]'),
         ("na", "null"),
+        ("na_str1", "null"),
+        ("na_str2", "null"),
     ],
 )
 def case_jextract(p: tuple[Any, ...]) -> JsonTC:
@@ -55,13 +61,15 @@ def case_jextract(p: tuple[Any, ...]) -> JsonTC:
         ("float", "16.3"),
         ("bool", "true"),
         ("na",),
+        ("na_str1",),
+        ("na_str2",),
     ],
 )
 def case_jextract_string(p: tuple[Any, ...]) -> JsonTC:
     return JsonTC(
         """SELECT ldlite_system.jextract_string(jc, $1){assertion} FROM j;""",
         p[:1],
-        """ = $2""" if p[0] != "na" else """ IS NULL""",
+        """ = $2""" if len(p) == 2 else """ IS NULL""",
         p[1:],
     )
 
@@ -104,24 +112,6 @@ FROM j;""",
     )
 
 
-@parametrize(
-    p=[
-        ("arr_zero", 0),
-        ("arr_str", 3),
-        ("arr_obj", 2),
-    ],
-)
-def case_jarray_length(p: tuple[Any, ...]) -> JsonTC:
-    return JsonTC(
-        """
-SELECT ldlite_system.jarray_length(ldlite_system.jextract(jc, $1)){assertion}
-FROM j;""",
-        p[:1],
-        """ = $2""",
-        p[1:],
-    )
-
-
 def _assert(conn: "dbapi.DBAPIConnection", jtype: str, tc: JsonTC) -> None:
     with closing(conn.cursor()) as cur:
         query = tc.query.format(assertion="", jtype=jtype)
@@ -133,15 +123,15 @@ def _assert(conn: "dbapi.DBAPIConnection", jtype: str, tc: JsonTC) -> None:
         cur.execute(assertion, (*tc.query_params, *tc.assertion_params))
         actual = cur.fetchone()
         assert actual is not None
-        assert actual[0] is not None
 
-        if not actual[0]:
+        if actual[0] is None or not actual[0]:
             cur.execute(query, tc.query_params)
             diff = ""
             for r in cur.fetchall():
                 diff += f"{r}\n"
             pytest.fail(diff)
 
+        assert actual[0] is not None
         assert actual[0]
 
 
@@ -155,10 +145,16 @@ def _arrange(conn: "dbapi.DBAPIConnection") -> None:
             """ "float": 16.3,"""
             """ "bool": true,"""
             """ "obj": {"k1": "v1", "k2": "v2"},"""
+            """ "obj_some": {"k1": "v1", "k2": null},"""
+            """ "obj_empty": {},"""
             """ "arr_zero": [],"""
             """ "arr_str": ["s1", "s2", "s3"],"""
+            """ "arr_str_some": ["s1", "s2", null],"""
             """ "arr_obj": [{"k1": "v1"}, {"k2": "v2"}],"""
-            """ "na": null"""
+            """ "arr_obj_some": [{"k1": "v1"}, null],"""
+            """ "na": null,"""
+            """ "na_str1": "null", """
+            """ "na_str2": "NULL" """
             " }')",
         )
 

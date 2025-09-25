@@ -18,33 +18,44 @@ class PostgresDatabase(TypedDatabase[psycopg.Connection]):
         with conn.cursor() as cur:
             cur.execute(
                 """
-CREATE OR REPLACE FUNCTION ldlite_system.jextract(j JSONB, p TEXT) RETURNS JSONB AS $$
-BEGIN
-    RETURN j->p;
-END
-$$ LANGUAGE plpgsql;
-
-CREATE OR REPLACE FUNCTION ldlite_system.jextract_string(j JSONB, p TEXT) RETURNS TEXT AS $$
-BEGIN
-    RETURN j->>p;
-END
-$$ LANGUAGE plpgsql;
-
-CREATE OR REPLACE FUNCTION ldlite_system.jobject_keys(j JSONB) RETURNS SETOF TEXT AS $$
-BEGIN
-    RETURN QUERY SELECT jsonb_object_keys(j);
-END
-$$ LANGUAGE plpgsql;
-
 CREATE OR REPLACE FUNCTION ldlite_system.jtype_of(j JSONB) RETURNS TEXT AS $$
 BEGIN
     RETURN jsonb_typeof(j);
 END
 $$ LANGUAGE plpgsql;
 
-CREATE OR REPLACE FUNCTION ldlite_system.jarray_length(j JSONB) RETURNS INTEGER AS $$
+CREATE OR REPLACE FUNCTION ldlite_system.jextract(j JSONB, p TEXT) RETURNS JSONB AS $$
 BEGIN
-    RETURN jsonb_array_length(j);
+    RETURN CASE
+        WHEN ldlite_system.jtype_of(j->p) = 'string' THEN
+            CASE
+                WHEN lower(j->>p) = 'null' THEN 'null'::JSONB
+                ELSE j->p
+            END
+        WHEN ldlite_system.jtype_of(j->p) = 'array' THEN
+            CASE
+                WHEN jsonb_array_length(jsonb_path_query_array(j->p, '$[*] ? (@ != null)')) = 0 THEN 'null'::JSONB
+                ELSE jsonb_path_query_array(j->p, '$[*] ? (@ != null)')
+            END
+        WHEN ldlite_system.jtype_of(j->p) = 'object' THEN
+            CASE
+                WHEN j->>p = '{}' THEN 'null'::JSONB
+                ELSE j->p
+            END
+        ELSE j->p
+    END;
+END
+$$ LANGUAGE plpgsql;
+
+CREATE OR REPLACE FUNCTION ldlite_system.jextract_string(j JSONB, p TEXT) RETURNS TEXT AS $$
+BEGIN
+    RETURN ldlite_system.jextract(j, p) ->> 0;
+END
+$$ LANGUAGE plpgsql;
+
+CREATE OR REPLACE FUNCTION ldlite_system.jobject_keys(j JSONB) RETURNS SETOF TEXT AS $$
+BEGIN
+    RETURN QUERY SELECT jsonb_object_keys(j);
 END
 $$ LANGUAGE plpgsql;
 
