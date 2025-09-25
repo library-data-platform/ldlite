@@ -35,6 +35,12 @@ BEGIN
     RETURN QUERY SELECT jsonb_object_keys(j);
 END
 $$ LANGUAGE plpgsql;
+
+CREATE OR REPLACE FUNCTION ldlite_system.jtype_of(j JSONB) RETURNS TEXT AS $$
+BEGIN
+    RETURN jsonb_typeof(j);
+END
+$$ LANGUAGE plpgsql;
 """,  # noqa: E501
             )
 

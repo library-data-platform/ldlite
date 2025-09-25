@@ -23,6 +23,19 @@ CREATE OR REPLACE FUNCTION ldlite_system.jextract_string(j, p) AS
 
 CREATE OR REPLACE FUNCTION ldlite_system.jobject_keys(j) AS
     unnest(main.json_keys(j))
+;
+
+CREATE OR REPLACE FUNCTION ldlite_system.jtype_of(j) AS
+    CASE main.json_type(j)
+        WHEN 'VARCHAR' THEN 'string'
+        WHEN 'BIGINT' THEN 'number'
+        WHEN 'DOUBLE' THEN 'number'
+        WHEN 'UBIGINT' THEN 'number'
+        WHEN 'OBJECT' THEN 'object'
+        WHEN 'ARRAY' THEN 'array'
+        ELSE main.json_type(j)
+    END
+;
 """,
             )
 

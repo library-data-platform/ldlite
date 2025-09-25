@@ -77,6 +77,27 @@ WHERE e.jkey IS NULL or a.jkey IS NULL);""",
     )
 
 
+@parametrize(
+    p=[
+        ("str", "string"),
+        ("num", "number"),
+        ("float", "number"),
+        ("obj", "object"),
+        ("arr_str", "array"),
+        ("arr_obj", "array"),
+    ],
+)
+def case_jtypeof(p: tuple[Any, ...]) -> JsonTC:
+    return JsonTC(
+        """
+SELECT ldlite_system.jtype_of(ldlite_system.jextract(jc, $1)){assertion}
+FROM j;""",
+        p[:1],
+        """ = $2""",
+        p[1:],
+    )
+
+
 def _assert(conn: "dbapi.DBAPIConnection", jtype: str, tc: JsonTC) -> None:
     with closing(conn.cursor()) as cur:
         query = tc.query.format(assertion="", jtype=jtype)
