@@ -29,6 +29,12 @@ BEGIN
     RETURN j->>p;
 END
 $$ LANGUAGE plpgsql;
+
+CREATE OR REPLACE FUNCTION ldlite_system.jobject_keys(j JSONB) RETURNS SETOF TEXT AS $$
+BEGIN
+    RETURN QUERY SELECT jsonb_object_keys(j);
+END
+$$ LANGUAGE plpgsql;
 """,  # noqa: E501
             )
 

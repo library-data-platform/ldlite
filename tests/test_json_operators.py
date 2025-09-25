@@ -62,6 +62,21 @@ def case_jextract_string(p: tuple[Any, ...]) -> JsonTC:
     )
 
 
+def case_jobject_keys() -> JsonTC:
+    return JsonTC(
+        """
+{assertion}
+(SELECT e.jkey, a.jkey
+FROM (SELECT 'k1' jkey UNION SELECT 'k2' jkey) as e
+FULL OUTER JOIN (SELECT ldlite_system.jobject_keys(jc->'obj') jkey FROM j) a
+    USING (jkey)
+WHERE e.jkey IS NULL or a.jkey IS NULL);""",
+        (),
+        "SELECT COUNT(1) = 0 FROM ",
+        (),
+    )
+
+
 def _assert(conn: "dbapi.DBAPIConnection", jtype: str, tc: JsonTC) -> None:
     with closing(conn.cursor()) as cur:
         query = tc.query.format(assertion="", jtype=jtype)
@@ -74,10 +89,15 @@ def _assert(conn: "dbapi.DBAPIConnection", jtype: str, tc: JsonTC) -> None:
         actual = cur.fetchone()
         assert actual is not None
         assert actual[0] is not None
+
+        if not actual[0]:
+            cur.execute(query, tc.query_params)
+            diff = ""
+            for r in cur.fetchall():
+                diff += f"{r}\n"
+            pytest.fail(diff)
+
         assert actual[0]
-    if not actual[0]:
-        cur.execute(query, tc.query_params)
-        pytest.fail(str(cur.fetchone()))
 
 
 @pytest.fixture(scope="session")

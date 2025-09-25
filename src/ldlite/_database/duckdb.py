@@ -20,6 +20,9 @@ CREATE OR REPLACE FUNCTION ldlite_system.jextract(j, p) AS
 CREATE OR REPLACE FUNCTION ldlite_system.jextract_string(j, p) AS
     main.json_extract_string(j, p)
 ;
+
+CREATE OR REPLACE FUNCTION ldlite_system.jobject_keys(j) AS
+    unnest(main.json_keys(j))
 """,
             )
 
