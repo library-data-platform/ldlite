@@ -32,6 +32,7 @@ CREATE OR REPLACE FUNCTION ldlite_system.jextract(j, p) AS
         WHEN 'string' THEN
             CASE
                 WHEN lower(main.json_extract_string(j, p)) = 'null' THEN 'null'::JSON
+                WHEN length(main.json_extract_string(j, p)) = 0 THEN 'null'::JSON
                 ELSE main.json_extract(j, p)
             END
         WHEN 'object' THEN
@@ -55,6 +56,13 @@ CREATE OR REPLACE FUNCTION ldlite_system.jextract_string(j, p) AS
 CREATE OR REPLACE FUNCTION ldlite_system.jobject_keys(j) AS
     unnest(main.json_keys(j))
 ;
+CREATE OR REPLACE FUNCTION ldlite_system.jis_uuid(j) AS
+    CASE ldlite_system.jtype_of(j)
+        WHEN 'string' THEN regexp_full_match(main.json_extract_string(j, '$'), '^[a-fA-F0-9]{8}-[a-fA-F0-9]{4}-[1-5][a-fA-F0-9]{3}-[89abAB][a-fA-F0-9]{3}-[a-fA-F0-9]{12}$')
+        ELSE FALSE
+    END
+;
+
 """,  # noqa: E501
             )
 

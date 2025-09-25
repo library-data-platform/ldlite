@@ -30,6 +30,7 @@ class JsonTC:
 @parametrize(
     p=[
         ("str", '"str_val"'),
+        ("str_empty", "null"),
         ("num", "12"),
         ("float", "16.3"),
         ("bool", "true"),
@@ -112,6 +113,29 @@ FROM j;""",
     )
 
 
+@parametrize(
+    p=[
+        ("str", False),
+        ("str_empty", False),
+        ("num", False),
+        ("na", False),
+        ("na_str1", False),
+        ("na_str2", False),
+        ("uuid_nof", False),
+        ("uuid", True),
+    ],
+)
+def case_jis_uuid(p: tuple[Any, ...]) -> JsonTC:
+    return JsonTC(
+        """
+SELECT {assertion}ldlite_system.jis_uuid(ldlite_system.jextract(jc, $1))
+FROM j;""",
+        p[:1],
+        "" if (p[1]) else """ NOT """,
+        (),
+    )
+
+
 def _assert(conn: "dbapi.DBAPIConnection", jtype: str, tc: JsonTC) -> None:
     with closing(conn.cursor()) as cur:
         query = tc.query.format(assertion="", jtype=jtype)
@@ -141,9 +165,12 @@ def _arrange(conn: "dbapi.DBAPIConnection") -> None:
             "INSERT INTO j VALUES "
             "('{"
             """ "str": "str_val","""
+            """ "str_empty": "","""
             """ "num": 12,"""
             """ "float": 16.3,"""
             """ "bool": true,"""
+            """ "uuid": "5b285d03-5490-1111-8888-52b2003b475c","""
+            """ "uuid_nof": "5b285d03-5490-FFFF-0000-52b2003b475c","""
             """ "obj": {"k1": "v1", "k2": "v2"},"""
             """ "obj_some": {"k1": "v1", "k2": null},"""
             """ "obj_empty": {},"""

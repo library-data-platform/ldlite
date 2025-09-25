@@ -30,6 +30,7 @@ BEGIN
         WHEN ldlite_system.jtype_of(j->p) = 'string' THEN
             CASE
                 WHEN lower(j->>p) = 'null' THEN 'null'::JSONB
+                WHEN length(j->>p) = 0 THEN 'null'::JSONB
                 ELSE j->p
             END
         WHEN ldlite_system.jtype_of(j->p) = 'array' THEN
@@ -56,6 +57,15 @@ $$ LANGUAGE plpgsql;
 CREATE OR REPLACE FUNCTION ldlite_system.jobject_keys(j JSONB) RETURNS SETOF TEXT AS $$
 BEGIN
     RETURN QUERY SELECT jsonb_object_keys(j);
+END
+$$ LANGUAGE plpgsql;
+
+CREATE OR REPLACE FUNCTION ldlite_system.jis_uuid(j JSONB) RETURNS BOOLEAN AS $$
+BEGIN
+    RETURN CASE
+        WHEN ldlite_system.jtype_of(j) = 'string' THEN j->>0 ~ '^[a-fA-F0-9]{8}-[a-fA-F0-9]{4}-[1-5][a-fA-F0-9]{3}-[89abAB][a-fA-F0-9]{3}-[a-fA-F0-9]{12}$'
+        ELSE FALSE
+    END;
 END
 $$ LANGUAGE plpgsql;
 
