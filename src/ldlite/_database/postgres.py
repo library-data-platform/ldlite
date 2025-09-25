@@ -23,15 +23,12 @@ BEGIN
     RETURN j->p;
 END
 $$ LANGUAGE plpgsql;
+
 CREATE OR REPLACE FUNCTION ldlite_system.jextract_string(j JSONB, p TEXT) RETURNS TEXT AS $$
 BEGIN
-    RETURN CASE
-        WHEN jsonb_typeof(j->p) NOT IN ('object', 'array') THEN j->>p
-        ELSE json_strip_nulls(j::JSON->p)::TEXT
-    END;
+    RETURN j->>p;
 END
 $$ LANGUAGE plpgsql;
-
 """,  # noqa: E501
             )
 

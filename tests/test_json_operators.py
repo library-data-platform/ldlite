@@ -31,6 +31,7 @@ class JsonTC:
     p=[
         ("str", '"str_val"'),
         ("num", "12"),
+        ("float", "16.3"),
         ("obj", '{"k1":"v1","k2":"v2"}'),
         ("arr_str", '["s1","s2","s3"]'),
         ("arr_obj", '[{"k1":"v1"},{"k2":"v2"}]'),
@@ -49,6 +50,7 @@ def case_jextract(p: tuple[Any, ...]) -> JsonTC:
     p=[
         ("str", "str_val"),
         ("num", "12"),
+        ("float", "16.3"),
     ],
 )
 def case_jextract_string(p: tuple[Any, ...]) -> JsonTC:
@@ -89,6 +91,7 @@ def duckdb_jop_dsn() -> Iterator[str]:
             "('{"
             """ "str": "str_val","""
             """ "num": 12,"""
+            """ "float": 16.3,"""
             """ "obj": {"k1": "v1", "k2": "v2"},"""
             """ "arr_str": ["s1", "s2", "s3"],"""
             """ "arr_obj": [{"k1": "v1"}, {"k2": "v2"}]"""
@@ -122,6 +125,7 @@ def pg_jop_dsn(pg_dsn: None | Callable[[str], str]) -> str:
             "('{"
             """ "str": "str_val","""
             """ "num": 12,"""
+            """ "float": 16.3,"""
             """ "obj": {"k1": "v1", "k2": "v2"},"""
             """ "arr_str": ["s1", "s2", "s3"],"""
             """ "arr_obj": [{"k1": "v1"}, {"k2": "v2"}]"""

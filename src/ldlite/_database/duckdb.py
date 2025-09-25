@@ -16,6 +16,7 @@ class DuckDbDatabase(TypedDatabase[duckdb.DuckDBPyConnection]):
 CREATE OR REPLACE FUNCTION ldlite_system.jextract(j, p) AS
     main.json_extract(j, p)
 ;
+
 CREATE OR REPLACE FUNCTION ldlite_system.jextract_string(j, p) AS
     main.json_extract_string(j, p)
 ;
