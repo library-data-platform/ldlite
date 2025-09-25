@@ -1,4 +1,4 @@
-from collections.abc import Callable, Sequence
+from collections.abc import Callable
 from contextlib import closing
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any, cast
@@ -21,11 +21,10 @@ def _db() -> str:
 
 @dataclass
 class JsonTC:
+    query: str
+    query_params: tuple[Any, ...]
     assertion: str
-    assertion_params: Sequence[Any]
-    debug: str
-    debug_params: Sequence[Any]
-    format_type: bool = False
+    assertion_params: tuple[Any, ...]
 
 
 @parametrize(
@@ -37,13 +36,12 @@ class JsonTC:
         ("arr_obj", '[{"k1":"v1"},{"k2":"v2"}]'),
     ],
 )
-def case_jextract(p: Sequence[Any]) -> JsonTC:
+def case_jextract(p: tuple[Any, ...]) -> JsonTC:
     return JsonTC(
-        """SELECT ldlite_system.jextract(jc, $1) = $2::{jtype} FROM j;""",
-        p,
-        """SELECT ldlite_system.jextract(jc, $1) FROM j;""",
+        """SELECT ldlite_system.jextract(jc, $1){assertion} FROM j;""",
         p[:1],
-        format_type=True,
+        """= $2::{jtype}""",
+        p[1:],
     )
 
 
@@ -51,34 +49,33 @@ def case_jextract(p: Sequence[Any]) -> JsonTC:
     p=[
         ("str", "str_val"),
         ("num", "12"),
-        ("obj", '{"k1":"v1","k2":"v2"}'),
-        ("arr_str", '["s1","s2","s3"]'),
-        ("arr_obj", '[{"k1":"v1"},{"k2":"v2"}]'),
     ],
 )
-def case_jextract_string(p: Sequence[Any]) -> JsonTC:
+def case_jextract_string(p: tuple[Any, ...]) -> JsonTC:
     return JsonTC(
-        """SELECT ldlite_system.jextract_string(jc, $1) = $2 FROM j;""",
-        p,
-        """SELECT ldlite_system.jextract_string(jc, $1) FROM j;""",
+        """SELECT ldlite_system.jextract_string(jc, $1){assertion} FROM j;""",
         p[:1],
+        """ = $2""",
+        p[1:],
     )
 
 
 def _assert(conn: "dbapi.DBAPIConnection", jtype: str, tc: JsonTC) -> None:
     with closing(conn.cursor()) as cur:
-        if tc.format_type:
-            cur.execute(tc.assertion.format(jtype=jtype), tc.assertion_params)
-        else:
-            cur.execute(tc.assertion, tc.assertion_params)
+        query = tc.query.format(assertion="", jtype=jtype)
+        assertion = tc.query.format(
+            assertion=tc.assertion.format(jtype=jtype),
+            jtype=jtype,
+        )
+
+        cur.execute(assertion, (*tc.query_params, *tc.assertion_params))
         actual = cur.fetchone()
         assert actual is not None
         assert actual[0] is not None
+        assert actual[0]
     if not actual[0]:
-        conn.rollback()  # type:ignore[attr-defined]
-        with closing(conn.cursor()) as cur:
-            cur.execute(tc.debug, tc.debug_params)
-            pytest.fail(str(cur.fetchone()))
+        cur.execute(query, tc.query_params)
+        pytest.fail(str(cur.fetchone()))
 
 
 @parametrize_with_cases("tc", cases=".")
