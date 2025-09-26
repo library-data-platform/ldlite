@@ -11,15 +11,17 @@ class DuckDbDatabase(TypedDatabase[duckdb.DuckDBPyConnection]):
     @staticmethod
     def _setup_jfuncs(conn: duckdb.DuckDBPyConnection) -> None:
         with conn.cursor() as cur:
-            cur.execute("SELECT version() > '1.3.0' AS has_lambda;")
-            if (ver := cur.fetchone()) and ver[0]:
-                cur.execute("SET lambda_syntax = 'ENABLE_SINGLE_ARROW';")
+            cur.execute("SELECT string_split(ltrim(version(),'v'), '.') AS has_lambda;")
+            if ver := cur.fetchone():
+                (ma, mi, _) = ver[0]
+                if int(ma) > 1 and int(mi) >= 3:
+                    cur.execute("SET lambda_syntax = 'ENABLE_SINGLE_ARROW';")
 
         with conn.cursor() as cur:
             cur.execute(
                 r"""
 CREATE OR REPLACE FUNCTION ldlite_system.jtype_of(j) AS
-    CASE main.json_type(j)
+    CASE coalesce(main.json_type(j), 'NULL')
         WHEN 'VARCHAR' THEN 'string'
         WHEN 'BIGINT' THEN 'number'
         WHEN 'DOUBLE' THEN 'number'
@@ -50,7 +52,7 @@ CREATE OR REPLACE FUNCTION ldlite_system.jextract(j, p) AS
                 WHEN length(list_filter((main.json_extract(j, p))::JSON[], x -> x != 'null'::JSON)) = 0 THEN 'null'::JSON
                 ELSE list_filter((main.json_extract(j, p))::JSON[], x -> x != 'null'::JSON)
             END
-        ELSE main.json_extract(j, p)
+        ELSE coalesce(main.json_extract(j, p), 'null'::JSON)
     END
 ;
 
@@ -71,16 +73,13 @@ CREATE OR REPLACE FUNCTION ldlite_system.jis_uuid(j) AS
 
 CREATE OR REPLACE FUNCTION ldlite_system.jis_datetime(j) AS
     CASE ldlite_system.jtype_of(j)
-        WHEN 'string' THEN try_strptime(main.json_extract_string(j, '$'), '%Y-%m-%dT%H:%M:%S.%g%z') IS NOT NULL
+        WHEN 'string' THEN regexp_full_match(main.json_extract_string(j, '$'), '^\d{4}-[01]\d-[0123]\dT[012]\d:[012345]\d:[012345]\d\.\d{3}(\+\d{2}:\d{2})?$')
         ELSE FALSE
     END
 ;
 
 CREATE OR REPLACE FUNCTION ldlite_system.jis_float(j) AS
-    CASE ldlite_system.jtype_of(j)
-        WHEN 'number' THEN contains(main.json_extract_string(j, '$'), '.')
-        ELSE FALSE
-    END
+    coalesce(main.json_type(j), 'NULL')='DOUBLE'
 ;
 
 """,  # noqa: E501
