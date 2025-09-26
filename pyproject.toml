@@ -11,9 +11,9 @@ authors = [
   { name = "Nassib Nassar", email = "nassib@indexdata.com" },
 ]
 dependencies = [
-  # 0.7.0 makes numpy an optional dependency, the minor version fixes a segfault
+  # Versions lower than 0.9 have issues binding the custom functions
   # 1.4 has a number of regressions so I'm letting it shake out until some fixes
-  "duckdb>=0.7.1,<1.4",
+  "duckdb>=0.9.2,<1.4",
   # 4.64 is the first release with type stubs
   "tqdm>=4.64.0",
   # 0.2 has query parameter handling, 0.2.3 is a required bug fix version
