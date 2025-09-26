@@ -6,11 +6,11 @@ from dataclasses import dataclass
 from datetime import timezone
 from typing import TYPE_CHECKING, Any, Generic, TypeVar, cast
 
+import psycopg
 from psycopg import sql
 
 if TYPE_CHECKING:
     import duckdb
-    import psycopg
 
 
 class Prefix:
@@ -66,6 +66,7 @@ class Prefix:
 @dataclass(frozen=True)
 class LoadHistory:
     table_name: Prefix
+    path: str
     query: str | None
     start: datetime.datetime
     download: datetime.datetime
@@ -98,10 +99,12 @@ class TypedDatabase(Database, Generic[DB]):
     def __init__(self, conn_factory: Callable[[], DB]):
         self._conn_factory = conn_factory
         with closing(self._conn_factory()) as conn, conn.cursor() as cur:
-            cur.execute('CREATE SCHEMA IF NOT EXISTS "ldlite_system";')
-            cur.execute("""
+            try:
+                cur.execute('CREATE SCHEMA IF NOT EXISTS "ldlite_system";')
+                cur.execute("""
 CREATE TABLE IF NOT EXISTS "ldlite_system"."load_history" (
     "table_name" TEXT UNIQUE
+    ,"path" TEXT
     ,"query" TEXT
     ,"start_utc" TIMESTAMP
     ,"download_complete_utc" TIMESTAMP
@@ -109,7 +112,15 @@ CREATE TABLE IF NOT EXISTS "ldlite_system"."load_history" (
     ,"index_complete_utc" TIMESTAMP
     ,"row_count" INTEGER
 );""")
-            conn.commit()
+            except psycopg.errors.UniqueViolation:
+                # postgres throws this when multiple threads try to create
+                # the same resource even if CREATE IF NOT EXISTS was used
+                # if we get it then something else create the ldlite_system
+                # resources and it is ok to not commit
+                # I'm not happy with this being in the base class but it's probably fine
+                ...
+            else:
+                conn.commit()
 
     @property
     @abstractmethod
@@ -235,9 +246,10 @@ WHERE table_schema = $1 and table_name IN ($2, $3);""",
         with closing(self._conn_factory()) as conn, conn.cursor() as cur:
             cur.execute(
                 """
-INSERT INTO "ldlite_system"."load_history" VALUES($1,$2,$3,$4,$5,$6,$7)
+INSERT INTO "ldlite_system"."load_history" VALUES($1,$2,$3,$4,$5,$6,$7,$8)
 ON CONFLICT ("table_name") DO UPDATE SET
-    "query" = EXCLUDED."query"
+    "path" = EXCLUDED."path"
+    ,"query" = EXCLUDED."query"
     ,"start_utc" = EXCLUDED."start_utc"
     ,"download_complete_utc" = EXCLUDED."download_complete_utc"
     ,"transformation_complete_utc" = EXCLUDED."transformation_complete_utc"
@@ -246,6 +258,7 @@ ON CONFLICT ("table_name") DO UPDATE SET
 """,
                 (
                     history.table_name.load_history_key,
+                    history.path,
                     history.query,
                     history.start.astimezone(timezone.utc),
                     history.download.astimezone(timezone.utc),

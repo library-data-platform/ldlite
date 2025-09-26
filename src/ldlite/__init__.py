@@ -406,6 +406,7 @@ class LDLite:
         self._db.record_history(
             LoadHistory(
                 prefix,
+                path,
                 query if query and isinstance(query, str) else None,
                 start,
                 download,
