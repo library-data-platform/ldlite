@@ -81,9 +81,9 @@ def case_jobject_keys() -> JsonTC:
 {assertion}
 (SELECT e.jkey, a.jkey
 FROM (SELECT 'k1' jkey UNION SELECT 'k2' jkey) as e
-FULL OUTER JOIN (SELECT ldlite_system.jobject_keys(jc->'obj') jkey FROM j) a
+FULL OUTER JOIN (SELECT ldlite_system.jobject_keys(jc->'obj') jkey FROM j) as a
     USING (jkey)
-WHERE e.jkey IS NULL or a.jkey IS NULL);""",
+WHERE e.jkey IS NULL or a.jkey IS NULL) as q;""",
         (),
         "SELECT COUNT(1) = 0 FROM ",
         (),
