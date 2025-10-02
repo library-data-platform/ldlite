@@ -116,12 +116,15 @@ CREATE TABLE IF NOT EXISTS "ldlite_system"."load_history" (
 
                 self._setup_jfuncs(conn)
             except psycopg.errors.UniqueViolation:
-                # postgres throws this when multiple threads try to create
+                # postgres throws a couple of errors when multiple threads try to create
                 # the same resource even if CREATE IF NOT EXISTS was used
-                # if we get it then something else create the ldlite_system
+                # if we get it then something else created the ldlite_system
                 # resources and it is ok to not commit
                 # I'm not happy with this being in the base class but it's probably fine
                 ...
+            except psycopg.errors.InternalError_ as e:
+                if str(e) != "tuple concurrently updated":
+                    raise
             else:
                 conn.commit()
 
