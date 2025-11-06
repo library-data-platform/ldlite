@@ -13,6 +13,8 @@ Please see [MIGRATING.md](./MIGRATING.md) for information on breaking changes.
 
 ### Fixed
 
+- Endpoints which return totalRecords as the first key
+
 ### Changed
 
 ### Removed
