@@ -57,10 +57,13 @@ class MockedResponseTestCase:
         httpx_post_mock.return_value.cookies.__getitem__.return_value = "token"
 
         side_effects = []
-        for call in self.calls_list:
-            key = next(iter(call.returns_list[0].keys()))
+        for i, call in enumerate(self.calls_list):
+            *_, key = iter(call.returns_list[0].keys())
             total_mock = MagicMock()
-            total_mock.text = f'{{"{key}": [{{"id": ""}}], "totalRecords": 100000}}'
+            if i % 2 == 0:
+                total_mock.text = f'{{"{key}": [{{"id": ""}}], "totalRecords": 100000}}'
+            else:
+                total_mock.text = f'{{"totalRecords": 100000, "{key}": [{{"id": ""}}]}}'
 
             value_mocks = []
             for v in call.returns_list:
