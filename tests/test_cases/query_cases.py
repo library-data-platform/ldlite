@@ -604,6 +604,7 @@ class QueryTestCases:
             ],
         )
 
+    # https://github.com/library-data-platform/ldlite/issues/52
     def case_erm_keys(self) -> QueryCase:
         return QueryCase(
             json_depth=3,
@@ -629,6 +630,44 @@ class QueryTestCases:
                 "prefix__t": (
                     ["id", "value"],
                     [("b096504a-3d54-4664-9bf5-1b872466fd66", "value")],
+                ),
+                "prefix__tcatalog": (["table_name"], [("prefix__t",)]),
+            },
+            expected_indexes=[
+                ("prefix", "__id"),
+                ("prefix__t", "__id"),
+                ("prefix__t", "id"),
+            ],
+        )
+
+    # https://github.com/library-data-platform/ldlite/issues/54
+    def case_mixed_uuid(self) -> QueryCase:
+        return QueryCase(
+            json_depth=3,
+            values={
+                "prefix": [
+                    {
+                        "purchaseOrders": [
+                            {
+                                "id": "aaaa",
+                                "value": "value",
+                            },
+                            {
+                                "id": "b096504a-3d54-4664-9bf5-1b872466fd66",
+                                "value": "value",
+                            },
+                        ],
+                    },
+                ],
+            },
+            expected_tables=["prefix", "prefix__t", "prefix__tcatalog"],
+            expected_values={
+                "prefix__t": (
+                    ["id", "value"],
+                    [
+                        ("aaaa", "value"),
+                        ("b096504a-3d54-4664-9bf5-1b872466fd66", "value"),
+                    ],
                 ),
                 "prefix__tcatalog": (["table_name"], [("prefix__t",)]),
             },
