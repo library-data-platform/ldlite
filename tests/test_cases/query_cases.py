@@ -603,3 +603,38 @@ class QueryTestCases:
                 ("prefix__t", "id"),
             ],
         )
+
+    def case_erm_keys(self) -> QueryCase:
+        return QueryCase(
+            json_depth=3,
+            values={
+                "prefix": [
+                    {
+                        "pageSize": 30,
+                        "page": 1,
+                        "totalPages": 10,
+                        "meta": {"updated": "by"},
+                        "total": 285,
+                        "purchaseOrders": [
+                            {
+                                "id": "b096504a-3d54-4664-9bf5-1b872466fd66",
+                                "value": "value",
+                            },
+                        ],
+                    },
+                ],
+            },
+            expected_tables=["prefix", "prefix__t", "prefix__tcatalog"],
+            expected_values={
+                "prefix__t": (
+                    ["id", "value"],
+                    [("b096504a-3d54-4664-9bf5-1b872466fd66", "value")],
+                ),
+                "prefix__tcatalog": (["table_name"], [("prefix__t",)]),
+            },
+            expected_indexes=[
+                ("prefix", "__id"),
+                ("prefix__t", "__id"),
+                ("prefix__t", "id"),
+            ],
+        )

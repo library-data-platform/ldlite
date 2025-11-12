@@ -92,15 +92,21 @@ class FolioClient:
                         record = ""
                     return
 
-            # folio records usually have two keys
-            # the actual list and the totalRecords key
-            # totalRecords isn't always in the same spot
+            # folio records usually have additional keys besides the actual list
+            # the items are usually first but not always
             # so we check for keys until we find a good one
-            # totalRecords as of right now is the only key that could get in the way
+            # totalRecords and erm as of right now are the only keys like this
             # but there may end up with more
             keys = iter(j.keys())
-            while (key := next(keys)) and key in ["totalRecords"]:
-                ...
+            while (key := next(keys)) and key in [
+                "totalRecords",
+                "pageSize",
+                "page",
+                "totalPages",
+                "meta",
+                "total",
+            ]:
+                continue
             nonid_key = (
                 # Grab the first key if there isn't an id column
                 # because we need it to offset page properly

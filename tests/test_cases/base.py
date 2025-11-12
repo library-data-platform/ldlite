@@ -34,7 +34,7 @@ class EndToEndTestCase:
 
         side_effects = []
         for i, values in enumerate(self.values.values()):
-            key = next(iter(values[0].keys()))
+            *_, key = iter(values[0].keys())
             total_mock = MagicMock()
             if i % 2 == 0:
                 total_mock.text = f'{{"{key}": [{{"id": ""}}], "totalRecords": 100000}}'
