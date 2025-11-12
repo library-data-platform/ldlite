@@ -3,6 +3,8 @@ from __future__ import annotations
 
 import sys
 
+import httpx
+
 import ldlite
 
 # Demo sites
@@ -29,8 +31,8 @@ ld.connect_folio(
     password="admin",
 )
 
-ld.connect_db(filename="ldlite.db")
-# For PostgreSQL, use connect_db_postgresql() instead of connect_db():
+ld.experimental_connect_db_sqlite(filename="ldlite.sqlite")
+# For PostgreSQL, use connect_db_postgresql() instead:
 # ld.connect_db_postgresql(dsn='dbname=ldlite host=localhost user=ldlite')
 
 queries: list[tuple[str, ...] | tuple[str, str, object, int]] = [
@@ -38,7 +40,8 @@ queries: list[tuple[str, ...] | tuple[str, str, object, int]] = [
     ("folio_agreements.erm_resource", "/erm/resource"),
     ("folio_agreements.org", "/erm/org"),
     ("folio_agreements.refdata_value", "/erm/refdata"),
-    ("folio_agreements.usage_data_provider", "/usage-data-providers"),
+    # This endpoint doesn't work in EBSCO environments
+    # ("folio_agreements.usage_data_provider", "/usage-data-providers"),
     ("folio_audit.circulation_logs", "/audit-data/circulation/logs"),
     ("folio_circulation.audit_loan", "/loan-storage/loan-history"),
     (
@@ -165,7 +168,7 @@ queries: list[tuple[str, ...] | tuple[str, str, object, int]] = [
         "/acquisitions-units-storage/memberships",
     ),
     ("folio_orders.alert", "/orders-storage/alerts"),
-    ("folio_orders.order_invoice_relationship/orders-storage/order-invoice-relns"),
+    ("folio_orders.order_invoice_relationship", "/orders-storage/order-invoice-relns"),
     ("folio_orders.order_templates", "/orders-storage/order-templates"),
     ("folio_orders.pieces", "/orders-storage/pieces"),
     ("folio_orders.po_line", "/orders-storage/po-lines"),
@@ -176,10 +179,10 @@ queries: list[tuple[str, ...] | tuple[str, str, object, int]] = [
     ("folio_organizations.contacts", "/organizations-storage/contacts"),
     ("folio_organizations.emails", "/organizations-storage/emails"),
     ("folio_organizations.interfaces", "/organizations-storage/interfaces"),
-    ("folio_organizations.organizations", "/organizations-storage/organizations"),
+    ("folio_organizations.organizations", "/organizations/organizations"),
     ("folio_organizations.phone_numbers", "/organizations-storage/phone-numbers"),
     ("folio_organizations.urls", "/organizations-storage/urls"),
-    ("folio_source_record.records", "/source-storage/records", {}, 2),
+    ("folio_source_record.records", "/source-storage/records", 2),
     ("folio_users.addresstype", "/addresstypes"),
     ("folio_users.departments", "/departments"),
     ("folio_users.groups", "/groups"),
@@ -187,25 +190,31 @@ queries: list[tuple[str, ...] | tuple[str, str, object, int]] = [
     ("folio_users.users", "/users"),
 ]
 
+errors: list[tuple[str, BaseException]] = []
 tables: list[str] = []
 for q in queries:
     try:
-        if len(q) == 4:
+        if len(q) == 3:
             tables += ld.query(
                 table=q[0],
                 path=q[1],
-                query=str(q[2]),
-                json_depth=int(q[3]),
+                json_depth=int(q[2]),
             )
         else:
-            tables += ld.query(table=q[0], path=q[1], query=str(q[2]))
-    except (ValueError, RuntimeError) as e:
-        print(
-            'folio_demo.py: error processing "' + str(q[1]) + '": ' + str(e),
-            file=sys.stderr,
-        )
+            tables += ld.query(table=q[0], path=q[1])
+    except (ValueError, RuntimeError, httpx.HTTPError) as e:
+        errors += [(q[1], e)]
 print()
 print("Tables:")
 for t in tables:
     print(t)
 print("(" + str(len(tables)) + " tables)")
+if len(errors) > 0:
+    print()
+    print("Errors:")
+    for p, e in errors:
+        print(
+            'folio_demo.py: error processing "' + p + '": ' + str(e),
+            file=sys.stderr,
+        )
+print("(" + str(len(errors)) + " errors)")
