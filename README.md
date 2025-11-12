@@ -27,8 +27,12 @@ To install LDLite or upgrade to the latest version:
 ```bash
 $ python -m pip install --upgrade ldlite
 ```
-
 (On some systems it might be `python3` rather than `python`.)
+
+If you encounter the error `ImportError: no pq wrapper available.` you can either
+* Run `python -m pip install psycopg[binary]`
+* Ensure the libpq package is installed for your operating system
+
 Check out the [migration guide](./MIGRATING.md) for more information about major version upgrades.
 
 To extract and transform data:
