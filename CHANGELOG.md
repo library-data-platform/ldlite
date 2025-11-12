@@ -14,6 +14,7 @@ Please see [MIGRATING.md](./MIGRATING.md) for information on breaking changes.
 ### Fixed
 
 - Endpoints which return system fields before the record list
+- Example python script
 
 ### Changed
 
