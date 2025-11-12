@@ -654,7 +654,7 @@ class QueryTestCases:
                             },
                             {
                                 "id": "b096504a-3d54-4664-9bf5-1b872466fd66",
-                                "value": "value",
+                                "value": 15,
                             },
                         ],
                     },
@@ -666,7 +666,7 @@ class QueryTestCases:
                     ["id", "value"],
                     [
                         ("aaaa", "value"),
-                        ("b096504a-3d54-4664-9bf5-1b872466fd66", "value"),
+                        ("b096504a-3d54-4664-9bf5-1b872466fd66", "15"),
                     ],
                 ),
                 "prefix__tcatalog": (["table_name"], [("prefix__t",)]),

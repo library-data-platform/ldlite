@@ -161,7 +161,7 @@ def _compile_attrs(  # noqa: C901, PLR0912, PLR0913
     if depth > max_depth:
         return
     table = _table_name(parents)
-    qkey = {}
+    qkey: dict[str, Attr] = {}
     for k, a in quasikey.items():
         qkey[k] = Attr(a.name, a.datatype, order=1)
     arrays: list[tuple[str, list[JsonValue], str]] = []
@@ -170,6 +170,11 @@ def _compile_attrs(  # noqa: C901, PLR0912, PLR0913
         if k is None or v is None:
             continue
         attr = prefix + k
+        prev_attr = (
+            newattrs[table][attr]
+            if table in newattrs and attr in newattrs[table]
+            else None
+        )
         if isinstance(v, dict):
             if depth == max_depth:
                 newattrs[table][attr] = Attr(
@@ -181,6 +186,11 @@ def _compile_attrs(  # noqa: C901, PLR0912, PLR0913
                 objects.append((attr, v, k))
         elif isinstance(v, list):
             arrays.append((attr, v, k))
+        elif prev_attr and prev_attr.datatype == "varchar":
+            # If a column has already been through this check
+            # and determined to be a varchar it means that
+            # we can't type it as anything more specific later
+            qkey[attr] = prev_attr
         elif isinstance(v, bool):
             a = Attr(decode_camel_case(attr), "boolean", order=3)
             qkey[attr] = a
