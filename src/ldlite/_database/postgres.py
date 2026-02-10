@@ -4,14 +4,30 @@ from itertools import count
 import psycopg
 from psycopg import sql
 
-from . import Prefix, TypedDatabase
+from . import Prefix
+from .typed_database import TypedDatabase
 
 
 class PostgresDatabase(TypedDatabase[psycopg.Connection]):
     def __init__(self, dsn: str):
-        # RawCursor lets us use $1, $2, etc to use the
-        # same sql between duckdb and postgres
-        super().__init__(lambda: psycopg.connect(dsn, cursor_factory=psycopg.RawCursor))
+        try:
+            # RawCursor lets us use $1, $2, etc to use the
+            # same sql between duckdb and postgres
+            super().__init__(
+                lambda: psycopg.connect(
+                    dsn,
+                    cursor_factory=psycopg.RawCursor,
+                ),
+            )
+        except psycopg.errors.UniqueViolation:
+            # postgres throws a couple of errors when multiple threads try to create
+            # the same resource even if CREATE IF NOT EXISTS was used
+            # if we get it then something else created the ldlite_system
+            # resources and it is ok to not commit
+            pass
+        except psycopg.errors.InternalError_ as e:
+            if str(e) != "tuple concurrently updated":
+                raise
 
     @staticmethod
     def _setup_jfuncs(conn: psycopg.Connection) -> None:
