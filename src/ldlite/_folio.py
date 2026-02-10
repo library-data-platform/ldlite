@@ -77,7 +77,7 @@ class FolioClient:
         r1 = j[key][0]
         if (
             nonid_key := cast("str", next(iter(r1.keys()))) if "id" not in r1 else None
-        ) or not params.can_page_by_id():
+        ) or not params.can_page_by_id(path=path):
             return (
                 r,
                 self._iterate_records_offset(
