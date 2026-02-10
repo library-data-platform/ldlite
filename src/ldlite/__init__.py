@@ -318,6 +318,7 @@ class LDLite:
                     file=sys.stderr,
                 )
 
+            download_started = datetime.now(timezone.utc)
             processed = self._db.ingest_records(
                 prefix,
                 cast(
@@ -336,7 +337,9 @@ class LDLite:
                 ),
             )
             download = datetime.now(timezone.utc)
+            download_elapsed = datetime.now(timezone.utc) - download_started
 
+            transform_started = datetime.now(timezone.utc)
             self._db.drop_extracted_tables(prefix)
             newtables = [table]
             newattrs = {}
@@ -359,10 +362,11 @@ class LDLite:
             if not keep_raw:
                 self._db.drop_raw_table(prefix)
 
+            transform_elapsed = datetime.now(timezone.utc) - transform_started
         finally:
-            transformed = datetime.now(timezone.utc)
             autocommit(self.db, self.dbtype, True)
         # Create indexes on id columns (for postgres)
+        index_started = datetime.now(timezone.utc)
         if self.dbtype == DBType.POSTGRES:
 
             class PbarNoop:
@@ -402,17 +406,18 @@ class LDLite:
                     cur.close()
                 pbar.update(1)
             pbar.close()
-        index = datetime.now(timezone.utc)
+        index_elapsed = datetime.now(timezone.utc) - index_started
         self._db.record_history(
             LoadHistory(
                 prefix,
                 path,
                 query if query and isinstance(query, str) else None,
-                start,
-                download,
-                transformed,
-                index,
                 processed,
+                download,
+                start,
+                download_elapsed,
+                transform_elapsed,
+                index_elapsed,
             ),
         )
         # Return table names

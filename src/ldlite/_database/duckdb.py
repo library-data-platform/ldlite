@@ -4,7 +4,8 @@ from itertools import count
 import duckdb
 from psycopg import sql
 
-from . import Prefix, TypedDatabase
+from . import Prefix
+from .typed_database import TypedDatabase
 
 
 class DuckDbDatabase(TypedDatabase[duckdb.DuckDBPyConnection]):
