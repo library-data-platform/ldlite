@@ -602,6 +602,41 @@ def case_null_records() -> QueryTC:
     )
 
 
+def case_erm_keys() -> QueryTC:
+    return QueryTC(
+        Call(
+            "prefix",
+            json_depth=3,
+            returns={
+                "pageSize": 30,
+                "page": 1,
+                "totalPages": 10,
+                "meta": {"updated": "by"},
+                "total": 285,
+                "purchaseOrders": [
+                    {
+                        "id": "b096504a-3d54-4664-9bf5-1b872466fd66",
+                        "value": "value",
+                    },
+                ],
+            },
+        ),
+        expected_tables=["prefix", "prefix__t", "prefix__tcatalog"],
+        expected_values={
+            "prefix__t": (
+                ["id", "value"],
+                [("b096504a-3d54-4664-9bf5-1b872466fd66", "value")],
+            ),
+            "prefix__tcatalog": (["table_name"], [("prefix__t",)]),
+        },
+        expected_indexes=[
+            ("prefix", "__id"),
+            ("prefix__t", "__id"),
+            ("prefix__t", "id"),
+        ],
+    )
+
+
 def _arrange(
     client_get_mock: MagicMock,
     httpx_post_mock: MagicMock,

@@ -58,11 +58,26 @@ class FolioClient:
         if is_srs:
             return (r, self._iterate_records_srs(client_opts, path, params))
 
-        key = cast("str", next(iter(j.keys())))
+        # folio records usually have additional keys besides the actual list
+        # the items are usually first but not always
+        # so we check for keys until we find a good one
+        # totalRecords and erm as of right now are the only keys like this
+        # but there may end up with more
+        keys = iter(j.keys())
+        while (key := next(keys)) and key in [
+            "totalRecords",
+            "pageSize",
+            "page",
+            "totalPages",
+            "meta",
+            "total",
+        ]:
+            continue
+
         r1 = j[key][0]
         if (
             nonid_key := cast("str", next(iter(r1.keys()))) if "id" not in r1 else None
-        ) or not params.can_page_by_id():
+        ) or not params.can_page_by_id(path=path):
             return (
                 r,
                 self._iterate_records_offset(
