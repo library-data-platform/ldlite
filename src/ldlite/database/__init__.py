@@ -44,6 +44,11 @@ class Prefix:
         return self._identifier(self._prefix)
 
     @property
+    def expansion_table_identifier(self) -> sql.Identifier:
+        """The sql.Identifier of the raw table for this prefix (including schema)."""
+        return self._identifier(self._prefix + "__t")
+
+    @property
     def catalog_table_name(self) -> str:
         """The name of the catalog table for this prefix (without schema)."""
         return f"{self._prefix}__tcatalog"
@@ -117,6 +122,10 @@ class Database(ABC):
     @abstractmethod
     def ingest_records(self, prefix: Prefix, records: Iterator[bytes]) -> int:
         """Ingests a stream of records dowloaded from FOLIO to the raw table."""
+
+    @abstractmethod
+    def expand_prefix(self, prefix: Prefix, json_depth: int, keep_raw: bool) -> None:
+        """Unnests and explodes the raw data at the given prefix."""
 
     @abstractmethod
     def record_history(self, history: LoadHistory) -> None:

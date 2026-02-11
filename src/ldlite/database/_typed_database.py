@@ -1,3 +1,4 @@
+# pyright: reportArgumentType=false
 from abc import abstractmethod
 from collections.abc import Callable, Sequence
 from contextlib import closing
@@ -161,6 +162,59 @@ WHERE table_schema = $1 and table_name IN ($2, $3);""",
                     table=prefix.raw_table_identifier,
                 ).as_string(),
             )
+
+    def expand_prefix(self, prefix: Prefix, json_depth: int, keep_raw: bool) -> None:  # noqa: ARG002
+        with closing(self._conn_factory()) as conn:
+            with conn.cursor() as cur:
+                # select column names and types
+                # care about string, number, uuid, object, list
+
+                cur.execute(
+                    sql.SQL(
+                        """
+WITH
+    one_object AS (SELECT {json_col} as json FROM {table} LIMIT 1)
+SELECT
+    ldlite_system.jobject_keys(json) AS prop
+FROM one_object
+""",
+                    )
+                    .format(
+                        table=prefix.raw_table_identifier,
+                        json_col=sql.Identifier("jsonb"),
+                    )
+                    .as_string(),
+                )
+
+                props = [r[0] for r in cur.fetchall()]
+
+            with conn.cursor() as cur:
+                cur.execute(
+                    sql.SQL(
+                        """
+CREATE TABLE {dest_table} AS SELECT
+    {cols}
+FROM {src_table};
+""",
+                    )
+                    .format(
+                        dest_table=prefix.expansion_table_identifier,
+                        src_table=prefix.raw_table_identifier,
+                        cols=sql.SQL("\n    ,").join(
+                            [
+                                sql.SQL("({json_col}->>{prop}) AS {prop_alias}").format(
+                                    json_col=sql.Identifier("jsonb"),
+                                    prop=sql.Literal(p),
+                                    prop_alias=sql.Identifier(p),
+                                )
+                                for p in props
+                            ],
+                        ),
+                    )
+                    .as_string(),
+                )
+
+            conn.commit()
 
     def record_history(self, history: LoadHistory) -> None:
         with closing(self._conn_factory()) as conn, conn.cursor() as cur:
