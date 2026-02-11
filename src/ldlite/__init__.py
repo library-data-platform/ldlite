@@ -44,7 +44,6 @@ from httpx_folio.auth import FolioParams
 from tqdm import tqdm
 
 from ._csv import to_csv
-from ._database import Database, LoadHistory, Prefix
 from ._folio import FolioClient
 from ._jsonx import Attr, transform_json
 from ._select import select
@@ -54,6 +53,7 @@ from ._sqlx import (
     autocommit,
     sqlid,
 )
+from .database import Database, LoadHistory, Prefix
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
@@ -78,7 +78,7 @@ class LDLite:
         self._quiet = False
         self.dbtype: DBType = DBType.UNDEFINED
         self.db: dbapi.DBAPIConnection | None = None
-        self._db: Database | None = None
+        self._database: Database | None = None
         self._folio: FolioClient | None = None
         self.page_size = 1000
         self._okapi_timeout = 60
@@ -125,13 +125,13 @@ class LDLite:
             db = ld.connect_db_duckdb(filename='ldlite.db')
 
         """
-        from ._database.duckdb import DuckDbDatabase  # noqa: PLC0415
+        from .database._duckdb import DuckDbDatabase  # noqa: PLC0415
 
         self.dbtype = DBType.DUCKDB
         fn = filename if filename is not None else ":memory:"
         db = duckdb.connect(database=fn)
         self.db = cast("dbapi.DBAPIConnection", db.cursor())
-        self._db = DuckDbDatabase(lambda: db.cursor())
+        self._database = DuckDbDatabase(lambda: db.cursor())
 
         return db.cursor()
 
@@ -146,17 +146,32 @@ class LDLite:
             db = ld.connect_db_postgresql(dsn='dbname=ld host=localhost user=ldlite')
 
         """
-        from ._database.postgres import PostgresDatabase  # noqa: PLC0415
+        from .database._postgres import PostgresDatabase  # noqa: PLC0415
 
         self.dbtype = DBType.POSTGRES
         db = psycopg.connect(dsn)
         self.db = cast("dbapi.DBAPIConnection", db)
-        self._db = PostgresDatabase(dsn)
+        self._database = PostgresDatabase(dsn)
 
         ret_db = psycopg.connect(dsn)
         ret_db.rollback()
         ret_db.set_autocommit(True)
         return ret_db
+
+    def experimental_connect_database(self, database: Database) -> None:
+        """Connects to a custom Database implementation for storing data.
+
+        This is to experimentally allow non duckdb/postgres database connections.
+        """
+        self._database = database
+
+    @property
+    def database(self) -> Database | None:
+        """The current Database implementation used by LDLite.
+
+        This is experimental and isn't really intended for public consumption.
+        """
+        return self._database
 
     def _check_folio(self) -> None:
         if self._folio is None:
@@ -196,11 +211,11 @@ class LDLite:
             ld.drop_tables('g')
 
         """
-        if self.db is None or self._db is None:
+        if self.db is None or self._database is None:
             self._check_db()
             return
         prefix = Prefix(table)
-        self._db.drop_prefix(prefix)
+        self._database.drop_prefix(prefix)
 
     def set_folio_max_retries(self, max_retries: int) -> None:
         """Sets the maximum number of retries for FOLIO requests.
@@ -294,7 +309,7 @@ class LDLite:
         if self._folio is None:
             self._check_folio()
             return []
-        if self.db is None or self._db is None:
+        if self.db is None or self._database is None:
             self._check_db()
             return []
         start = datetime.now(timezone.utc)
@@ -319,7 +334,7 @@ class LDLite:
                 )
 
             download_started = datetime.now(timezone.utc)
-            processed = self._db.ingest_records(
+            processed = self._database.ingest_records(
                 prefix,
                 cast(
                     "Iterator[bytes]",
@@ -340,7 +355,7 @@ class LDLite:
             download_elapsed = datetime.now(timezone.utc) - download_started
 
             transform_started = datetime.now(timezone.utc)
-            self._db.drop_extracted_tables(prefix)
+            self._database.drop_extracted_tables(prefix)
             newtables = [table]
             newattrs = {}
             if json_depth > 0:
@@ -360,7 +375,7 @@ class LDLite:
                 newattrs[table] = {"__id": Attr("__id", "bigint")}
 
             if not keep_raw:
-                self._db.drop_raw_table(prefix)
+                self._database.drop_raw_table(prefix)
 
             transform_elapsed = datetime.now(timezone.utc) - transform_started
         finally:
@@ -407,7 +422,7 @@ class LDLite:
                 pbar.update(1)
             pbar.close()
         index_elapsed = datetime.now(timezone.utc) - index_started
-        self._db.record_history(
+        self._database.record_history(
             LoadHistory(
                 prefix,
                 path,

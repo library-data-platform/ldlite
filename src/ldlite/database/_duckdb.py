@@ -5,7 +5,7 @@ import duckdb
 from psycopg import sql
 
 from . import Prefix
-from .typed_database import TypedDatabase
+from ._typed_database import TypedDatabase
 
 
 class DuckDbDatabase(TypedDatabase[duckdb.DuckDBPyConnection]):
