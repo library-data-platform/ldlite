@@ -20,11 +20,26 @@ def _db() -> str:
 
 
 @dataclass
+class Assertion:
+    statement: str
+
+    expect: int | str | None = None
+    exp_pg: int | str | None = None
+    exp_duck: int | str | None = None
+
+    def expected(self, db: str) -> int | str | None:
+        if db == "postgres":
+            return self.exp_pg or self.expect
+        if db == "duckdb":
+            return self.exp_duck or self.expect
+        return self.expect
+
+
+@dataclass
 class ExpansionTC:
     prefix: str
     records: list[bytes]
-    assertions: list[tuple[str, int | str | bool]]
-    catalog: list[str]
+    assertions: list[Assertion]
     json_depth: int = 999
     keep_raw: bool = True
 
@@ -32,23 +47,66 @@ class ExpansionTC:
 def case_basic_object() -> ExpansionTC:
     return ExpansionTC(
         prefix="basic",
-        records=[b"""{"id": "id1", "value": "value1"}"""],
-        assertions=[
-            ("SELECT COUNT(*) FROM basic__t;", 1),
-            ("SELECT value FROM basic__t WHERE id = 'id1'", "value1"),
+        records=[
+            b"""{"id": "id1", "value": "value1"}""",
+            b"""{"id": "id2", "value": "value2"}""",
         ],
-        catalog=["basic", "basic__t"],
+        assertions=[
+            Assertion("SELECT COUNT(*) FROM basic__t;", 2),
+            Assertion("SELECT value FROM basic__t WHERE id = 'id1'", "value1"),
+            Assertion("SELECT value FROM basic__t WHERE id = 'id2'", "value2"),
+        ],
     )
 
 
-def _assert(conn: "dbapi.DBAPIConnection", tc: ExpansionTC) -> None:
+def case_typed_columns() -> ExpansionTC:
+    return ExpansionTC(
+        prefix="basic",
+        records=[
+            b"""
+{
+    "id": "id1",
+    "numeric": 1,
+    "text": "value",
+    "uuid": "88888888-8888-1888-8888-888888888888"
+}
+""",
+            b"""
+{
+    "id": "id2",
+    "numeric": 2,
+    "text": "00000000-0000-1000-A000-000000000000",
+    "uuid": "11111111-1111-1111-8111-111111111111"
+}
+""",
+        ],
+        assertions=[
+            Assertion(
+                f"""
+SELECT DATA_TYPE
+FROM INFORMATION_SCHEMA.COLUMNS
+WHERE TABLE_NAME = 'basic__t' AND COLUMN_NAME = '{a[0]}'
+""",
+                exp_pg=a[0],
+                exp_duck=a[1],
+            )
+            for a in [
+                ("numeric", "DECIMAL(18,3)"),
+                ("text", "VARCHAR"),
+                ("uuid", "UUID"),
+            ]
+        ],
+    )
+
+
+def _assert(conn: "dbapi.DBAPIConnection", db: str, tc: ExpansionTC) -> None:
     with closing(conn.cursor()) as cur:
-        for assertion, expected in tc.assertions:
-            cur.execute(assertion)
+        for a in tc.assertions:
+            cur.execute(a.statement)
 
             actual = cur.fetchone()
             assert actual is not None
-            assert actual[0] == expected
+            assert actual[0] == a.expected(db)
 
 
 @parametrize_with_cases("tc", cases=".")
@@ -67,7 +125,7 @@ def test_duckdb(tc: ExpansionTC) -> None:
     ld.database.expand_prefix(prefix, tc.json_depth, tc.keep_raw)
 
     with duckdb.connect(dsn) as conn:
-        _assert(cast("dbapi.DBAPIConnection", conn), tc)
+        _assert(cast("dbapi.DBAPIConnection", conn), "duckdb", tc)
 
 
 @parametrize_with_cases("tc", cases=".")
@@ -89,4 +147,4 @@ def test_postgres(pg_dsn: None | Callable[[str], str], tc: ExpansionTC) -> None:
     ld.database.expand_prefix(prefix, tc.json_depth, tc.keep_raw)
 
     with psycopg.connect(dsn, cursor_factory=psycopg.RawCursor) as conn:
-        _assert(cast("dbapi.DBAPIConnection", conn), tc)
+        _assert(cast("dbapi.DBAPIConnection", conn), "postgres", tc)

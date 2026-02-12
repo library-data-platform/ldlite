@@ -173,11 +173,21 @@ WHERE table_schema = $1 and table_name IN ($2, $3);""",
                     sql.SQL(
                         """
 WITH
-    one_object AS (SELECT {json_col} as json FROM {table} LIMIT 1)
+    one_object AS (SELECT {json_col} as json FROM {table} LIMIT 1),
+    props AS (SELECT ldlite_system.jobject_keys(json) AS prop FROM one_object),
+    prop_meta AS (
+        SELECT
+            prop
+            ,ldlite_system.jtype_of(json->prop) AS json_type
+        FROM one_object, props
+    )
 SELECT
-    ldlite_system.jobject_keys(json) AS prop
-FROM one_object
-""",
+    prop
+    ,ANY_VALUE(json_type) as json_type
+    ,bool_and({json_col}->>prop ~ '^[a-fA-F0-9]{{8}}-[a-fA-F0-9]{{4}}-[1-5][a-fA-F0-9]{{3}}-[89abAB][a-fA-F0-9]{{3}}-[a-fA-F0-9]{{12}}$') AS is_uuid
+FROM {table}, prop_meta
+GROUP BY prop
+""",  # noqa: E501
                     )
                     .format(
                         table=prefix.raw_table_identifier,
@@ -186,7 +196,22 @@ FROM one_object
                     .as_string(),
                 )
 
-                props = [r[0] for r in cur.fetchall()]
+                create_columns = []
+                for row in cur.fetchall():
+                    if row[1] == "number":
+                        stmt = sql.SQL("({json_col}->{prop})::numeric AS {prop_alias}")
+                    elif row[1] == "string" and row[2]:
+                        stmt = sql.SQL("({json_col}->>{prop})::uuid AS {prop_alias}")
+                    else:
+                        stmt = sql.SQL("({json_col}->>{prop}) AS {prop_alias}")
+
+                    create_columns.append(
+                        stmt.format(
+                            json_col=sql.Identifier("jsonb"),
+                            prop=sql.Literal(row[0]),
+                            prop_alias=sql.Identifier(row[0]),
+                        ),
+                    )
 
             with conn.cursor() as cur:
                 cur.execute(
@@ -200,16 +225,7 @@ FROM {src_table};
                     .format(
                         dest_table=prefix.expansion_table_identifier,
                         src_table=prefix.raw_table_identifier,
-                        cols=sql.SQL("\n    ,").join(
-                            [
-                                sql.SQL("({json_col}->>{prop}) AS {prop_alias}").format(
-                                    json_col=sql.Identifier("jsonb"),
-                                    prop=sql.Literal(p),
-                                    prop_alias=sql.Identifier(p),
-                                )
-                                for p in props
-                            ],
-                        ),
+                        cols=sql.SQL("\n    ,").join(create_columns),
                     )
                     .as_string(),
                 )
