@@ -218,7 +218,7 @@ GROUP BY prop
             cur.execute(
                 sql.SQL(
                     """
-CREATE TABLE {dest_table} AS SELECT
+CREATE TEMP TABLE {dest_table} ON COMMIT DROP AS SELECT
     {cols}
 FROM {src_table};
 """,
@@ -236,9 +236,36 @@ FROM {src_table};
             TypedDatabase._explode(
                 conn,
                 prefix.raw_table_identifier,
-                prefix.expansion_table_identifier,
+                prefix.temp_expansion_table_identifier,
                 sql.Identifier("jsonb"),
             )
+
+            with conn.cursor() as cur:
+                cur.execute(
+                    sql.SQL(
+                        """
+CREATE TABLE {dest_table} AS
+SELECT * FROM {transform_table}
+""",
+                    )
+                    .format(
+                        transform_table=prefix.temp_expansion_table_identifier,
+                        dest_table=prefix.expansion_table_identifier,
+                    )
+                    .as_string(),
+                )
+
+            # TODO: Refactor this to use DELETE RETURNING when DuckDb supports it
+            # https://github.com/duckdb/duckdb/issues/3417
+            if not keep_raw:
+                with conn.cursor() as cur:
+                    cur.execute(
+                        sql.SQL("DROP TABLE {raw_table}")
+                        .format(
+                            raw_table=prefix.raw_table_identifier,
+                        )
+                        .as_string(),
+                    )
 
             conn.commit()
 

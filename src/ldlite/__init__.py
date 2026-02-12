@@ -131,7 +131,7 @@ class LDLite:
         fn = filename if filename is not None else ":memory:"
         db = duckdb.connect(database=fn)
         self.db = cast("dbapi.DBAPIConnection", db.cursor())
-        self._database = DuckDbDatabase(lambda: db.cursor())
+        self._database = DuckDbDatabase(db)
 
         return db.cursor()
 

@@ -130,6 +130,46 @@ WHERE TABLE_NAME = 'prefix__t' AND COLUMN_NAME = '{a}'
     )
 
 
+def case_keep_raw() -> ExpansionTC:
+    return ExpansionTC(
+        keep_raw=True,
+        records=[
+            b"""{ "id": "id1" }""",
+            b"""{ "id": "id2" }""",
+        ],
+        assertions=[
+            Assertion(
+                """
+SELECT COUNT(*)
+FROM INFORMATION_SCHEMA.TABLES
+WHERE TABLE_NAME = 'prefix'
+""",
+                1,
+            ),
+        ],
+    )
+
+
+def case_dont_keep_raw() -> ExpansionTC:
+    return ExpansionTC(
+        keep_raw=False,
+        records=[
+            b"""{ "id": "id1" }""",
+            b"""{ "id": "id2" }""",
+        ],
+        assertions=[
+            Assertion(
+                """
+SELECT COUNT(*)
+FROM INFORMATION_SCHEMA.TABLES
+WHERE TABLE_NAME = 'prefix'
+""",
+                0,
+            ),
+        ],
+    )
+
+
 def _assert(
     conn: "dbapi.DBAPIConnection",
     db: str,

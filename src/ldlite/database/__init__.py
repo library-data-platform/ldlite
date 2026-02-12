@@ -44,6 +44,11 @@ class Prefix:
         return self._identifier(self._prefix)
 
     @property
+    def temp_expansion_table_identifier(self) -> sql.Identifier:
+        """The sql.Identifier of the raw table for this prefix (including schema)."""
+        return self._identifier(self._prefix + "__t_0")
+
+    @property
     def expansion_table_identifier(self) -> sql.Identifier:
         """The sql.Identifier of the raw table for this prefix (including schema)."""
         return self._identifier(self._prefix + "__t")

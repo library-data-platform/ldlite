@@ -1,5 +1,6 @@
 from collections.abc import Iterator
 from itertools import count
+from typing import TYPE_CHECKING, Any, cast
 
 import duckdb
 from psycopg import sql
@@ -7,8 +8,20 @@ from psycopg import sql
 from . import Prefix
 from ._typed_database import TypedDatabase
 
+if TYPE_CHECKING:
+    from typing_extensions import Self
+
 
 class DuckDbDatabase(TypedDatabase[duckdb.DuckDBPyConnection]):
+    def __init__(self, db: duckdb.DuckDBPyConnection) -> None:
+        # See the notes below for why we're monkey patching DuckDB
+        super().__init__(
+            lambda: cast(
+                "duckdb.DuckDBPyConnection",
+                _MonkeyDBPyConnection(db.cursor()),
+            ),
+        )
+
     @staticmethod
     def _setup_jfuncs(conn: duckdb.DuckDBPyConnection) -> None:
         with conn.cursor() as cur:
@@ -117,3 +130,46 @@ CREATE OR REPLACE FUNCTION ldlite_system.jis_float(j) AS
                 tx.commit()
 
         return next(pkey) - 1
+
+
+# DuckDB has some strong opinions about cursors that are different than postgres
+# https://github.com/duckdb/duckdb/issues/11018
+class _MonkeyDBPyCursor:
+    def __init__(self, cur: duckdb.DuckDBPyConnection) -> None:
+        self._cur = cur
+
+    # We're patching out the close on the cursor
+    # This is so that temp tables aren't closed with the cursor
+    def close(self) -> None:
+        return None
+
+    def __enter__(self) -> "Self":
+        return self
+
+    def __exit__(self, exc_type, exc, tb) -> None:  # type: ignore[no-untyped-def]  # noqa: ANN001
+        return None
+
+    def __getattr__(self, name: str) -> Any:  # noqa: ANN401
+        return getattr(self._cur, name)
+
+
+class _MonkeyDBPyConnection:
+    def __init__(self, conn: duckdb.DuckDBPyConnection) -> None:
+        self._conn = conn
+
+    # This fakes creating a cursor
+    # DuckDB doesn't need them and they're each essentially a new connection
+    def cursor(self) -> _MonkeyDBPyCursor:
+        return _MonkeyDBPyCursor(self._conn)
+
+    def __enter__(self) -> "Self":
+        return self
+
+    def __exit__(self, exc_type, exc, tb) -> None:  # type: ignore[no-untyped-def]  # noqa: ANN001
+        return self.close()
+
+    def close(self) -> None:
+        return self._conn.close()
+
+    def __getattr__(self, name: str) -> Any:  # noqa: ANN401
+        return getattr(self._conn, name)
