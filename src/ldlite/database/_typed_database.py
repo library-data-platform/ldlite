@@ -202,6 +202,8 @@ GROUP BY prop
                         stmt = sql.SQL("({json_col}->{prop})::numeric AS {prop_alias}")
                     elif row[1] == "string" and row[2]:
                         stmt = sql.SQL("({json_col}->>{prop})::uuid AS {prop_alias}")
+                    elif row[1] == "object" or row[1] == "array":
+                        stmt = sql.SQL("({json_col}->{prop}) AS {prop_alias}")
                     else:
                         stmt = sql.SQL("({json_col}->>{prop}) AS {prop_alias}")
 

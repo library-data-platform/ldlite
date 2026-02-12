@@ -37,7 +37,6 @@ class Assertion:
 
 @dataclass
 class ExpansionTC:
-    prefix: str
     records: list[bytes]
     assertions: list[Assertion]
     json_depth: int = 999
@@ -46,22 +45,20 @@ class ExpansionTC:
 
 def case_basic_object() -> ExpansionTC:
     return ExpansionTC(
-        prefix="basic",
         records=[
             b"""{"id": "id1", "value": "value1"}""",
             b"""{"id": "id2", "value": "value2"}""",
         ],
         assertions=[
-            Assertion("SELECT COUNT(*) FROM basic__t;", 2),
-            Assertion("SELECT value FROM basic__t WHERE id = 'id1'", "value1"),
-            Assertion("SELECT value FROM basic__t WHERE id = 'id2'", "value2"),
+            Assertion("SELECT COUNT(*) FROM prefix__t;", 2),
+            Assertion("SELECT value FROM prefix__t WHERE id = 'id1'", "value1"),
+            Assertion("SELECT value FROM prefix__t WHERE id = 'id2'", "value2"),
         ],
     )
 
 
 def case_typed_columns() -> ExpansionTC:
     return ExpansionTC(
-        prefix="basic",
         records=[
             b"""
 {
@@ -85,7 +82,7 @@ def case_typed_columns() -> ExpansionTC:
                 f"""
 SELECT DATA_TYPE
 FROM INFORMATION_SCHEMA.COLUMNS
-WHERE TABLE_NAME = 'basic__t' AND COLUMN_NAME = '{a[0]}'
+WHERE TABLE_NAME = 'prefix__t' AND COLUMN_NAME = '{a[0]}'
 """,
                 exp_pg=a[0],
                 exp_duck=a[1],
@@ -99,10 +96,48 @@ WHERE TABLE_NAME = 'basic__t' AND COLUMN_NAME = '{a[0]}'
     )
 
 
-def _assert(conn: "dbapi.DBAPIConnection", db: str, tc: ExpansionTC) -> None:
+# TODO: Remove this test after implementing recursive expansion
+def case_objects_and_arrays() -> ExpansionTC:
+    return ExpansionTC(
+        records=[
+            b"""
+{
+    "id": "id1",
+    "object": {"id": "obj_id1"},
+    "list": [{"id": "arr_id1"}]
+}
+""",
+            b"""
+{
+    "id": "id2",
+    "object": {"id": "obj_id2"},
+    "list": [{"id": "arr_id2"}]
+}
+""",
+        ],
+        assertions=[
+            Assertion(
+                f"""
+SELECT DATA_TYPE
+FROM INFORMATION_SCHEMA.COLUMNS
+WHERE TABLE_NAME = 'prefix__t' AND COLUMN_NAME = '{a}'
+""",
+                exp_pg="jsonb",
+                exp_duck="JSON",
+            )
+            for a in ["object", "list"]
+        ],
+    )
+
+
+def _assert(
+    conn: "dbapi.DBAPIConnection",
+    db: str,
+    tc: ExpansionTC,
+) -> None:
     with closing(conn.cursor()) as cur:
         for a in tc.assertions:
-            cur.execute(a.statement)
+            cur.execute(a.statement.format())
 
             actual = cur.fetchone()
             assert actual is not None
@@ -120,7 +155,7 @@ def test_duckdb(tc: ExpansionTC) -> None:
     ld.connect_db(dsn)
     assert ld.database is not None
 
-    prefix = Prefix(tc.prefix)
+    prefix = Prefix("prefix")
     ld.database.ingest_records(prefix, iter(tc.records))
     ld.database.expand_prefix(prefix, tc.json_depth, tc.keep_raw)
 
@@ -142,7 +177,7 @@ def test_postgres(pg_dsn: None | Callable[[str], str], tc: ExpansionTC) -> None:
     ld.connect_db_postgresql(dsn)
     assert ld.database is not None
 
-    prefix = Prefix(tc.prefix)
+    prefix = Prefix("prefix")
     ld.database.ingest_records(prefix, iter(tc.records))
     ld.database.expand_prefix(prefix, tc.json_depth, tc.keep_raw)
 
