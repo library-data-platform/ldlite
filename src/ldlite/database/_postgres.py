@@ -4,7 +4,7 @@ from itertools import count
 import psycopg
 from psycopg import sql
 
-from . import Prefix
+from ._prefix import Prefix
 from ._typed_database import TypedDatabase
 
 
@@ -144,19 +144,20 @@ $$ LANGUAGE plpgsql;
 
     def ingest_records(
         self,
-        prefix: Prefix,
+        prefix: str,
         records: Iterator[bytes],
     ) -> int:
+        pfx = Prefix(prefix)
         pkey = count(1)
         with self._conn_factory() as conn:
-            self._prepare_raw_table(conn, prefix)
+            self._prepare_raw_table(conn, pfx)
 
             with (
                 conn.cursor() as cur,
                 cur.copy(
                     sql.SQL(
                         "COPY {table} (__id, jsonb) FROM STDIN (FORMAT BINARY)",
-                    ).format(table=prefix.raw_table_identifier),
+                    ).format(table=pfx.raw_table_identifier),
                 ) as copy,
             ):
                 # postgres jsonb is always version 1

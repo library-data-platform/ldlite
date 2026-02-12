@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING, Any, cast
 import duckdb
 from psycopg import sql
 
-from . import Prefix
+from ._prefix import Prefix
 from ._typed_database import TypedDatabase
 
 if TYPE_CHECKING:
@@ -109,17 +109,18 @@ CREATE OR REPLACE FUNCTION ldlite_system.jis_float(j) AS
 
     def ingest_records(
         self,
-        prefix: Prefix,
+        prefix: str,
         records: Iterator[bytes],
     ) -> int:
+        pfx = Prefix(prefix)
         pkey = count(1)
         with self._conn_factory() as conn:
-            self._prepare_raw_table(conn, prefix)
+            self._prepare_raw_table(conn, pfx)
 
             insert_sql = (
                 sql.SQL("INSERT INTO {table} VALUES(?, ?);")
                 .format(
-                    table=prefix.raw_table_identifier,
+                    table=pfx.raw_table_identifier,
                 )
                 .as_string()
             )

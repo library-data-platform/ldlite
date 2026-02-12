@@ -53,7 +53,7 @@ from ._sqlx import (
     autocommit,
     sqlid,
 )
-from .database import Database, LoadHistory, Prefix
+from .database import Database, LoadHistory
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
@@ -214,8 +214,7 @@ class LDLite:
         if self.db is None or self._database is None:
             self._check_db()
             return
-        prefix = Prefix(table)
-        self._database.drop_prefix(prefix)
+        self._database.drop_prefix(table)
 
     def set_folio_max_retries(self, max_retries: int) -> None:
         """Sets the maximum number of retries for FOLIO requests.
@@ -313,7 +312,6 @@ class LDLite:
             self._check_db()
             return []
         start = datetime.now(timezone.utc)
-        prefix = Prefix(table)
         if not self._quiet:
             print("ldlite: querying: " + path, file=sys.stderr)
         try:
@@ -335,7 +333,7 @@ class LDLite:
 
             download_started = datetime.now(timezone.utc)
             processed = self._database.ingest_records(
-                prefix,
+                table,
                 cast(
                     "Iterator[bytes]",
                     tqdm(
@@ -355,7 +353,7 @@ class LDLite:
             download_elapsed = datetime.now(timezone.utc) - download_started
 
             transform_started = datetime.now(timezone.utc)
-            self._database.drop_extracted_tables(prefix)
+            self._database.drop_extracted_tables(table)
             newtables = [table]
             newattrs = {}
             if json_depth > 0:
@@ -375,7 +373,7 @@ class LDLite:
                 newattrs[table] = {"__id": Attr("__id", "bigint")}
 
             if not keep_raw:
-                self._database.drop_raw_table(prefix)
+                self._database.drop_raw_table(table)
 
             transform_elapsed = datetime.now(timezone.utc) - transform_started
         finally:
@@ -424,7 +422,7 @@ class LDLite:
         index_elapsed = datetime.now(timezone.utc) - index_started
         self._database.record_history(
             LoadHistory(
-                prefix,
+                table,
                 path,
                 query if query and isinstance(query, str) else None,
                 processed,

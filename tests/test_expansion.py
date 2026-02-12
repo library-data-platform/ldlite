@@ -189,7 +189,6 @@ def _assert(
 @parametrize_with_cases("tc", cases=".")
 def test_duckdb(tc: ExpansionTC) -> None:
     from ldlite import LDLite
-    from ldlite.database import Prefix
 
     dsn = f":memory:{_db()}"
 
@@ -197,9 +196,8 @@ def test_duckdb(tc: ExpansionTC) -> None:
     ld.connect_db(dsn)
     assert ld.database is not None
 
-    prefix = Prefix("prefix")
-    ld.database.ingest_records(prefix, iter(tc.records))
-    ld.database.expand_prefix(prefix, tc.json_depth, tc.keep_raw)
+    ld.database.ingest_records("prefix", iter(tc.records))
+    ld.database.expand_prefix("prefix", tc.json_depth, tc.keep_raw)
 
     with duckdb.connect(dsn) as conn:
         _assert(cast("dbapi.DBAPIConnection", conn), "duckdb", tc)
@@ -211,7 +209,6 @@ def test_postgres(pg_dsn: None | Callable[[str], str], tc: ExpansionTC) -> None:
         pytest.skip("Specify the pg host using --pg-host to run")
 
     from ldlite import LDLite
-    from ldlite.database import Prefix
 
     dsn = pg_dsn(_db())
 
@@ -219,9 +216,8 @@ def test_postgres(pg_dsn: None | Callable[[str], str], tc: ExpansionTC) -> None:
     ld.connect_db_postgresql(dsn)
     assert ld.database is not None
 
-    prefix = Prefix("prefix")
-    ld.database.ingest_records(prefix, iter(tc.records))
-    ld.database.expand_prefix(prefix, tc.json_depth, tc.keep_raw)
+    ld.database.ingest_records("prefix", iter(tc.records))
+    ld.database.expand_prefix("prefix", tc.json_depth, tc.keep_raw)
 
     with psycopg.connect(dsn, cursor_factory=psycopg.RawCursor) as conn:
         _assert(cast("dbapi.DBAPIConnection", conn), "postgres", tc)

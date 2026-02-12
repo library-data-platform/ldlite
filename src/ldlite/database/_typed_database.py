@@ -8,7 +8,8 @@ from typing import TYPE_CHECKING, Any, Generic, TypeVar, cast
 import psycopg
 from psycopg import sql
 
-from . import Database, LoadHistory, Prefix
+from . import Database, LoadHistory
+from ._prefix import Prefix
 
 if TYPE_CHECKING:
     import duckdb
@@ -49,23 +50,24 @@ CREATE TABLE IF NOT EXISTS "ldlite_system"."load_history" (
 
     def drop_prefix(
         self,
-        prefix: Prefix,
+        prefix: str,
     ) -> None:
+        pfx = Prefix(prefix)
         with closing(self._conn_factory()) as conn:
-            self._drop_extracted_tables(conn, prefix)
-            self._drop_raw_table(conn, prefix)
+            self._drop_extracted_tables(conn, pfx)
+            self._drop_raw_table(conn, pfx)
             conn.execute(
                 'DELETE FROM "ldlite_system"."load_history" WHERE "table_name" = $1',
-                (prefix.load_history_key,),
+                (pfx.load_history_key,),
             )
             conn.commit()
 
     def drop_raw_table(
         self,
-        prefix: Prefix,
+        prefix: str,
     ) -> None:
         with closing(self._conn_factory()) as conn:
-            self._drop_raw_table(conn, prefix)
+            self._drop_raw_table(conn, Prefix(prefix))
             conn.commit()
 
     def _drop_raw_table(
@@ -82,10 +84,10 @@ CREATE TABLE IF NOT EXISTS "ldlite_system"."load_history" (
 
     def drop_extracted_tables(
         self,
-        prefix: Prefix,
+        prefix: str,
     ) -> None:
         with closing(self._conn_factory()) as conn:
-            self._drop_extracted_tables(conn, prefix)
+            self._drop_extracted_tables(conn, Prefix(prefix))
             conn.commit()
 
     def _drop_extracted_tables(
@@ -254,12 +256,13 @@ FROM {src_table};
 
             return (obj_columns, arr_columns)
 
-    def expand_prefix(self, prefix: Prefix, json_depth: int, keep_raw: bool) -> None:  # noqa: ARG002
+    def expand_prefix(self, prefix: str, json_depth: int, keep_raw: bool) -> None:  # noqa: ARG002
+        pfx = Prefix(prefix)
         with closing(self._conn_factory()) as conn:
             self._explode(
                 conn,
-                prefix.raw_table_name,
-                prefix.temp_expansion_table_name,
+                pfx.raw_table_name,
+                pfx.temp_expansion_table_name,
                 "jsonb",
             )
 
@@ -273,9 +276,9 @@ SELECT * FROM {transform_table}
                     )
                     .format(
                         transform_table=sql.Identifier(
-                            prefix.temp_expansion_table_name,
+                            pfx.temp_expansion_table_name,
                         ),
-                        dest_table=prefix.expansion_table_identifier,
+                        dest_table=pfx.expansion_table_identifier,
                     )
                     .as_string(),
                 )
@@ -287,7 +290,7 @@ SELECT * FROM {transform_table}
                     cur.execute(
                         sql.SQL("DROP TABLE {raw_table}")
                         .format(
-                            raw_table=prefix.raw_table_identifier,
+                            raw_table=pfx.raw_table_identifier,
                         )
                         .as_string(),
                     )
@@ -310,7 +313,7 @@ ON CONFLICT ("table_name") DO UPDATE SET
     ,"index_time" = EXCLUDED."index_time"
 """,
                 (
-                    history.table_name.load_history_key,
+                    Prefix(history.table_name).load_history_key,
                     history.path,
                     history.query,
                     history.total,
