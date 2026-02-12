@@ -169,7 +169,7 @@ WHERE table_schema = $1 and table_name IN ($2, $3);""",
         src_table: sql.Identifier,
         dest_table: sql.Identifier,
         json_col: sql.Identifier,
-    ) -> None:
+    ) -> tuple[list[sql.Identifier], list[sql.Identifier]]:
         with conn.cursor() as cur:
             cur.execute(
                 sql.SQL(
@@ -195,13 +195,19 @@ GROUP BY prop
                 .as_string(),
             )
 
+            obj_columns = []
+            arr_columns = []
             create_columns = []
             for row in cur.fetchall():
                 if row[1] == "number":
                     stmt = sql.SQL("({json_col}->{prop})::numeric AS {prop_alias}")
                 elif row[1] == "string" and row[2]:
                     stmt = sql.SQL("({json_col}->>{prop})::uuid AS {prop_alias}")
-                elif row[1] == "object" or row[1] == "array":
+                elif row[1] == "object":
+                    obj_columns.append(sql.Identifier(row[0]))
+                    stmt = sql.SQL("({json_col}->{prop}) AS {prop_alias}")
+                elif row[1] == "array":
+                    arr_columns.append(sql.Identifier(row[0]))
                     stmt = sql.SQL("({json_col}->{prop}) AS {prop_alias}")
                 else:
                     stmt = sql.SQL("({json_col}->>{prop}) AS {prop_alias}")
@@ -231,9 +237,11 @@ FROM {src_table};
                 .as_string(),
             )
 
+            return (obj_columns, arr_columns)
+
     def expand_prefix(self, prefix: Prefix, json_depth: int, keep_raw: bool) -> None:  # noqa: ARG002
         with closing(self._conn_factory()) as conn:
-            TypedDatabase._explode(
+            self._explode(
                 conn,
                 prefix.raw_table_identifier,
                 prefix.temp_expansion_table_identifier,
