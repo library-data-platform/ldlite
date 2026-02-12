@@ -119,15 +119,15 @@ $$ LANGUAGE plpgsql;
     @staticmethod
     def _explode(
         conn: psycopg.Connection,
-        src_table: sql.Identifier,
-        dest_table: sql.Identifier,
-        json_col: sql.Identifier,
-    ) -> tuple[list[sql.Identifier], list[sql.Identifier]]:
+        src: str,
+        dest: str,
+        json: str,
+    ) -> tuple[list[str], list[str]]:
         (obj_cols, arr_cols) = super(PostgresDatabase, PostgresDatabase)._explode(
             conn,
-            src_table,
-            dest_table,
-            json_col,
+            src,
+            dest,
+            json,
         )
 
         if len(obj_cols) > 0:
@@ -135,8 +135,8 @@ $$ LANGUAGE plpgsql;
             with conn.cursor() as cur:
                 cur.execute(
                     sql.SQL("ANALYZE {dest_table} ({cols})").format(
-                        dest_table=dest_table,
-                        cols=sql.SQL(",").join(obj_cols),
+                        dest_table=sql.Identifier(dest),
+                        cols=sql.SQL(",").join([sql.Identifier(oc) for oc in obj_cols]),
                     ),
                 )
 

@@ -166,10 +166,26 @@ WHERE table_schema = $1 and table_name IN ($2, $3);""",
     @staticmethod
     def _explode(
         conn: DB,
-        src_table: sql.Identifier,
-        dest_table: sql.Identifier,
-        json_col: sql.Identifier,
-    ) -> tuple[list[sql.Identifier], list[sql.Identifier]]:
+        src: str,
+        dest: str,
+        json: str,
+    ) -> tuple[list[str], list[str]]:
+        src_table = sql.Identifier(src)
+        dest_table = sql.Identifier(dest)
+        json_col = sql.Identifier(json)
+
+        create_columns: list[sql.Composable] = []
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+SELECT COLUMN_NAME
+FROM INFORMATION_SCHEMA.COLUMNS
+WHERE TABLE_NAME = $1 and COLUMN_NAME <> $2
+""",
+                (src, json),
+            )
+            create_columns.extend([sql.Identifier(c[0]) for c in cur.fetchall()])
+
         with conn.cursor() as cur:
             cur.execute(
                 sql.SQL(
@@ -197,17 +213,16 @@ GROUP BY prop
 
             obj_columns = []
             arr_columns = []
-            create_columns = []
             for row in cur.fetchall():
                 if row[1] == "number":
                     stmt = sql.SQL("({json_col}->{prop})::numeric AS {prop_alias}")
                 elif row[1] == "string" and row[2]:
                     stmt = sql.SQL("({json_col}->>{prop})::uuid AS {prop_alias}")
                 elif row[1] == "object":
-                    obj_columns.append(sql.Identifier(row[0]))
+                    obj_columns.append(row[0])
                     stmt = sql.SQL("({json_col}->{prop}) AS {prop_alias}")
                 elif row[1] == "array":
-                    arr_columns.append(sql.Identifier(row[0]))
+                    arr_columns.append(row[0])
                     stmt = sql.SQL("({json_col}->{prop}) AS {prop_alias}")
                 else:
                     stmt = sql.SQL("({json_col}->>{prop}) AS {prop_alias}")
@@ -243,9 +258,9 @@ FROM {src_table};
         with closing(self._conn_factory()) as conn:
             self._explode(
                 conn,
-                prefix.raw_table_identifier,
-                prefix.temp_expansion_table_identifier,
-                sql.Identifier("jsonb"),
+                prefix.raw_table_name,
+                prefix.temp_expansion_table_name,
+                "jsonb",
             )
 
             with conn.cursor() as cur:
@@ -257,7 +272,9 @@ SELECT * FROM {transform_table}
 """,
                     )
                     .format(
-                        transform_table=prefix.temp_expansion_table_identifier,
+                        transform_table=sql.Identifier(
+                            prefix.temp_expansion_table_name,
+                        ),
                         dest_table=prefix.expansion_table_identifier,
                     )
                     .as_string(),

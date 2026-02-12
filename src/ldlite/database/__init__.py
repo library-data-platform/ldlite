@@ -39,14 +39,19 @@ class Prefix:
         return None if self.schema is None else sql.Identifier(self.schema)
 
     @property
+    def raw_table_name(self) -> str:
+        """The sql.Identifier of the raw table for this prefix (including schema)."""
+        return self._prefix
+
+    @property
     def raw_table_identifier(self) -> sql.Identifier:
         """The sql.Identifier of the raw table for this prefix (including schema)."""
         return self._identifier(self._prefix)
 
     @property
-    def temp_expansion_table_identifier(self) -> sql.Identifier:
+    def temp_expansion_table_name(self) -> str:
         """The sql.Identifier of the raw table for this prefix (including schema)."""
-        return self._identifier(self._prefix + "__t_0")
+        return self._prefix + "__t_0"
 
     @property
     def expansion_table_identifier(self) -> sql.Identifier:

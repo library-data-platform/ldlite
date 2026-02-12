@@ -51,8 +51,10 @@ def case_basic_object() -> ExpansionTC:
         ],
         assertions=[
             Assertion("SELECT COUNT(*) FROM prefix__t;", 2),
-            Assertion("SELECT value FROM prefix__t WHERE id = 'id1'", "value1"),
-            Assertion("SELECT value FROM prefix__t WHERE id = 'id2'", "value2"),
+            Assertion("SELECT id FROM prefix__t WHERE __id = 1", "id1"),
+            Assertion("SELECT value FROM prefix__t WHERE __id = 1", "value1"),
+            Assertion("SELECT id FROM prefix__t WHERE __id = 2", "id2"),
+            Assertion("SELECT value FROM prefix__t WHERE __id = 2", "value2"),
         ],
     )
 
