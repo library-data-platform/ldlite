@@ -163,15 +163,17 @@ WHERE table_schema = $1 and table_name IN ($2, $3);""",
                 ).as_string(),
             )
 
-    def expand_prefix(self, prefix: Prefix, json_depth: int, keep_raw: bool) -> None:  # noqa: ARG002
-        with closing(self._conn_factory()) as conn:
-            with conn.cursor() as cur:
-                # select column names and types
-                # care about string, number, uuid, object, list
-
-                cur.execute(
-                    sql.SQL(
-                        """
+    @staticmethod
+    def _explode(
+        conn: DB,
+        src_table: sql.Identifier,
+        dest_table: sql.Identifier,
+        json_col: sql.Identifier,
+    ) -> None:
+        with conn.cursor() as cur:
+            cur.execute(
+                sql.SQL(
+                    """
 WITH
     one_object AS (SELECT {json_col} as json FROM {table} LIMIT 1),
     props AS (SELECT ldlite_system.jobject_keys(json) AS prop FROM one_object),
@@ -188,49 +190,55 @@ SELECT
 FROM {table}, prop_meta
 GROUP BY prop
 """,  # noqa: E501
-                    )
-                    .format(
-                        table=prefix.raw_table_identifier,
-                        json_col=sql.Identifier("jsonb"),
-                    )
-                    .as_string(),
+                )
+                .format(table=src_table, json_col=json_col)
+                .as_string(),
+            )
+
+            create_columns = []
+            for row in cur.fetchall():
+                if row[1] == "number":
+                    stmt = sql.SQL("({json_col}->{prop})::numeric AS {prop_alias}")
+                elif row[1] == "string" and row[2]:
+                    stmt = sql.SQL("({json_col}->>{prop})::uuid AS {prop_alias}")
+                elif row[1] == "object" or row[1] == "array":
+                    stmt = sql.SQL("({json_col}->{prop}) AS {prop_alias}")
+                else:
+                    stmt = sql.SQL("({json_col}->>{prop}) AS {prop_alias}")
+
+                create_columns.append(
+                    stmt.format(
+                        json_col=json_col,
+                        prop=sql.Literal(row[0]),
+                        prop_alias=sql.Identifier(row[0]),
+                    ),
                 )
 
-                create_columns = []
-                for row in cur.fetchall():
-                    if row[1] == "number":
-                        stmt = sql.SQL("({json_col}->{prop})::numeric AS {prop_alias}")
-                    elif row[1] == "string" and row[2]:
-                        stmt = sql.SQL("({json_col}->>{prop})::uuid AS {prop_alias}")
-                    elif row[1] == "object" or row[1] == "array":
-                        stmt = sql.SQL("({json_col}->{prop}) AS {prop_alias}")
-                    else:
-                        stmt = sql.SQL("({json_col}->>{prop}) AS {prop_alias}")
-
-                    create_columns.append(
-                        stmt.format(
-                            json_col=sql.Identifier("jsonb"),
-                            prop=sql.Literal(row[0]),
-                            prop_alias=sql.Identifier(row[0]),
-                        ),
-                    )
-
-            with conn.cursor() as cur:
-                cur.execute(
-                    sql.SQL(
-                        """
+        with conn.cursor() as cur:
+            cur.execute(
+                sql.SQL(
+                    """
 CREATE TABLE {dest_table} AS SELECT
     {cols}
 FROM {src_table};
 """,
-                    )
-                    .format(
-                        dest_table=prefix.expansion_table_identifier,
-                        src_table=prefix.raw_table_identifier,
-                        cols=sql.SQL("\n    ,").join(create_columns),
-                    )
-                    .as_string(),
                 )
+                .format(
+                    src_table=src_table,
+                    dest_table=dest_table,
+                    cols=sql.SQL("\n    ,").join(create_columns),
+                )
+                .as_string(),
+            )
+
+    def expand_prefix(self, prefix: Prefix, json_depth: int, keep_raw: bool) -> None:  # noqa: ARG002
+        with closing(self._conn_factory()) as conn:
+            TypedDatabase._explode(
+                conn,
+                prefix.raw_table_identifier,
+                prefix.expansion_table_identifier,
+                sql.Identifier("jsonb"),
+            )
 
             conn.commit()
 
