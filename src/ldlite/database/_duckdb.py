@@ -119,9 +119,7 @@ CREATE OR REPLACE FUNCTION ldlite_system.jis_float(j) AS
 
             insert_sql = (
                 sql.SQL("INSERT INTO {table} VALUES(?, ?);")
-                .format(
-                    table=pfx.raw_table_identifier,
-                )
+                .format(table=pfx.schemafy(pfx.raw_table))
                 .as_string()
             )
             # duckdb has better performance bulk inserting in a transaction

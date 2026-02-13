@@ -2,6 +2,7 @@
 from abc import abstractmethod
 from collections.abc import Callable, Sequence
 from contextlib import closing
+from dataclasses import dataclass
 from datetime import timezone
 from typing import TYPE_CHECKING, Any, Generic, TypeVar, cast
 
@@ -78,7 +79,7 @@ CREATE TABLE IF NOT EXISTS "ldlite_system"."load_history" (
         with closing(conn.cursor()) as cur:
             cur.execute(
                 sql.SQL("DROP TABLE IF EXISTS {table};")
-                .format(table=prefix.raw_table_identifier)
+                .format(table=prefix.schemafy(prefix.raw_table))
                 .as_string(),
             )
 
@@ -103,23 +104,23 @@ SELECT table_name FROM information_schema.tables
 WHERE table_schema = $1 and table_name IN ($2, $3);""",
                 (
                     prefix.schema or self._default_schema,
-                    prefix.catalog_table_name,
-                    prefix.legacy_jtable_name,
+                    prefix.catalog_table,
+                    prefix.legacy_jtable,
                 ),
             )
             for (tname,) in cur.fetchall():
-                if tname == prefix.catalog_table_name:
+                if tname == prefix.catalog_table:
                     cur.execute(
                         sql.SQL("SELECT table_name FROM {catalog};")
-                        .format(catalog=prefix.catalog_table_identifier)
+                        .format(catalog=prefix.schemafy(prefix.catalog_table))
                         .as_string(),
                     )
                     tables.extend(cur.fetchall())
 
-                if tname == prefix.legacy_jtable_name:
+                if tname == prefix.legacy_jtable:
                     cur.execute(
                         sql.SQL("SELECT table_name FROM {catalog};")
-                        .format(catalog=prefix.legacy_jtable_identifier)
+                        .format(catalog=prefix.schemafy(prefix.legacy_jtable))
                         .as_string(),
                     )
                     tables.extend(cur.fetchall())
@@ -133,12 +134,12 @@ WHERE table_schema = $1 and table_name IN ($2, $3);""",
                 )
             cur.execute(
                 sql.SQL("DROP TABLE IF EXISTS {catalog};")
-                .format(catalog=prefix.catalog_table_identifier)
+                .format(catalog=prefix.schemafy(prefix.catalog_table))
                 .as_string(),
             )
             cur.execute(
                 sql.SQL("DROP TABLE IF EXISTS {catalog};")
-                .format(catalog=prefix.legacy_jtable_identifier)
+                .format(catalog=prefix.schemafy(prefix.legacy_jtable))
                 .as_string(),
             )
 
@@ -151,19 +152,26 @@ WHERE table_schema = $1 and table_name IN ($2, $3);""",
         prefix: Prefix,
     ) -> None:
         with closing(conn.cursor()) as cur:
-            if prefix.schema_identifier is not None:
+            if prefix.schema is not None:
                 cur.execute(
                     sql.SQL("CREATE SCHEMA IF NOT EXISTS {schema};")
-                    .format(schema=prefix.schema_identifier)
+                    .format(schema=sql.Identifier(prefix.schema))
                     .as_string(),
                 )
         self._drop_raw_table(conn, prefix)
         with closing(conn.cursor()) as cur:
             cur.execute(
                 self._create_raw_table_sql.format(
-                    table=prefix.raw_table_identifier,
+                    table=prefix.schemafy(prefix.raw_table),
                 ).as_string(),
             )
+
+    @dataclass
+    class _ExplodeContext:
+        prefix: Prefix
+        src_table: str
+        dest_table: str
+        json_col: str
 
     @staticmethod
     def _explode(
@@ -261,8 +269,8 @@ FROM {src_table};
         with closing(self._conn_factory()) as conn:
             self._explode(
                 conn,
-                pfx.raw_table_name,
-                pfx.temp_expansion_table_name,
+                pfx.raw_table,
+                pfx.transform_table(0, 0),
                 "jsonb",
             )
 
@@ -275,10 +283,10 @@ SELECT * FROM {transform_table}
 """,
                     )
                     .format(
-                        transform_table=sql.Identifier(
-                            pfx.temp_expansion_table_name,
+                        transform_table=pfx.schemafy(
+                            pfx.transform_table(0, 0),
                         ),
-                        dest_table=pfx.expansion_table_identifier,
+                        dest_table=pfx.schemafy(pfx.output_table),
                     )
                     .as_string(),
                 )
@@ -290,7 +298,7 @@ SELECT * FROM {transform_table}
                     cur.execute(
                         sql.SQL("DROP TABLE {raw_table}")
                         .format(
-                            raw_table=pfx.raw_table_identifier,
+                            raw_table=pfx.schemafy(pfx.raw_table),
                         )
                         .as_string(),
                     )

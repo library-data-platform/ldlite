@@ -157,7 +157,7 @@ $$ LANGUAGE plpgsql;
                 cur.copy(
                     sql.SQL(
                         "COPY {table} (__id, jsonb) FROM STDIN (FORMAT BINARY)",
-                    ).format(table=pfx.raw_table_identifier),
+                    ).format(table=pfx.schemafy(pfx.raw_table)),
                 ) as copy,
             ):
                 # postgres jsonb is always version 1
