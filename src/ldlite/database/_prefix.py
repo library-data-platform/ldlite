@@ -43,4 +43,8 @@ class Prefix:
         return self.schema + "." + self._prefix
 
     def transform_table(self, depth: int, breadth: int) -> str:
-        return self.output_table + f"_d{depth}_b{breadth}"
+        return (
+            ("" if self.schema is None else self.schema + "_")
+            + self.output_table
+            + f"_d{depth}_b{breadth}"
+        )

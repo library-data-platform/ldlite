@@ -50,11 +50,11 @@ def case_basic_object() -> ExpansionTC:
             b"""{"id": "id2", "value": "value2"}""",
         ],
         assertions=[
-            Assertion("SELECT COUNT(*) FROM prefix__t;", 2),
-            Assertion("SELECT id FROM prefix__t WHERE __id = 1", "id1"),
-            Assertion("SELECT value FROM prefix__t WHERE __id = 1", "value1"),
-            Assertion("SELECT id FROM prefix__t WHERE __id = 2", "id2"),
-            Assertion("SELECT value FROM prefix__t WHERE __id = 2", "value2"),
+            Assertion("SELECT COUNT(*) FROM tests.prefix__t;", 2),
+            Assertion("SELECT id FROM tests.prefix__t WHERE __id = 1", "id1"),
+            Assertion("SELECT value FROM tests.prefix__t WHERE __id = 1", "value1"),
+            Assertion("SELECT id FROM tests.prefix__t WHERE __id = 2", "id2"),
+            Assertion("SELECT value FROM tests.prefix__t WHERE __id = 2", "value2"),
         ],
     )
 
@@ -196,8 +196,8 @@ def test_duckdb(tc: ExpansionTC) -> None:
     ld.connect_db(dsn)
     assert ld.database is not None
 
-    ld.database.ingest_records("prefix", iter(tc.records))
-    ld.database.expand_prefix("prefix", tc.json_depth, tc.keep_raw)
+    ld.database.ingest_records("tests.prefix", iter(tc.records))
+    ld.database.expand_prefix("tests.prefix", tc.json_depth, tc.keep_raw)
 
     with duckdb.connect(dsn) as conn:
         _assert(cast("dbapi.DBAPIConnection", conn), "duckdb", tc)
@@ -216,8 +216,8 @@ def test_postgres(pg_dsn: None | Callable[[str], str], tc: ExpansionTC) -> None:
     ld.connect_db_postgresql(dsn)
     assert ld.database is not None
 
-    ld.database.ingest_records("prefix", iter(tc.records))
-    ld.database.expand_prefix("prefix", tc.json_depth, tc.keep_raw)
+    ld.database.ingest_records("tests.prefix", iter(tc.records))
+    ld.database.expand_prefix("tests.prefix", tc.json_depth, tc.keep_raw)
 
     with psycopg.connect(dsn, cursor_factory=psycopg.RawCursor) as conn:
         _assert(cast("dbapi.DBAPIConnection", conn), "postgres", tc)

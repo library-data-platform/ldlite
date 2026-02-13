@@ -2,7 +2,6 @@
 from abc import abstractmethod
 from collections.abc import Callable, Sequence
 from contextlib import closing
-from dataclasses import dataclass
 from datetime import timezone
 from typing import TYPE_CHECKING, Any, Generic, TypeVar, cast
 
@@ -166,13 +165,6 @@ WHERE table_schema = $1 and table_name IN ($2, $3);""",
                 ).as_string(),
             )
 
-    @dataclass
-    class _ExplodeContext:
-        prefix: Prefix
-        src_table: str
-        dest_table: str
-        json_col: str
-
     @staticmethod
     def _explode(
         conn: DB,
@@ -267,10 +259,35 @@ FROM {src_table};
     def expand_prefix(self, prefix: str, json_depth: int, keep_raw: bool) -> None:  # noqa: ARG002
         pfx = Prefix(prefix)
         with closing(self._conn_factory()) as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    sql.SQL(
+                        """
+CREATE TEMP TABLE {dest_table} ON COMMIT DROP AS
+SELECT * from {raw_table};
+""",
+                    )
+                    .format(
+                        dest_table=sql.Identifier(pfx.transform_table(0, 0)),
+                        raw_table=pfx.schemafy(pfx.raw_table),
+                    )
+                    .as_string(),
+                )
+                if not keep_raw:
+                    # TODO: Refactor this to use DELETE RETURNING when DuckDb resolves
+                    # https://github.com/duckdb/duckdb/issues/3417
+                    cur.execute(
+                        sql.SQL("DROP TABLE {raw_table}")
+                        .format(
+                            raw_table=pfx.schemafy(pfx.raw_table),
+                        )
+                        .as_string(),
+                    )
+
             self._explode(
                 conn,
-                pfx.raw_table,
                 pfx.transform_table(0, 0),
+                pfx.transform_table(1, 0),
                 "jsonb",
             )
 
@@ -283,25 +300,11 @@ SELECT * FROM {transform_table}
 """,
                     )
                     .format(
-                        transform_table=pfx.schemafy(
-                            pfx.transform_table(0, 0),
-                        ),
                         dest_table=pfx.schemafy(pfx.output_table),
+                        transform_table=sql.Identifier(pfx.transform_table(1, 0)),
                     )
                     .as_string(),
                 )
-
-            # TODO: Refactor this to use DELETE RETURNING when DuckDb supports it
-            # https://github.com/duckdb/duckdb/issues/3417
-            if not keep_raw:
-                with conn.cursor() as cur:
-                    cur.execute(
-                        sql.SQL("DROP TABLE {raw_table}")
-                        .format(
-                            raw_table=pfx.schemafy(pfx.raw_table),
-                        )
-                        .as_string(),
-                    )
 
             conn.commit()
 
