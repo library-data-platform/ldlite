@@ -116,32 +116,6 @@ $$ LANGUAGE plpgsql;
             "CREATE TABLE IF NOT EXISTS {table} (__id integer, jsonb jsonb);",
         )
 
-    @staticmethod
-    def _explode(
-        conn: psycopg.Connection,
-        src: str,
-        dest: str,
-        json: str,
-    ) -> tuple[list[str], list[str]]:
-        (obj_cols, arr_cols) = super(PostgresDatabase, PostgresDatabase)._explode(
-            conn,
-            src,
-            dest,
-            json,
-        )
-
-        if len(obj_cols) > 0:
-            # Analyze temp table obj cols that we're going to expand later
-            with conn.cursor() as cur:
-                cur.execute(
-                    sql.SQL("ANALYZE {dest_table} ({cols})").format(
-                        dest_table=sql.Identifier(dest),
-                        cols=sql.SQL(",").join([sql.Identifier(oc) for oc in obj_cols]),
-                    ),
-                )
-
-        return (obj_cols, arr_cols)
-
     def ingest_records(
         self,
         prefix: str,

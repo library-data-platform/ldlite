@@ -98,36 +98,95 @@ WHERE TABLE_NAME = 'prefix__t' AND COLUMN_NAME = '{a[0]}'
     )
 
 
-# TODO: Remove this test after implementing recursive expansion
-def case_objects_and_arrays() -> ExpansionTC:
+# TODO: Remove this test after implementing array expansion
+def case_arrays() -> ExpansionTC:
     return ExpansionTC(
         records=[
             b"""
 {
     "id": "id1",
-    "object": {"id": "obj_id1"},
     "list": [{"id": "arr_id1"}]
 }
 """,
             b"""
 {
     "id": "id2",
-    "object": {"id": "obj_id2"},
     "list": [{"id": "arr_id2"}]
 }
 """,
         ],
         assertions=[
             Assertion(
-                f"""
+                """
 SELECT DATA_TYPE
 FROM INFORMATION_SCHEMA.COLUMNS
-WHERE TABLE_NAME = 'prefix__t' AND COLUMN_NAME = '{a}'
+WHERE TABLE_NAME = 'prefix__t' AND COLUMN_NAME = 'list'
 """,
                 exp_pg="jsonb",
                 exp_duck="JSON",
-            )
-            for a in ["object", "list"]
+            ),
+        ],
+    )
+
+
+def case_nested_objects() -> ExpansionTC:
+    return ExpansionTC(
+        records=[
+            b"""
+{
+    "id": "id1",
+    "value": "value1",
+    "sub": {
+        "id": "sub_id1",
+        "subsub": {"id": "subsub_id1"},
+        "subsib": {"id": "subsib_id1"}
+    },
+    "sib": {
+        "id": "sib_id1",
+        "sibsub": {"id": "sibsub_id1"},
+        "sibsib": {"id": "sibsib_id1"}
+    }
+}
+""",
+            b"""
+{
+    "id": "id2",
+    "value": "value2",
+    "sub": {
+        "id": "sub_id2",
+        "subsub": {"id": "subsub_id2"},
+        "subsib": {"id": "subsib_id2"}
+    },
+    "sib": {
+        "id": "sib_id2",
+        "sibsub": {"id": "sibsub_id2"},
+        "sibsib": {"id": "sibsib_id2"}
+    }
+}
+""",
+        ],
+        assertions=[
+            Assertion("SELECT COUNT(*) FROM tests.prefix__t;", 2),
+            Assertion("SELECT id FROM tests.prefix__t WHERE __id = 1", "id1"),
+            Assertion("SELECT sub__id FROM tests.prefix__t WHERE __id = 1", "sub_id1"),
+            Assertion(
+                "SELECT sub__subsub__id FROM tests.prefix__t WHERE __id = 1",
+                "subsub_id1",
+            ),
+            Assertion(
+                "SELECT sub__subsib__id FROM tests.prefix__t WHERE __id = 1",
+                "subsib_id1",
+            ),
+            Assertion("SELECT id FROM tests.prefix__t WHERE __id = 2", "id2"),
+            Assertion("SELECT sib__id FROM tests.prefix__t WHERE __id = 2", "sib_id2"),
+            Assertion(
+                "SELECT sib__sibsub__id FROM tests.prefix__t WHERE __id = 2",
+                "sibsub_id2",
+            ),
+            Assertion(
+                "SELECT sib__sibsib__id FROM tests.prefix__t WHERE __id = 2",
+                "sibsib_id2",
+            ),
         ],
     )
 

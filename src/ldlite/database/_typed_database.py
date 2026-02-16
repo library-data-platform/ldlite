@@ -1,5 +1,6 @@
 # pyright: reportArgumentType=false
 from abc import abstractmethod
+from collections import deque
 from collections.abc import Callable, Sequence
 from contextlib import closing
 from datetime import timezone
@@ -9,6 +10,7 @@ import psycopg
 from psycopg import sql
 
 from . import Database, LoadHistory
+from ._expansion_node import ExpansionNode
 from ._prefix import Prefix
 
 if TYPE_CHECKING:
@@ -165,97 +167,6 @@ WHERE table_schema = $1 and table_name IN ($2, $3);""",
                 ).as_string(),
             )
 
-    @staticmethod
-    def _explode(
-        conn: DB,
-        src: str,
-        dest: str,
-        json: str,
-    ) -> tuple[list[str], list[str]]:
-        src_table = sql.Identifier(src)
-        dest_table = sql.Identifier(dest)
-        json_col = sql.Identifier(json)
-
-        create_columns: list[sql.Composable] = []
-        with conn.cursor() as cur:
-            cur.execute(
-                """
-SELECT COLUMN_NAME
-FROM INFORMATION_SCHEMA.COLUMNS
-WHERE TABLE_NAME = $1 and COLUMN_NAME <> $2
-""",
-                (src, json),
-            )
-            create_columns.extend([sql.Identifier(c[0]) for c in cur.fetchall()])
-
-        with conn.cursor() as cur:
-            cur.execute(
-                sql.SQL(
-                    """
-WITH
-    one_object AS (SELECT {json_col} as json FROM {table} LIMIT 1),
-    props AS (SELECT ldlite_system.jobject_keys(json) AS prop FROM one_object),
-    prop_meta AS (
-        SELECT
-            prop
-            ,ldlite_system.jtype_of(json->prop) AS json_type
-        FROM one_object, props
-    )
-SELECT
-    prop
-    ,ANY_VALUE(json_type) as json_type
-    ,bool_and({json_col}->>prop ~ '^[a-fA-F0-9]{{8}}-[a-fA-F0-9]{{4}}-[1-5][a-fA-F0-9]{{3}}-[89abAB][a-fA-F0-9]{{3}}-[a-fA-F0-9]{{12}}$') AS is_uuid
-FROM {table}, prop_meta
-GROUP BY prop
-""",  # noqa: E501
-                )
-                .format(table=src_table, json_col=json_col)
-                .as_string(),
-            )
-
-            obj_columns = []
-            arr_columns = []
-            for row in cur.fetchall():
-                if row[1] == "number":
-                    stmt = sql.SQL("({json_col}->{prop})::numeric AS {prop_alias}")
-                elif row[1] == "string" and row[2]:
-                    stmt = sql.SQL("({json_col}->>{prop})::uuid AS {prop_alias}")
-                elif row[1] == "object":
-                    obj_columns.append(row[0])
-                    stmt = sql.SQL("({json_col}->{prop}) AS {prop_alias}")
-                elif row[1] == "array":
-                    arr_columns.append(row[0])
-                    stmt = sql.SQL("({json_col}->{prop}) AS {prop_alias}")
-                else:
-                    stmt = sql.SQL("({json_col}->>{prop}) AS {prop_alias}")
-
-                create_columns.append(
-                    stmt.format(
-                        json_col=json_col,
-                        prop=sql.Literal(row[0]),
-                        prop_alias=sql.Identifier(row[0]),
-                    ),
-                )
-
-        with conn.cursor() as cur:
-            cur.execute(
-                sql.SQL(
-                    """
-CREATE TEMP TABLE {dest_table} ON COMMIT DROP AS SELECT
-    {cols}
-FROM {src_table};
-""",
-                )
-                .format(
-                    src_table=src_table,
-                    dest_table=dest_table,
-                    cols=sql.SQL("\n    ,").join(create_columns),
-                )
-                .as_string(),
-            )
-
-            return (obj_columns, arr_columns)
-
     def expand_prefix(self, prefix: str, json_depth: int, keep_raw: bool) -> None:  # noqa: ARG002
         pfx = Prefix(prefix)
         with closing(self._conn_factory()) as conn:
@@ -268,7 +179,7 @@ SELECT * from {raw_table};
 """,
                     )
                     .format(
-                        dest_table=sql.Identifier(pfx.transform_table(0, 0)),
+                        dest_table=pfx.transform_table(0),
                         raw_table=pfx.schemafy(pfx.raw_table),
                     )
                     .as_string(),
@@ -284,12 +195,25 @@ SELECT * from {raw_table};
                         .as_string(),
                     )
 
-            self._explode(
+            root = ExpansionNode("jsonb", None, None, values=["__id"])
+            root.explode(
                 conn,
-                pfx.transform_table(0, 0),
-                pfx.transform_table(1, 0),
-                "jsonb",
+                pfx.transform_table(0),
+                pfx.transform_table(1),
             )
+
+            count = 1
+            expand_children_of = deque([root])
+            while expand_children_of:
+                n = expand_children_of.popleft()
+                for c in n.children:
+                    c.explode(
+                        conn,
+                        pfx.transform_table(count),
+                        pfx.transform_table(count + 1),
+                    )
+                    expand_children_of.append(c)
+                    count += 1
 
             with conn.cursor() as cur:
                 cur.execute(
@@ -301,7 +225,7 @@ SELECT * FROM {transform_table}
                     )
                     .format(
                         dest_table=pfx.schemafy(pfx.output_table),
-                        transform_table=sql.Identifier(pfx.transform_table(1, 0)),
+                        transform_table=pfx.transform_table(count),
                     )
                     .as_string(),
                 )
