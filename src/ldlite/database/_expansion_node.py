@@ -29,14 +29,20 @@ class ExpansionNode:
         self.values: list[str] = values or []
         self.children: list[ExpansionNode] = []
 
+    @staticmethod
+    def _c_a_s_e(camel: str) -> str:
+        return "".join("_" + c.lower() if c.isupper() else c for c in camel)
+
     def _add_child(self, name: str) -> str:
-        prefixed_name = self.prefix + name
-        n = ExpansionNode(prefixed_name, name, self)
+        snake = self._c_a_s_e(name)
+        prefixed_name = self.prefix + snake
+        n = ExpansionNode(prefixed_name, snake, self)
         self.children.append(n)
         return prefixed_name
 
     def _add_value(self, name: str) -> str:
-        prefixed_name = self.prefix + name
+        snake = self._c_a_s_e(name)
+        prefixed_name = self.prefix + snake
         self.values.append(prefixed_name)
         return prefixed_name
 

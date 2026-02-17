@@ -46,15 +46,21 @@ class ExpansionTC:
 def case_basic_object() -> ExpansionTC:
     return ExpansionTC(
         records=[
-            b"""{"id": "id1", "value": "value1"}""",
-            b"""{"id": "id2", "value": "value2"}""",
+            b"""{"id": "id1", "camelValue": "value1"}""",
+            b"""{"id": "id2", "camelValue": "value2"}""",
         ],
         assertions=[
             Assertion("SELECT COUNT(*) FROM tests.prefix__t;", 2),
             Assertion("SELECT id FROM tests.prefix__t WHERE __id = 1", "id1"),
-            Assertion("SELECT value FROM tests.prefix__t WHERE __id = 1", "value1"),
+            Assertion(
+                "SELECT camel_value FROM tests.prefix__t WHERE __id = 1",
+                "value1",
+            ),
             Assertion("SELECT id FROM tests.prefix__t WHERE __id = 2", "id2"),
-            Assertion("SELECT value FROM tests.prefix__t WHERE __id = 2", "value2"),
+            Assertion(
+                "SELECT camel_value FROM tests.prefix__t WHERE __id = 2",
+                "value2",
+            ),
         ],
     )
 
@@ -136,15 +142,18 @@ def case_nested_objects() -> ExpansionTC:
 {
     "id": "id1",
     "value": "value1",
+    "intEr": {
+        "mediate": {"id": "snake"}
+    },
     "sub": {
         "id": "sub_id1",
-        "subsub": {"id": "subsub_id1"},
-        "subsib": {"id": "subsib_id1"}
+        "subSub": {"id": "subsub_id1"},
+        "subSib": {"id": "subsib_id1"}
     },
     "sib": {
         "id": "sib_id1",
-        "sibsub": {"id": "sibsub_id1"},
-        "sibsib": {"id": "sibsib_id1"}
+        "sibSub": {"id": "sibsub_id1"},
+        "sibSib": {"id": "sibsib_id1"}
     }
 }
 """,
@@ -152,15 +161,18 @@ def case_nested_objects() -> ExpansionTC:
 {
     "id": "id2",
     "value": "value2",
+    "intEr": {
+        "mediate": {"id": "case"}
+    },
     "sub": {
         "id": "sub_id2",
-        "subsub": {"id": "subsub_id2"},
-        "subsib": {"id": "subsib_id2"}
+        "subSub": {"id": "subsub_id2"},
+        "subSib": {"id": "subsib_id2"}
     },
     "sib": {
         "id": "sib_id2",
-        "sibsub": {"id": "sibsub_id2"},
-        "sibsib": {"id": "sibsib_id2"}
+        "sibSub": {"id": "sibsub_id2"},
+        "sibSib": {"id": "sibsib_id2"}
     }
 }
 """,
@@ -170,21 +182,29 @@ def case_nested_objects() -> ExpansionTC:
             Assertion("SELECT id FROM tests.prefix__t WHERE __id = 1", "id1"),
             Assertion("SELECT sub__id FROM tests.prefix__t WHERE __id = 1", "sub_id1"),
             Assertion(
-                "SELECT sub__subsub__id FROM tests.prefix__t WHERE __id = 1",
+                "SELECT int_er__mediate__id FROM tests.prefix__t WHERE __id = 1",
+                "snake",
+            ),
+            Assertion(
+                "SELECT sub__sub_sub__id FROM tests.prefix__t WHERE __id = 1",
                 "subsub_id1",
             ),
             Assertion(
-                "SELECT sub__subsib__id FROM tests.prefix__t WHERE __id = 1",
+                "SELECT sub__sub_sib__id FROM tests.prefix__t WHERE __id = 1",
                 "subsib_id1",
             ),
             Assertion("SELECT id FROM tests.prefix__t WHERE __id = 2", "id2"),
             Assertion("SELECT sib__id FROM tests.prefix__t WHERE __id = 2", "sib_id2"),
             Assertion(
-                "SELECT sib__sibsub__id FROM tests.prefix__t WHERE __id = 2",
+                "SELECT int_er__mediate__id FROM tests.prefix__t WHERE __id = 2",
+                "case",
+            ),
+            Assertion(
+                "SELECT sib__sib_sub__id FROM tests.prefix__t WHERE __id = 2",
                 "sibsub_id2",
             ),
             Assertion(
-                "SELECT sib__sibsib__id FROM tests.prefix__t WHERE __id = 2",
+                "SELECT sib__sib_sib__id FROM tests.prefix__t WHERE __id = 2",
                 "sibsib_id2",
             ),
         ],
