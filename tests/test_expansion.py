@@ -43,28 +43,6 @@ class ExpansionTC:
     keep_raw: bool = True
 
 
-def case_basic_object() -> ExpansionTC:
-    return ExpansionTC(
-        records=[
-            b"""{"id": "id1", "camelValue": "value1"}""",
-            b"""{"id": "id2", "camelValue": "value2"}""",
-        ],
-        assertions=[
-            Assertion("SELECT COUNT(*) FROM tests.prefix__t;", 2),
-            Assertion("SELECT id FROM tests.prefix__t WHERE __id = 1", "id1"),
-            Assertion(
-                "SELECT camel_value FROM tests.prefix__t WHERE __id = 1",
-                "value1",
-            ),
-            Assertion("SELECT id FROM tests.prefix__t WHERE __id = 2", "id2"),
-            Assertion(
-                "SELECT camel_value FROM tests.prefix__t WHERE __id = 2",
-                "value2",
-            ),
-        ],
-    )
-
-
 def case_typed_columns() -> ExpansionTC:
     return ExpansionTC(
         records=[
@@ -104,32 +82,45 @@ WHERE TABLE_NAME = 'prefix__t' AND COLUMN_NAME = '{a[0]}'
     )
 
 
-# TODO: Remove this test after implementing array expansion
-def case_arrays() -> ExpansionTC:
+def case_basic_array() -> ExpansionTC:
     return ExpansionTC(
         records=[
             b"""
 {
     "id": "id1",
-    "list": [{"id": "arr_id1"}]
+    "list": ["a1", "b1", "c1"]
 }
 """,
             b"""
 {
     "id": "id2",
-    "list": [{"id": "arr_id2"}]
+    "list": ["a2", "b2", "c2"]
 }
 """,
         ],
         assertions=[
+            Assertion("""SELECT COUNT(*) FROM prefix__t__list""", expect=6),
+        ],
+    )
+
+
+def case_basic_object() -> ExpansionTC:
+    return ExpansionTC(
+        records=[
+            b"""{"id": "id1", "camelValue": "value1"}""",
+            b"""{"id": "id2", "camelValue": "value2"}""",
+        ],
+        assertions=[
+            Assertion("SELECT COUNT(*) FROM tests.prefix__t;", 2),
+            Assertion("SELECT id FROM tests.prefix__t WHERE __id = 1", "id1"),
             Assertion(
-                """
-SELECT DATA_TYPE
-FROM INFORMATION_SCHEMA.COLUMNS
-WHERE TABLE_NAME = 'prefix__t' AND COLUMN_NAME = 'list'
-""",
-                exp_pg="jsonb",
-                exp_duck="JSON",
+                "SELECT camel_value FROM tests.prefix__t WHERE __id = 1",
+                "value1",
+            ),
+            Assertion("SELECT id FROM tests.prefix__t WHERE __id = 2", "id2"),
+            Assertion(
+                "SELECT camel_value FROM tests.prefix__t WHERE __id = 2",
+                "value2",
             ),
         ],
     )

@@ -10,7 +10,7 @@ import psycopg
 from psycopg import sql
 
 from . import Database, LoadHistory
-from ._expansion_node import ExpansionNode
+from ._expansion_node import ObjectNode
 from ._prefix import Prefix
 
 if TYPE_CHECKING:
@@ -195,8 +195,8 @@ SELECT * from {raw_table};
                         .as_string(),
                     )
 
-            root = ExpansionNode("jsonb", None, None, values=["__id"])
-            root.explode(
+            root = ObjectNode("jsonb", None, None, values=["__id"])
+            root.unnest(
                 conn,
                 pfx.transform_table(0),
                 pfx.transform_table(1),
@@ -206,8 +206,8 @@ SELECT * from {raw_table};
             expand_children_of = deque([root])
             while expand_children_of:
                 n = expand_children_of.popleft()
-                for c in n.children:
-                    c.explode(
+                for c in n.object_children:
+                    c.unnest(
                         conn,
                         pfx.transform_table(count),
                         pfx.transform_table(count + 1),
@@ -215,17 +215,25 @@ SELECT * from {raw_table};
                     expand_children_of.append(c)
                     count += 1
 
+            arrays = root.array_descendents
+            stamped_values = [
+                sql.Identifier(v)
+                for n in set(root.descendents).difference(arrays)
+                for v in n.values
+            ]
+
             with conn.cursor() as cur:
                 cur.execute(
                     sql.SQL(
                         """
 CREATE TABLE {dest_table} AS
-SELECT * FROM {transform_table}
+SELECT {stamped_values} FROM {transform_table}
 """,
                     )
                     .format(
                         dest_table=pfx.schemafy(pfx.output_table),
                         transform_table=pfx.transform_table(count),
+                        stamped_values=sql.SQL("\n    ,").join(stamped_values),
                     )
                     .as_string(),
                 )
