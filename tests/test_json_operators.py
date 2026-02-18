@@ -102,7 +102,7 @@ WHERE e.jkey IS NULL or a.jkey IS NULL) as q;""",
         ("na", "null"),
     ],
 )
-def case_jtypeof(p: tuple[Any, ...]) -> JsonTC:
+def case_jtype_of(p: tuple[Any, ...]) -> JsonTC:
     return JsonTC(
         """
 SELECT ldlite_system.jtype_of(jc->$1){assertion}
@@ -110,6 +110,31 @@ FROM j;""",
         p[:1],
         """ = $2""",
         p[1:],
+    )
+
+
+@parametrize(
+    p=[
+        ("arr_str", ['"s1"', '"s2"', '"s3"']),
+        ("arr_obj", ['{"k1":"v1"}', '{"k2":"v2"}']),
+        ("arr_num", [1, 2, 3]),
+    ],
+)
+def case_jexplode(p: tuple[Any, ...]) -> JsonTC:
+    return JsonTC(
+        """
+{assertion}
+(
+    SELECT a.value FROM j, ldlite_system.jexplode(j.jc->$1) a
+    EXCEPT SELECT value::{jtype} FROM unnest($2::text[]) AS expect(value)
+    UNION ALL
+    SELECT value::{jtype} FROM unnest($2::text[]) AS expect(value)
+    EXCEPT SELECT a.value FROM j, ldlite_system.jexplode(j.jc->$1) a
+)
+""",
+        p,
+        """SELECT COUNT(1) = 0 FROM""",
+        (),
     )
 
 
@@ -212,28 +237,30 @@ def _assert(conn: "dbapi.DBAPIConnection", jtype: str, tc: JsonTC) -> None:
 def _arrange(conn: "dbapi.DBAPIConnection") -> None:
     with closing(conn.cursor()) as cur:
         cur.execute(
-            "INSERT INTO j VALUES "
-            "('{"
-            """ "str": "str_val","""
-            """ "str_empty": "","""
-            """ "num": 12,"""
-            """ "float": 16.3,"""
-            """ "bool": true,"""
-            """ "uuid": "5b285d03-5490-1111-8888-52b2003b475c","""
-            """ "uuid_nof": "5b285d03-5490-FFFF-0000-52b2003b475c","""
-            """ "obj": {"k1": "v1", "k2": "v2"},"""
-            """ "obj_some": {"k1": "v1", "k2": null},"""
-            """ "obj_empty": {},"""
-            """ "arr_zero": [],"""
-            """ "arr_str": ["s1", "s2", "s3"],"""
-            """ "arr_str_some": ["s1", "s2", null],"""
-            """ "arr_obj": [{"k1": "v1"}, {"k2": "v2"}],"""
-            """ "arr_obj_some": [{"k1": "v1"}, null],"""
-            """ "dt": "2022-04-21T18:47:33.581+00:00","""
-            """ "na": null,"""
-            """ "na_str1": "null", """
-            """ "na_str2": "NULL" """
-            " }')",
+            """
+INSERT INTO j VALUES (
+'{
+    "str": "str_val",
+    "str_empty": "",
+    "num": 12,
+    "float": 16.3,
+    "bool": true,
+    "uuid": "5b285d03-5490-1111-8888-52b2003b475c",
+    "uuid_nof": "5b285d03-5490-FFFF-0000-52b2003b475c",
+    "obj": {"k1": "v1", "k2": "v2"},
+    "obj_some": {"k1": "v1", "k2": null},
+    "obj_empty": {},
+    "arr_zero": [],
+    "arr_str": ["s1", "s2", "s3"],
+    "arr_str_some": ["s1", "s2", null],
+    "arr_obj": [{"k1": "v1"}, {"k2": "v2"}],
+    "arr_obj_some": [{"k1": "v1"}, null],
+    "arr_num": [1, 2, 3],
+    "dt": "2022-04-21T18:47:33.581+00:00",
+    "na": null,
+    "na_str1": "null",
+    "na_str2": "NULL"
+}')""",
         )
 
 

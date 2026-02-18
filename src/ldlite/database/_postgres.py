@@ -103,6 +103,13 @@ BEGIN
     END;
 END
 $$ LANGUAGE plpgsql;
+
+CREATE OR REPLACE FUNCTION ldlite_system.jexplode(j JSONB) RETURNS TABLE (value JSONB) AS $$
+BEGIN
+    RETURN QUERY SELECT * FROM jsonb_array_elements(j);
+END
+$$ LANGUAGE plpgsql;
+
 """,  # noqa: E501
             )
 

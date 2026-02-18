@@ -96,6 +96,10 @@ CREATE OR REPLACE FUNCTION ldlite_system.jis_float(j) AS
     coalesce(main.json_type(j), 'NULL')='DOUBLE'
 ;
 
+CREATE OR REPLACE FUNCTION ldlite_system.jexplode(j) AS TABLE (
+    SELECT value FROM main.json_each(j)
+);
+
 """,  # noqa: E501
             )
 
