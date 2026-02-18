@@ -153,19 +153,20 @@ class ObjectNode(ExpansionNode):
 WITH
     one_object AS (SELECT {json_col} as json FROM {table} LIMIT 1),
     props AS (SELECT ldlite_system.jobject_keys(json) AS prop FROM one_object),
-    prop_meta AS (
+    values AS (
         SELECT
             prop
-            ,ldlite_system.jtype_of(json->prop) AS json_type
-        FROM one_object, props
+            ,ldlite_system.jextract({json_col}, prop) as value
+            ,ldlite_system.jextract({json_col}, prop) as value
+        FROM {table}, props
     )
 SELECT
     prop
-    ,ANY_VALUE(json_type) as json_type
-    ,bool_and({json_col}->>prop ~ '^[a-fA-F0-9]{{8}}-[a-fA-F0-9]{{4}}-[1-5][a-fA-F0-9]{{3}}-[89abAB][a-fA-F0-9]{{3}}-[a-fA-F0-9]{{12}}$') AS is_uuid
-FROM {table}, prop_meta
+    ,ANY_VALUE(ldlite_system.jtype_of(value)) as json_type
+    ,bool_and(ldlite_system.jis_uuid(value)) as is_uuid
+FROM values
 GROUP BY prop
-""",  # noqa: E501
+""",
                 )
                 .format(table=source_table, json_col=self.identifier)
                 .as_string(),
@@ -174,19 +175,32 @@ GROUP BY prop
             for row in cur.fetchall():
                 if row[1] == "number":
                     alias = self.add_value(row[0])
-                    stmt = sql.SQL("({json_col}->{prop})::numeric AS {prop_alias}")
+                    stmt = sql.SQL(
+                        "(ldlite_system.jextract({json_col}, {prop}))::numeric "
+                        "AS {prop_alias}",
+                    )
                 elif row[1] == "string" and row[2]:
                     alias = self.add_value(row[0])
-                    stmt = sql.SQL("({json_col}->>{prop})::uuid AS {prop_alias}")
+                    stmt = sql.SQL(
+                        "(ldlite_system.jextract_string({json_col}, {prop}))::uuid "
+                        "AS {prop_alias}",
+                    )
                 elif row[1] == "object":
                     alias = self.add_object(row[0])
-                    stmt = sql.SQL("({json_col}->{prop}) AS {prop_alias}")
+                    stmt = sql.SQL(
+                        "(ldlite_system.jextract({json_col}, {prop})) AS {prop_alias}",
+                    )
                 elif row[1] == "array":
                     alias = self.add_array(row[0])
-                    stmt = sql.SQL("({json_col}->{prop}) AS {prop_alias}")
+                    stmt = sql.SQL(
+                        "(ldlite_system.jextract({json_col}, {prop})) AS {prop_alias}",
+                    )
                 else:
                     alias = self.add_value(row[0])
-                    stmt = sql.SQL("({json_col}->>{prop}) AS {prop_alias}")
+                    stmt = sql.SQL(
+                        "(ldlite_system.jextract_string({json_col}, {prop})) "
+                        "AS {prop_alias}",
+                    )
 
                 create_columns.append(
                     stmt.format(
