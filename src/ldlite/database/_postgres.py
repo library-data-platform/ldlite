@@ -109,7 +109,6 @@ BEGIN
     RETURN QUERY SELECT * FROM jsonb_array_elements(j);
 END
 $$ LANGUAGE plpgsql;
-
 """,  # noqa: E501
             )
 

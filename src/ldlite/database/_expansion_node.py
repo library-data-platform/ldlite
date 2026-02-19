@@ -2,7 +2,8 @@
 from __future__ import annotations
 
 from collections import deque
-from typing import TYPE_CHECKING
+from dataclasses import dataclass
+from typing import TYPE_CHECKING, Literal
 
 from psycopg import sql
 
@@ -11,6 +12,16 @@ if TYPE_CHECKING:
 
     import duckdb
     import psycopg
+
+
+@dataclass
+class Metadata:
+    prop: str
+    json_type: Literal["string", "number", "object", "boolean", "null"]
+    is_array: bool
+    is_uuid: bool
+    is_datetime: bool
+    is_float: bool
 
 
 class ExpansionNode:
@@ -38,6 +49,15 @@ class ExpansionNode:
         n = ctor(prefixed_name, snake, self)
         self.children.append(n)
         return prefixed_name
+
+    def add(self, meta: Metadata) -> str:
+        if meta.is_array:
+            return self.add_array(meta.prop)
+
+        if meta.json_type == "object":
+            return self.add_object(meta.prop)
+
+        return self.add_value(meta.prop)
 
     def add_object(self, name: str) -> str:
         return self._add_child(name, ObjectNode)
@@ -158,12 +178,46 @@ WITH
             prop
             ,ldlite_system.jextract({json_col}, prop) as value
         FROM {table}, props
+    ),
+    value_and_types AS (
+        SELECT
+            prop
+            ,ldlite_system.jtype_of(value) AS json_type
+            ,value
+        FROM values
+    ),
+    array_values AS (
+        SELECT
+            v.prop
+            ,ldlite_system.jtype_of(a.value) AS json_type
+            ,v.value
+        FROM value_and_types v, ldlite_system.jexplode(v.value) a
+        WHERE v.json_type = 'array'
+    ),
+    all_values AS (
+        SELECT
+            prop
+            ,json_type
+            ,value
+            ,FALSE AS is_array
+        FROM value_and_types
+        WHERE json_type <> 'array'
+        UNION
+        SELECT
+            prop
+            ,json_type
+            ,value
+            ,TRUE AS is_array
+        FROM array_values
     )
 SELECT
     prop
-    ,ANY_VALUE(ldlite_system.jtype_of(value)) as json_type
-    ,bool_and(ldlite_system.jis_uuid(value)) as is_uuid
-FROM values
+    ,ANY_VALUE(json_type) AS json_type
+    ,ANY_VALUE(is_array) AS is_array
+    ,bool_and(ldlite_system.jis_uuid(value)) AS is_uuid
+    ,bool_and(ldlite_system.jis_datetime(value)) AS is_datetime
+    ,bool_and(ldlite_system.jis_float(value)) AS is_float
+FROM all_values
 GROUP BY prop
 """,
                 )
@@ -171,40 +225,42 @@ GROUP BY prop
                 .as_string(),
             )
 
-            for row in cur.fetchall():
-                if row[1] == "number":
-                    alias = self.add_value(row[0])
+            for row in [Metadata(*r) for r in cur.fetchall()]:
+                alias = self.add(row)
+                if row.is_array:
+                    stmt = sql.SQL(
+                        "(ldlite_system.jextract({json_col}, {prop})) AS {prop_alias}",
+                    )
+                elif row.json_type == "number":
                     stmt = sql.SQL(
                         "(ldlite_system.jextract({json_col}, {prop}))::numeric "
                         "AS {prop_alias}",
                     )
-                elif row[1] == "string" and row[2]:
-                    alias = self.add_value(row[0])
+                elif row.json_type == "string" and row.is_uuid:
                     stmt = sql.SQL(
-                        "(ldlite_system.jextract_string({json_col}, {prop}))::uuid "
-                        "AS {prop_alias}",
+                        "(ldlite_system.jextract_string({json_col}, {prop}))"
+                        "::uuid AS {prop_alias}",
                     )
-                elif row[1] == "object":
-                    alias = self.add_object(row[0])
+
+                elif row.json_type == "string":
                     stmt = sql.SQL(
-                        "(ldlite_system.jextract({json_col}, {prop})) AS {prop_alias}",
+                        "(ldlite_system.jextract_string({json_col}, {prop}))"
+                        " AS {prop_alias}",
                     )
-                elif row[1] == "array":
-                    alias = self.add_array(row[0])
+                elif row.json_type == "object":
                     stmt = sql.SQL(
                         "(ldlite_system.jextract({json_col}, {prop})) AS {prop_alias}",
                     )
                 else:
-                    alias = self.add_value(row[0])
                     stmt = sql.SQL(
-                        "(ldlite_system.jextract_string({json_col}, {prop})) "
-                        "AS {prop_alias}",
+                        "(ldlite_system.jextract_string({json_col}, {prop}))"
+                        " AS {prop_alias}",
                     )
 
                 create_columns.append(
                     stmt.format(
                         json_col=self.identifier,
-                        prop=sql.Literal(row[0]),
+                        prop=sql.Literal(row.prop),
                         prop_alias=sql.Identifier(alias),
                     ),
                 )
