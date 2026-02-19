@@ -43,33 +43,44 @@ class ExpansionNode:
     def _c_a_s_e(camel: str) -> str:
         return "".join("_" + c.lower() if c.isupper() else c for c in camel)
 
-    def _add_child(self, name: str, ctor: type[ExpansionNode]) -> str:
-        snake = self._c_a_s_e(name)
+    def add(self, meta: Metadata) -> tuple[sql.Identifier, sql.SQL]:
+        snake = self._c_a_s_e(meta.prop)
         prefixed_name = self.prefix + snake
-        n = ctor(prefixed_name, snake, self)
-        self.children.append(n)
-        return prefixed_name
 
-    def add(self, meta: Metadata) -> str:
         if meta.is_array:
-            return self.add_array(meta.prop)
+            self.children.append(ArrayNode(prefixed_name, snake, self, meta))
+        elif meta.json_type == "object":
+            self.children.append(ObjectNode(prefixed_name, snake, self))
+        else:
+            prefixed_name = self.prefix + snake
+            self.values.append(prefixed_name)
+
+        return (sql.Identifier(prefixed_name), self.extract_typed(meta))
+
+    def extract_typed(self, meta: Metadata) -> sql.SQL:
+        if meta.is_array:
+            return sql.SQL(
+                "(ldlite_system.jextract({json_col}, {prop})) AS {alias}",
+            )
 
         if meta.json_type == "object":
-            return self.add_object(meta.prop)
+            return sql.SQL(
+                "(ldlite_system.jextract({json_col}, {prop})) AS {alias}",
+            )
 
-        return self.add_value(meta.prop)
+        if meta.json_type == "number":
+            return sql.SQL(
+                "(ldlite_system.jextract({json_col}, {prop}))::numeric AS {alias}",
+            )
 
-    def add_object(self, name: str) -> str:
-        return self._add_child(name, ObjectNode)
+        if meta.json_type == "string" and meta.is_uuid:
+            return sql.SQL(
+                "(ldlite_system.jextract_string({json_col}, {prop}))::uuid AS {alias}",
+            )
 
-    def add_array(self, name: str) -> str:
-        return self._add_child(name, ArrayNode)
-
-    def add_value(self, name: str) -> str:
-        snake = self._c_a_s_e(name)
-        prefixed_name = self.prefix + snake
-        self.values.append(prefixed_name)
-        return prefixed_name
+        return sql.SQL(
+            "(ldlite_system.jextract_string({json_col}, {prop})) AS {alias}",
+        )
 
     def _parents(self) -> Iterator[ExpansionNode]:
         n = self
@@ -226,42 +237,12 @@ GROUP BY prop
             )
 
             for row in [Metadata(*r) for r in cur.fetchall()]:
-                alias = self.add(row)
-                if row.is_array:
-                    stmt = sql.SQL(
-                        "(ldlite_system.jextract({json_col}, {prop})) AS {prop_alias}",
-                    )
-                elif row.json_type == "number":
-                    stmt = sql.SQL(
-                        "(ldlite_system.jextract({json_col}, {prop}))::numeric "
-                        "AS {prop_alias}",
-                    )
-                elif row.json_type == "string" and row.is_uuid:
-                    stmt = sql.SQL(
-                        "(ldlite_system.jextract_string({json_col}, {prop}))"
-                        "::uuid AS {prop_alias}",
-                    )
-
-                elif row.json_type == "string":
-                    stmt = sql.SQL(
-                        "(ldlite_system.jextract_string({json_col}, {prop}))"
-                        " AS {prop_alias}",
-                    )
-                elif row.json_type == "object":
-                    stmt = sql.SQL(
-                        "(ldlite_system.jextract({json_col}, {prop})) AS {prop_alias}",
-                    )
-                else:
-                    stmt = sql.SQL(
-                        "(ldlite_system.jextract_string({json_col}, {prop}))"
-                        " AS {prop_alias}",
-                    )
-
+                (alias, stmt) = self.add(row)
                 create_columns.append(
                     stmt.format(
                         json_col=self.identifier,
                         prop=sql.Literal(row.prop),
-                        prop_alias=sql.Identifier(alias),
+                        alias=alias,
                     ),
                 )
 
@@ -307,9 +288,18 @@ class ArrayNode(ExpansionNode):
         name: str,
         path: str | None,
         parent: ExpansionNode | None,
+        meta: Metadata,
         values: list[str] | None = None,
     ):
         super().__init__(name, path, parent, values)
+        self.meta = Metadata(
+            meta.prop,
+            meta.json_type,
+            False,
+            meta.is_uuid,
+            meta.is_datetime,
+            meta.is_float,
+        )
 
     def explode(
         self,
@@ -318,51 +308,45 @@ class ArrayNode(ExpansionNode):
         dest_table: sql.Identifier,
     ) -> ExpansionNode:
         with conn.cursor() as cur:
+            create_columns: list[sql.Composable] = [
+                sql.SQL("ROW_NUMBER() OVER (ORDER BY (SELECT NULL)) AS __id"),
+                *[sql.Identifier(v) for v in self.carryover],
+                sql.SQL("ROW_NUMBER() OVER (PARTITION BY s.__id) AS {id_alias}").format(
+                    id_alias=sql.Identifier((self.path or "") + "_o"),
+                ),
+                self.extract_typed(self.meta).format(
+                    json_col=sql.Identifier("a", "value"),
+                    prop=sql.Literal("0"),
+                    alias=sql.Identifier(self.path or ""),
+                ),
+            ]
+
             cur.execute(
                 sql.SQL(
                     """
 CREATE TEMP TABLE {dest_table} ON COMMIT DROP AS SELECT
-    ROW_NUMBER() OVER (ORDER BY (SELECT NULL)) AS __id
-    ,{carryover}
-    ,ROW_NUMBER() OVER (PARTITION BY s.__id) AS {id_alias}
-    ,a.value AS {alias}
+    {cols}
 FROM
     {source_table} s
     ,ldlite_system.jexplode({json_col}) a
 """,
                 )
                 .format(
-                    dest_table=dest_table,
-                    alias=sql.Identifier(self.path or ""),
-                    id_alias=sql.Identifier((self.path or "") + "_o"),
-                    carryover=sql.SQL("\n    ,").join(
-                        [sql.Identifier("s", v) for v in self.carryover],
-                    ),
                     source_table=source_table,
+                    dest_table=dest_table,
+                    cols=sql.SQL("\n    ,").join(create_columns),
                     json_col=sql.Identifier("s", self.name),
                 )
                 .as_string(),
             )
 
-        with conn.cursor() as cur:
-            cur.execute(
-                sql.SQL(
-                    "SELECT ldlite_system.jtype_of({alias}) FROM {dest_table} LIMIT 1",
-                )
-                .format(
-                    dest_table=dest_table,
-                    alias=sql.Identifier(self.path or ""),
-                )
-                .as_string(),
+        if self.meta.json_type == "object":
+            return ObjectNode(
+                self.path or "",
+                self.path,
+                None,
+                [*self.carryover, (self.path or "") + "_o"],
             )
-
-            if (r := cur.fetchone()) and r[0] == "object":
-                return ObjectNode(
-                    self.path or "",
-                    self.path,
-                    None,
-                    [*self.carryover, (self.path or "") + "_o"],
-                )
 
         return ExpansionNode(
             self.path or "",
