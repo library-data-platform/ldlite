@@ -238,6 +238,31 @@ SELECT {stamped_values} FROM {transform_table}
                     .as_string(),
                 )
 
+            if len(arrays) == 1:
+                aroot = arrays[0].explode(
+                    conn,
+                    pfx.transform_table(count),
+                    pfx.transform_table(count + 1),
+                )
+
+                stamped_values = [
+                    sql.Identifier(v) for n in aroot.descendents for v in n.values
+                ]
+                with conn.cursor() as cur:
+                    cur.execute(
+                        sql.SQL(
+                            """
+CREATE TABLE {dest_table} AS
+SELECT * FROM {transform_table}
+""",
+                        )
+                        .format(
+                            dest_table=pfx.schemafy(pfx.output_table + "__list"),
+                            transform_table=pfx.transform_table(count + 1),
+                        )
+                        .as_string(),
+                    )
+
             conn.commit()
 
     def record_history(self, history: LoadHistory) -> None:

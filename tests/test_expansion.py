@@ -23,11 +23,11 @@ def _db() -> str:
 class Assertion:
     statement: str
 
-    expect: int | str | None = None
-    exp_pg: int | str | None = None
-    exp_duck: int | str | None = None
+    expect: int | str | list[tuple[str | int, ...]] | None = None
+    exp_pg: int | str | list[tuple[str | int, ...]] | None = None
+    exp_duck: int | str | list[tuple[str | int, ...]] | None = None
 
-    def expected(self, db: str) -> int | str | None:
+    def expected(self, db: str) -> int | str | list[tuple[str | int, ...]] | None:
         if db == "postgres":
             return self.exp_pg or self.expect
         if db == "duckdb":
@@ -99,7 +99,27 @@ def case_basic_array() -> ExpansionTC:
 """,
         ],
         assertions=[
-            Assertion("""SELECT COUNT(*) FROM prefix__t__list""", expect=6),
+            Assertion("""SELECT COUNT(*) FROM tests.prefix__t__list""", expect=6),
+            Assertion(
+                """
+SELECT COLUMN_NAME, DATA_TYPE
+FROM INFORMATION_SCHEMA.COLUMNS
+WHERE TABLE_NAME = 'prefix__t__list'
+ORDER BY ORDINAL_POSITION
+""",
+                exp_duck=[
+                    ("__id", "BIGINT"),
+                    ("id", "VARCHAR"),
+                    ("list_o", "BIGINT"),
+                    ("list", "JSON"),
+                ],
+                exp_pg=[
+                    ("__id", "bigint"),
+                    ("id", "text"),
+                    ("list_o", "bigint"),
+                    ("list", "jsonb"),
+                ],
+            ),
         ],
     )
 
@@ -251,9 +271,14 @@ def _assert(
         for a in tc.assertions:
             cur.execute(a.statement.format())
 
-            actual = cur.fetchone()
-            assert actual is not None
-            assert actual[0] == a.expected(db)
+            if isinstance(expected := a.expected(db), list):
+                for e in expected:
+                    assert cur.fetchone() == e
+                assert cur.fetchone() is None
+            else:
+                actual = cur.fetchone()
+                assert actual is not None
+                assert actual[0] == a.expected(db)
 
 
 @parametrize_with_cases("tc", cases=".")

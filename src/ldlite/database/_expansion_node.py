@@ -157,7 +157,6 @@ WITH
         SELECT
             prop
             ,ldlite_system.jextract({json_col}, prop) as value
-            ,ldlite_system.jextract({json_col}, prop) as value
         FROM {table}, props
     )
 SELECT
@@ -255,4 +254,72 @@ class ArrayNode(ExpansionNode):
         values: list[str] | None = None,
     ):
         super().__init__(name, path, parent, values)
-        self.exploded = False
+
+    def explode(
+        self,
+        conn: duckdb.DuckDBPyConnection | psycopg.Connection,
+        source_table: sql.Identifier,
+        dest_table: sql.Identifier,
+    ) -> ExpansionNode:
+        with conn.cursor() as cur:
+            cur.execute(
+                sql.SQL(
+                    """
+CREATE TEMP TABLE {dest_table} ON COMMIT DROP AS SELECT
+    ROW_NUMBER() OVER (ORDER BY (SELECT NULL)) AS __id
+    ,{carryover}
+    ,ROW_NUMBER() OVER (PARTITION BY s.__id) AS {id_alias}
+    ,a.value AS {alias}
+FROM
+    {source_table} s
+    ,ldlite_system.jexplode({json_col}) a
+""",
+                )
+                .format(
+                    dest_table=dest_table,
+                    alias=sql.Identifier(self.path or ""),
+                    id_alias=sql.Identifier((self.path or "") + "_o"),
+                    carryover=sql.SQL("\n    ,").join(
+                        [sql.Identifier("s", v) for v in self.carryover],
+                    ),
+                    source_table=source_table,
+                    json_col=sql.Identifier("s", self.name),
+                )
+                .as_string(),
+            )
+
+        with conn.cursor() as cur:
+            cur.execute(
+                sql.SQL(
+                    "SELECT ldlite_system.jtype_of({alias}) FROM {dest_table} LIMIT 1",
+                )
+                .format(
+                    dest_table=dest_table,
+                    alias=sql.Identifier(self.path or ""),
+                )
+                .as_string(),
+            )
+
+            if (r := cur.fetchone()) and r[0] == "object":
+                return ObjectNode(
+                    self.path or "",
+                    self.path,
+                    None,
+                    [*self.carryover, (self.path or "") + "_o"],
+                )
+
+        return ExpansionNode(
+            self.path or "",
+            self.path,
+            None,
+            [*self.carryover, (self.path or "") + "_o"],
+        )
+
+    def _carryover(self) -> Iterator[str]:
+        for n in reversed(self.parents):
+            if isinstance(n, ObjectNode):
+                yield from [v for v in n.values if v != "__id"]
+
+    @property
+    def carryover(self) -> list[str]:
+        return list(self._carryover())
