@@ -1,6 +1,5 @@
 # pyright: reportArgumentType=false
 from abc import abstractmethod
-from collections import deque
 from collections.abc import Callable, Sequence
 from contextlib import closing
 from datetime import timezone
@@ -10,7 +9,7 @@ import psycopg
 from psycopg import sql
 
 from . import Database, LoadHistory
-from ._expansion_node import ObjectNode
+from ._expansion_node import ExpandContext, ExpansionNode
 from ._prefix import Prefix
 
 if TYPE_CHECKING:
@@ -167,7 +166,7 @@ WHERE table_schema = $1 and table_name IN ($2, $3);""",
                 ).as_string(),
             )
 
-    def expand_prefix(self, prefix: str, json_depth: int, keep_raw: bool) -> None:  # noqa: ARG002
+    def expand_prefix(self, prefix: str, json_depth: int, keep_raw: bool) -> None:
         pfx = Prefix(prefix)
         with closing(self._conn_factory()) as conn:
             with conn.cursor() as cur:
@@ -179,7 +178,7 @@ SELECT * from {raw_table};
 """,
                     )
                     .format(
-                        dest_table=pfx.transform_table(0),
+                        dest_table=pfx.origin_table,
                         raw_table=pfx.schemafy(pfx.raw_table),
                     )
                     .as_string(),
@@ -195,73 +194,17 @@ SELECT * from {raw_table};
                         .as_string(),
                     )
 
-            root = ObjectNode("jsonb", "", None, values=["__id"])
-            root.unnest(
-                conn,
-                pfx.transform_table(0),
-                pfx.transform_table(1),
-            )
-
-            count = 1
-            expand_children_of = deque([root])
-            while expand_children_of:
-                n = expand_children_of.popleft()
-                for c in n.object_children:
-                    c.unnest(
-                        conn,
-                        pfx.transform_table(count),
-                        pfx.transform_table(count + 1),
-                    )
-                    expand_children_of.append(c)
-                    count += 1
-
-            arrays = root.array_descendents
-            stamped_values = [
-                sql.Identifier(v)
-                for n in set(root.descendents).difference(arrays)
-                for v in n.values
-            ]
-
-            with conn.cursor() as cur:
-                cur.execute(
-                    sql.SQL(
-                        """
-CREATE TABLE {dest_table} AS
-SELECT {stamped_values} FROM {transform_table}
-""",
-                    )
-                    .format(
-                        dest_table=pfx.schemafy(pfx.output_table),
-                        transform_table=pfx.transform_table(count),
-                        stamped_values=sql.SQL("\n    ,").join(stamped_values),
-                    )
-                    .as_string(),
-                )
-
-            if len(arrays) == 1:
-                aroot = arrays[0].explode(
+            ExpansionNode.expand(
+                "jsonb",
+                ["__id"],
+                ExpandContext(
                     conn,
-                    pfx.transform_table(count),
-                    pfx.transform_table(count + 1),
-                )
-
-                stamped_values = [
-                    sql.Identifier(v) for n in aroot.descendents for v in n.values
-                ]
-                with conn.cursor() as cur:
-                    cur.execute(
-                        sql.SQL(
-                            """
-CREATE TABLE {dest_table} AS
-SELECT * FROM {transform_table}
-""",
-                        )
-                        .format(
-                            dest_table=pfx.schemafy(pfx.output_table + "__list"),
-                            transform_table=pfx.transform_table(count + 1),
-                        )
-                        .as_string(),
-                    )
+                    pfx.origin_table,
+                    json_depth,
+                    pfx.transform_table,
+                    pfx.output_table,
+                ),
+            )
 
             conn.commit()
 

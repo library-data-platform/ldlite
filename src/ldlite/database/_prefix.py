@@ -24,8 +24,14 @@ class Prefix:
         return self._prefix
 
     @property
-    def output_table(self) -> str:
+    def _output_table(self) -> str:
         return self._prefix + "__t"
+
+    def output_table(self, prefix: str) -> sql.Identifier:
+        if len(prefix) == 0:
+            return self.schemafy(self._output_table)
+
+        return self.schemafy(self._output_table + "__" + prefix)
 
     @property
     def catalog_table(self) -> str:
@@ -42,9 +48,17 @@ class Prefix:
 
         return self.schema + "." + self._prefix
 
+    @property
+    def origin_table(self) -> sql.Identifier:
+        return sql.Identifier(
+            ("" if self.schema is None else self.schema + "_")
+            + self._output_table
+            + "_origin",
+        )
+
     def transform_table(self, count: int) -> sql.Identifier:
         return sql.Identifier(
             ("" if self.schema is None else self.schema + "_")
-            + self.output_table
+            + self._output_table
             + f"_{count}",
         )

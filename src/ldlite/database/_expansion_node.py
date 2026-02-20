@@ -8,10 +8,28 @@ from typing import TYPE_CHECKING, Literal
 from psycopg import sql
 
 if TYPE_CHECKING:
-    from collections.abc import Iterator
+    from collections.abc import Callable, Iterator
 
     import duckdb
     import psycopg
+
+
+@dataclass
+class ExpandContext:
+    conn: duckdb.DuckDBPyConnection | psycopg.Connection
+    source_table: sql.Identifier
+    json_depth: int
+    get_transform_table: Callable[[int], sql.Identifier]
+    get_output_table: Callable[[str], sql.Identifier]
+
+    def array_context(self, new_source_table: sql.Identifier) -> ExpandContext:
+        return ExpandContext(
+            self.conn,
+            new_source_table,
+            self.json_depth,
+            self.get_transform_table,
+            self.get_output_table,
+        )
 
 
 @dataclass
@@ -155,6 +173,102 @@ class ExpansionNode:
 
     def __str__(self) -> str:
         return "->".join([n.name for n in reversed([self, *self.parents])])
+
+    @staticmethod
+    def _expand(
+        root: ObjectNode,
+        count: int,
+        ctx: ExpandContext,
+    ) -> int:
+        initial_count = count
+        root.unnest(ctx.conn, ctx.source_table, ctx.get_transform_table(count))
+
+        expand_children_of = deque([root])
+        while expand_children_of:
+            on = expand_children_of.popleft()
+            for c in on.object_children:
+                c.unnest(
+                    ctx.conn,
+                    ctx.get_transform_table(count),
+                    ctx.get_transform_table(count + 1),
+                )
+                expand_children_of.append(c)
+                count += 1
+
+        new_source_table = ctx.get_transform_table(count)
+        arrays = root.array_descendents
+        for an in arrays:
+            values = an.explode(
+                ctx.conn,
+                ctx.get_transform_table(count),
+                ctx.get_transform_table(count + 1),
+            )
+
+            if an.meta.json_type == "object":
+                count += ExpansionNode._expand(
+                    ObjectNode(
+                        an.name,
+                        an.name,
+                        None,
+                        values,
+                    ),
+                    count,
+                    ctx.array_context(new_source_table),
+                )
+            else:
+                with ctx.conn.cursor() as cur:
+                    cur.execute(
+                        sql.SQL(
+                            """
+CREATE TABLE {dest_table} AS
+SELECT {cols} FROM {transform_table}
+""",
+                        )
+                        .format(
+                            dest_table=ctx.get_output_table(an.name),
+                            transform_table=ctx.get_transform_table(count + 1),
+                            cols=sql.SQL("\n    ,").join(
+                                [sql.Identifier(v) for v in values],
+                            ),
+                        )
+                        .as_string(),
+                    )
+
+        stamped_values = [
+            sql.Identifier(v)
+            for n in set(root.descendents).difference(arrays)
+            for v in n.values
+        ]
+
+        with ctx.conn.cursor() as cur:
+            cur.execute(
+                sql.SQL(
+                    """
+CREATE TABLE {dest_table} AS
+SELECT {cols} FROM {transform_table}
+""",
+                )
+                .format(
+                    dest_table=ctx.get_output_table(root.path),
+                    transform_table=new_source_table,
+                    cols=sql.SQL("\n    ,").join(stamped_values),
+                )
+                .as_string(),
+            )
+
+        return count - initial_count
+
+    @staticmethod
+    def expand(
+        root_name: str,
+        root_values: list[str],
+        ctx: ExpandContext,
+    ) -> None:
+        ExpansionNode._expand(
+            ObjectNode(root_name, "", None, root_values),
+            0,
+            ctx,
+        )
 
 
 class ObjectNode(ExpansionNode):
@@ -305,7 +419,7 @@ class ArrayNode(ExpansionNode):
         conn: duckdb.DuckDBPyConnection | psycopg.Connection,
         source_table: sql.Identifier,
         dest_table: sql.Identifier,
-    ) -> ExpansionNode:
+    ) -> list[str]:
         with conn.cursor() as cur:
             o_col = self.name + "_o"
             create_columns: list[sql.Composable] = [
@@ -339,20 +453,7 @@ FROM
                 .as_string(),
             )
 
-        if self.meta.json_type == "object":
-            return ObjectNode(
-                self.name,
-                self.name,
-                None,
-                [*self.carryover, o_col],
-            )
-
-        return ExpansionNode(
-            self.name,
-            self.name,
-            None,
-            [*self.carryover, o_col],
-        )
+        return ["__id", *self.carryover, o_col, self.name]
 
     def _carryover(self) -> Iterator[str]:
         for n in reversed(self.parents):
