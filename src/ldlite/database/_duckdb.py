@@ -146,6 +146,14 @@ class _MonkeyDBPyCursor:
     def close(self) -> None:
         return None
 
+    """
+    # This exists to quickly print out any sql executed during tests
+    # Uncomment in production at your own peril
+    def execute(self, *args, **kwargs) -> duckdb.DuckDBPyConnection:
+        print(args[0])
+        return self._cur.execute(*args, **kwargs)
+    """
+
     def __enter__(self) -> "Self":
         return self
 

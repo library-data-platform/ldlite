@@ -88,38 +88,47 @@ def case_basic_array() -> ExpansionTC:
             b"""
 {
     "id": "id1",
-    "list": ["a1", "b1", "c1"]
+    "list1": ["a1", "b1", "c1"],
+    "list2": [1]
 }
 """,
             b"""
 {
     "id": "id2",
-    "list": ["a2", "b2", "c2"]
+    "list1": ["a2", "b2", "c2"],
+    "list2": [2]
 }
 """,
         ],
         assertions=[
-            Assertion("""SELECT COUNT(*) FROM tests.prefix__t__list""", expect=6),
-            Assertion(
-                """
+            Assertion("""SELECT COUNT(*) FROM tests.prefix__t__list1""", expect=6),
+            Assertion("""SELECT COUNT(*) FROM tests.prefix__t__list2""", expect=2),
+            *[
+                Assertion(
+                    f"""
 SELECT COLUMN_NAME, DATA_TYPE
 FROM INFORMATION_SCHEMA.COLUMNS
-WHERE TABLE_NAME = 'prefix__t__list'
+WHERE TABLE_NAME = 'prefix__t__{a[0]}'
 ORDER BY ORDINAL_POSITION
 """,
-                exp_duck=[
-                    ("__id", "BIGINT"),
-                    ("id", "VARCHAR"),
-                    ("list_o", "BIGINT"),
-                    ("list", "VARCHAR"),
-                ],
-                exp_pg=[
-                    ("__id", "bigint"),
-                    ("id", "text"),
-                    ("list_o", "bigint"),
-                    ("list", "text"),
-                ],
-            ),
+                    exp_duck=[
+                        ("__id", "BIGINT"),
+                        ("id", "VARCHAR"),
+                        (f"{a[0]}_o", "BIGINT"),
+                        (f"{a[0]}", a[1]),
+                    ],
+                    exp_pg=[
+                        ("__id", "bigint"),
+                        ("id", "text"),
+                        (f"{a[0]}_o", "bigint"),
+                        (f"{a[0]}", a[2]),
+                    ],
+                )
+                for a in [
+                    ("list1", "VARCHAR", "text"),
+                    ("list2", "DECIMAL(18,3)", "numeric"),
+                ]
+            ],
         ],
     )
 

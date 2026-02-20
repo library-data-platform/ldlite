@@ -200,9 +200,10 @@ class ExpansionNode:
         for an in arrays:
             values = an.explode(
                 ctx.conn,
-                ctx.get_transform_table(count),
+                new_source_table,
                 ctx.get_transform_table(count + 1),
             )
+            count += 1
 
             if an.meta.json_type == "object":
                 count += ExpansionNode._expand(
@@ -226,7 +227,7 @@ SELECT {cols} FROM {transform_table}
                         )
                         .format(
                             dest_table=ctx.get_output_table(an.name),
-                            transform_table=ctx.get_transform_table(count + 1),
+                            transform_table=ctx.get_transform_table(count),
                             cols=sql.SQL("\n    ,").join(
                                 [sql.Identifier(v) for v in values],
                             ),
@@ -406,7 +407,7 @@ class ArrayNode(ExpansionNode):
     ):
         super().__init__(name, path, parent, values)
         self.meta = Metadata(
-            "0",
+            "$",
             meta.json_type,
             False,
             meta.is_uuid,
