@@ -43,6 +43,15 @@ $$ LANGUAGE plpgsql;
 CREATE OR REPLACE FUNCTION ldlite_system.jextract(j JSONB, p TEXT) RETURNS JSONB AS $$
 BEGIN
     RETURN CASE
+        -- This is somewhat of a hack.
+        -- There isn't a really good way to get the element unchanged
+        -- which works for duckdb and postgres AND CRUCIALLY
+        -- has a similar syntax to everything else so that we don't
+        -- have to have special cases for exploding the array and it
+        -- can share all the same type checking / statement generation code.
+        -- We're pretending that postgres supports -> '$' style syntax like duckdb.
+        -- This is also assuming that all nulls have been stripped out of the array ahead of time.
+        WHEN p = '$' THEN j #> '{}'
         WHEN ldlite_system.jtype_of(j->p) = 'string' THEN
             CASE
                 WHEN lower(j->>p) = 'null' THEN 'null'::JSONB
@@ -66,7 +75,7 @@ $$ LANGUAGE plpgsql;
 
 CREATE OR REPLACE FUNCTION ldlite_system.jextract_string(j JSONB, p TEXT) RETURNS TEXT AS $$
 BEGIN
-    RETURN ldlite_system.jextract(j, p) ->> 0;
+    RETURN ldlite_system.jextract(j, p) #>> '{}';
 END
 $$ LANGUAGE plpgsql;
 

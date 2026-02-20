@@ -114,7 +114,7 @@ class ExpansionNode:
 
     @property
     def prefix(self) -> str:
-        if len(self.parents) == 0:
+        if len(self.parents) == 0 and len(self.path) == 0:
             return ""
 
         return (
@@ -213,8 +213,8 @@ class ExpansionNode:
                         None,
                         values,
                     ),
-                    count,
-                    ctx.array_context(new_source_table),
+                    count + 1,
+                    ctx.array_context(ctx.get_transform_table(count)),
                 )
             else:
                 with ctx.conn.cursor() as cur:
@@ -229,7 +229,7 @@ SELECT {cols} FROM {transform_table}
                             dest_table=ctx.get_output_table(an.name),
                             transform_table=ctx.get_transform_table(count),
                             cols=sql.SQL("\n    ,").join(
-                                [sql.Identifier(v) for v in values],
+                                [sql.Identifier(v) for v in [*values, an.name]],
                             ),
                         )
                         .as_string(),
@@ -377,14 +377,6 @@ FROM {source_table};
                 .as_string(),
             )
 
-            cur.execute(
-                sql.SQL("DROP TABLE {source_table};")
-                .format(
-                    source_table=source_table,
-                )
-                .as_string(),
-            )
-
     def _carryover(self) -> Iterator[str]:
         for n in self.root.object_descendents:
             if not n.unnested:
@@ -454,7 +446,7 @@ FROM
                 .as_string(),
             )
 
-        return ["__id", *self.carryover, o_col, self.name]
+        return ["__id", *self.carryover, o_col]
 
     def _carryover(self) -> Iterator[str]:
         for n in reversed(self.parents):

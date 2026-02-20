@@ -133,6 +133,48 @@ ORDER BY ORDINAL_POSITION
     )
 
 
+def case_nested_arrays() -> ExpansionTC:
+    return ExpansionTC(
+        records=[
+            b"""
+{
+    "id": "id1",
+    "sub": [{ "id": "sub1id1"}, { "id": "sub2id1" }]
+}
+""",
+            b"""
+{
+    "id": "id2",
+    "sub": [{ "id": "sub1id2" }, { "id": "sub2id2" }]
+}
+""",
+        ],
+        assertions=[
+            Assertion("""SELECT COUNT(*) FROM tests.prefix__t__sub""", expect=4),
+            Assertion(
+                """
+SELECT COLUMN_NAME, DATA_TYPE
+FROM INFORMATION_SCHEMA.COLUMNS
+WHERE TABLE_NAME = 'prefix__t__sub'
+ORDER BY ORDINAL_POSITION
+""",
+                exp_duck=[
+                    ("__id", "BIGINT"),
+                    ("id", "VARCHAR"),
+                    ("sub_o", "BIGINT"),
+                    ("sub__id", "VARCHAR"),
+                ],
+                exp_pg=[
+                    ("__id", "bigint"),
+                    ("id", "text"),
+                    ("sub_o", "bigint"),
+                    ("sub__id", "text"),
+                ],
+            ),
+        ],
+    )
+
+
 def case_basic_object() -> ExpansionTC:
     return ExpansionTC(
         records=[
