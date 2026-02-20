@@ -17,18 +17,49 @@ if TYPE_CHECKING:
 @dataclass
 class Metadata:
     prop: str
+    # array is technically a type
+    # but the metadata query returns inner type of the array
+    # the jtype_of function normalizes the names between pg and duckdb
     json_type: Literal["string", "number", "object", "boolean", "null"]
     is_array: bool
     is_uuid: bool
     is_datetime: bool
     is_float: bool
 
+    def select_column(
+        self,
+        json_col: sql.Identifier,
+        alias: str,
+    ) -> sql.Composed:
+        if self.is_array or self.json_type == "object":
+            stmt = sql.SQL(
+                "(ldlite_system.jextract({json_col}, {prop})) AS {alias}",
+            )
+        elif self.json_type == "number":
+            stmt = sql.SQL(
+                "(ldlite_system.jextract({json_col}, {prop}))::numeric AS {alias}",
+            )
+        elif self.json_type == "string" and self.is_uuid:
+            stmt = sql.SQL(
+                "(ldlite_system.jextract_string({json_col}, {prop}))::uuid AS {alias}",
+            )
+        else:
+            stmt = sql.SQL(
+                "(ldlite_system.jextract_string({json_col}, {prop})) AS {alias}",
+            )
+
+        return stmt.format(
+            json_col=json_col,
+            prop=self.prop,
+            alias=sql.Identifier(alias),
+        )
+
 
 class ExpansionNode:
     def __init__(
         self,
         name: str,
-        path: str | None,
+        path: str,
         parent: ExpansionNode | None,
         values: list[str] | None = None,
     ):
@@ -39,12 +70,8 @@ class ExpansionNode:
         self.values: list[str] = values or []
         self.children: list[ExpansionNode] = []
 
-    @staticmethod
-    def _c_a_s_e(camel: str) -> str:
-        return "".join("_" + c.lower() if c.isupper() else c for c in camel)
-
-    def add(self, meta: Metadata) -> tuple[sql.Identifier, sql.SQL]:
-        snake = self._c_a_s_e(meta.prop)
+    def add(self, meta: Metadata) -> str:
+        snake = "".join("_" + c.lower() if c.isupper() else c for c in meta.prop)
         prefixed_name = self.prefix + snake
 
         if meta.is_array:
@@ -55,32 +82,7 @@ class ExpansionNode:
             prefixed_name = self.prefix + snake
             self.values.append(prefixed_name)
 
-        return (sql.Identifier(prefixed_name), self.extract_typed(meta))
-
-    def extract_typed(self, meta: Metadata) -> sql.SQL:
-        if meta.is_array:
-            return sql.SQL(
-                "(ldlite_system.jextract({json_col}, {prop})) AS {alias}",
-            )
-
-        if meta.json_type == "object":
-            return sql.SQL(
-                "(ldlite_system.jextract({json_col}, {prop})) AS {alias}",
-            )
-
-        if meta.json_type == "number":
-            return sql.SQL(
-                "(ldlite_system.jextract({json_col}, {prop}))::numeric AS {alias}",
-            )
-
-        if meta.json_type == "string" and meta.is_uuid:
-            return sql.SQL(
-                "(ldlite_system.jextract_string({json_col}, {prop}))::uuid AS {alias}",
-            )
-
-        return sql.SQL(
-            "(ldlite_system.jextract_string({json_col}, {prop})) AS {alias}",
-        )
+        return prefixed_name
 
     def _parents(self) -> Iterator[ExpansionNode]:
         n = self
@@ -94,12 +96,12 @@ class ExpansionNode:
 
     @property
     def prefix(self) -> str:
-        if len(self.parents) == 0 or self.path is None:
+        if len(self.parents) == 0:
             return ""
 
         return (
             "__".join(
-                [*[p.path for p in self.parents if p.path is not None], self.path],
+                [*[p.path for p in self.parents if len(p.path) != 0], self.path],
             )
             + "__"
         )
@@ -159,7 +161,7 @@ class ObjectNode(ExpansionNode):
     def __init__(
         self,
         name: str,
-        path: str | None,
+        path: str,
         parent: ExpansionNode | None,
         values: list[str] | None = None,
     ):
@@ -236,15 +238,12 @@ GROUP BY prop
                 .as_string(),
             )
 
-            for row in [Metadata(*r) for r in cur.fetchall()]:
-                (alias, stmt) = self.add(row)
-                create_columns.append(
-                    stmt.format(
-                        json_col=self.identifier,
-                        prop=sql.Literal(row.prop),
-                        alias=alias,
-                    ),
-                )
+            create_columns.extend(
+                [
+                    row.select_column(self.identifier, self.add(row))
+                    for row in [Metadata(*r) for r in cur.fetchall()]
+                ],
+            )
 
         with conn.cursor() as cur:
             cur.execute(
@@ -286,14 +285,14 @@ class ArrayNode(ExpansionNode):
     def __init__(
         self,
         name: str,
-        path: str | None,
+        path: str,
         parent: ExpansionNode | None,
         meta: Metadata,
         values: list[str] | None = None,
     ):
         super().__init__(name, path, parent, values)
         self.meta = Metadata(
-            meta.prop,
+            "0",
             meta.json_type,
             False,
             meta.is_uuid,
@@ -308,16 +307,16 @@ class ArrayNode(ExpansionNode):
         dest_table: sql.Identifier,
     ) -> ExpansionNode:
         with conn.cursor() as cur:
+            o_col = self.name + "_o"
             create_columns: list[sql.Composable] = [
                 sql.SQL("ROW_NUMBER() OVER (ORDER BY (SELECT NULL)) AS __id"),
                 *[sql.Identifier(v) for v in self.carryover],
                 sql.SQL("ROW_NUMBER() OVER (PARTITION BY s.__id) AS {id_alias}").format(
-                    id_alias=sql.Identifier((self.path or "") + "_o"),
+                    id_alias=sql.Identifier(o_col),
                 ),
-                self.extract_typed(self.meta).format(
-                    json_col=sql.Identifier("a", "value"),
-                    prop=sql.Literal("0"),
-                    alias=sql.Identifier(self.path or ""),
+                self.meta.select_column(
+                    sql.Identifier("a", "value"),
+                    self.name,
                 ),
             ]
 
@@ -342,17 +341,17 @@ FROM
 
         if self.meta.json_type == "object":
             return ObjectNode(
-                self.path or "",
-                self.path,
+                self.name,
+                self.name,
                 None,
-                [*self.carryover, (self.path or "") + "_o"],
+                [*self.carryover, o_col],
             )
 
         return ExpansionNode(
-            self.path or "",
-            self.path,
+            self.name,
+            self.name,
             None,
-            [*self.carryover, (self.path or "") + "_o"],
+            [*self.carryover, o_col],
         )
 
     def _carryover(self) -> Iterator[str]:

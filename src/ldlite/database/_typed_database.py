@@ -195,7 +195,7 @@ SELECT * from {raw_table};
                         .as_string(),
                     )
 
-            root = ObjectNode("jsonb", None, None, values=["__id"])
+            root = ObjectNode("jsonb", "", None, values=["__id"])
             root.unnest(
                 conn,
                 pfx.transform_table(0),
