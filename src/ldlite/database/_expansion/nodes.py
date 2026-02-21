@@ -210,8 +210,10 @@ FROM {source_table};
             )
 
     def _carryover(self) -> Iterator[str]:
-        for n in self.root.descendents_oftype(ObjectNode):
-            if not n.unnested:
+        for n in self.root.descendents:
+            if isinstance(n, ObjectNode) and not n.unnested:
+                yield n.name
+            else:
                 yield n.name
             yield from n.values
 

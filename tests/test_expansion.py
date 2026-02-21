@@ -301,6 +301,94 @@ def case_nested_objects() -> ExpansionTC:
     )
 
 
+def case_json_depth() -> ExpansionTC:
+    return ExpansionTC(
+        json_depth=3,
+        records=[
+            b"""
+{
+    "id": "id1",
+    "depth2Obj": {
+        "id": "id2",
+        "depth3Obj": {
+            "id": "id3",
+            "depth4Obj": {
+                "id": "id4"
+            },
+            "depth4Arr": ["id4"]
+        },
+        "depth3Arr": ["id3"]
+    },
+    "depth2Arr": [
+        {
+            "id": "id2",
+            "depth3Arr": [
+                {
+                    "id": "id3",
+                    "depth4Arr": ["id4"]
+                }
+            ],
+            "depth3Obj": {
+                "id": "id3",
+                "depth4Obj": { "id": "id4" },
+                "depth4Arr": ["id4"]
+            }
+        }
+    ],
+    "depth2Obj2": { "id": "id2" },
+    "depth2Obj3": { "id": "id2" },
+    "depth2Obj4": { "id": "id2" }
+}""",
+        ],
+        assertions=[
+            Assertion("""SELECT "depth2_obj4__id" FROM tests.prefix__t""", "id2"),
+            Assertion(
+                """
+SELECT "depth2_obj__depth3_obj__id"
+FROM tests.prefix__t
+""",
+                "id3",
+            ),
+            Assertion(
+                """
+SELECT "depth2_obj__depth3_arr"
+FROM tests.prefix__t__depth2_obj__depth3_arr
+""",
+                "id3",
+            ),
+            Assertion(
+                """
+SELECT "depth2_arr__depth3_arr__id"
+FROM tests.prefix__t__depth2_arr__depth3_arr
+""",
+                "id3",
+            ),
+            Assertion(
+                """
+SELECT "depth2_arr__depth3_obj__id"
+FROM tests.prefix__t__depth2_arr
+""",
+                "id3",
+            ),
+            Assertion(
+                """
+SELECT COUNT(DISTINCT DATA_TYPE), ANY_VALUE(DATA_TYPE)
+FROM INFORMATION_SCHEMA.COLUMNS
+WHERE COLUMN_NAME IN (
+    'depth2_obj__depth3_obj__depth4_obj'
+    ,'depth2_obj__depth3_obj__depth4_arr'
+    ,'depth2_arr__depth3_arr__depth4_arr'
+    ,'depth2_arr__depth3_obj__depth4_arr'
+    ,'depth2_arr__depth3_obj__depth4_obj'
+)
+""",
+                exp_duck=[(1, "JSON")],
+                exp_pg=[(1, "jsonb")],
+            ),
+        ],
+    )
+
+
 def case_keep_raw() -> ExpansionTC:
     return ExpansionTC(
         keep_raw=True,

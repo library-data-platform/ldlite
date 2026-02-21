@@ -23,11 +23,15 @@ class ExpandContext:
     get_transform_table: Callable[[int], sql.Identifier]
     get_output_table: Callable[[str], sql.Identifier]
 
-    def array_context(self, new_source_table: sql.Identifier) -> ExpandContext:
+    def array_context(
+        self,
+        new_source_table: sql.Identifier,
+        new_json_depth: int,
+    ) -> ExpandContext:
         return ExpandContext(
             self.conn,
             new_source_table,
-            self.json_depth,
+            new_json_depth,
             self.get_transform_table,
             self.get_output_table,
         )
@@ -57,6 +61,10 @@ def _expand_nonmarc(
     while expand_children_of:
         on = expand_children_of.popleft()
         for c in on.object_children:
+            if len(c.parents) >= ctx.json_depth:
+                if c.parent is not None:
+                    c.parent.values.append(c.name)
+                continue
             c.unnest(
                 ctx.conn,
                 ctx.get_transform_table(count),
@@ -68,6 +76,8 @@ def _expand_nonmarc(
     new_source_table = ctx.get_transform_table(count)
     arrays = root.descendents_oftype(ArrayNode)
     for an in arrays:
+        if len(an.parents) >= ctx.json_depth:
+            continue
         values = an.explode(
             ctx.conn,
             new_source_table,
@@ -84,7 +94,10 @@ def _expand_nonmarc(
                     values,
                 ),
                 count + 1,
-                ctx.array_context(ctx.get_transform_table(count)),
+                ctx.array_context(
+                    ctx.get_transform_table(count),
+                    ctx.json_depth - len(an.parents),
+                ),
             )
         else:
             with ctx.conn.cursor() as cur:
@@ -127,4 +140,4 @@ SELECT {cols} FROM {transform_table}
             .as_string(),
         )
 
-    return count - initial_count
+    return count + 1 - initial_count
