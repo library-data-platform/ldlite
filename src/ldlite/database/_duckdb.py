@@ -134,6 +134,9 @@ CREATE OR REPLACE FUNCTION ldlite_system.jexplode(j) AS TABLE (
 
         return next(pkey) - 1
 
+    def source_table_cte_stmt(self, keep_source: bool) -> str:  # noqa: ARG002
+        return "WITH ld_source AS (SELECT * FROM {source_table})"
+
 
 # DuckDB has some strong opinions about cursors that are different than postgres
 # https://github.com/duckdb/duckdb/issues/11018

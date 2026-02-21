@@ -120,6 +120,7 @@ class ObjectNode(ExpansionNode):
         conn: duckdb.DuckDBPyConnection | psycopg.Connection,
         source_table: sql.Identifier,
         dest_table: sql.Identifier,
+        source_cte: str,
     ) -> None:
         self.unnested = True
         create_columns: list[sql.Composable] = [
@@ -196,9 +197,13 @@ GROUP BY prop
             cur.execute(
                 sql.SQL(
                     """
-CREATE TEMP TABLE {dest_table} ON COMMIT DROP AS SELECT
+CREATE TEMP TABLE {dest_table} ON COMMIT DROP AS
+"""
+                    + source_cte
+                    + """
+SELECT
     {cols}
-FROM {source_table};
+FROM ld_source;
 """,
                 )
                 .format(
@@ -246,6 +251,7 @@ class ArrayNode(ExpansionNode):
         conn: duckdb.DuckDBPyConnection | psycopg.Connection,
         source_table: sql.Identifier,
         dest_table: sql.Identifier,
+        source_cte: str,
     ) -> list[str]:
         with conn.cursor() as cur:
             o_col = self.name + "_o"
@@ -264,10 +270,14 @@ class ArrayNode(ExpansionNode):
             cur.execute(
                 sql.SQL(
                     """
-CREATE TEMP TABLE {dest_table} ON COMMIT DROP AS SELECT
+CREATE TEMP TABLE {dest_table} ON COMMIT DROP AS
+"""
+                    + source_cte
+                    + """
+SELECT
     {cols}
 FROM
-    {source_table} s
+    ld_source s
     ,ldlite_system.jexplode({json_col}) a
 """,
                 )

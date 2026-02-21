@@ -182,3 +182,25 @@ PARALLEL SAFE;
 
             conn.commit()
         return next(pkey) - 1
+
+    def preprocess_source_table(
+        self,
+        conn: psycopg.Connection,
+        table_name: sql.Identifier,
+        column_names: list[sql.Identifier],
+    ) -> None:
+        if len(column_names) == 0:
+            return
+
+        with conn.cursor() as cur:
+            cur.execute(
+                sql.SQL("ANALYZE {table_name} ({column_name})").format(
+                    table_name=table_name,
+                    column_name=sql.SQL(",").join(column_names),
+                ),
+            )
+
+    def source_table_cte_stmt(self, keep_source: bool) -> str:
+        if keep_source:
+            return "WITH ld_source AS (SELECT * FROM {source_table})"
+        return "WITH ld_source AS (DELETE FROM {source_table} RETURNING *)"

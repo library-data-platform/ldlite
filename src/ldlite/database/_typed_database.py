@@ -166,6 +166,19 @@ WHERE table_schema = $1 and table_name IN ($2, $3);""",
                 ).as_string(),
             )
 
+    def preprocess_source_table(
+        self,
+        conn: DB,
+        table_name: sql.Identifier,
+        column_names: list[sql.Identifier],
+    ) -> None: ...
+
+    # TODO: Refactor this to use DELETE RETURNING when DuckDb resolves
+    # https://github.com/duckdb/duckdb/issues/3417
+    # Only postgres supports it which is why we have an abstraction here
+    @abstractmethod
+    def source_table_cte_stmt(self, keep_source: bool) -> str: ...
+
     def expand_prefix(self, prefix: str, json_depth: int, keep_raw: bool) -> None:
         pfx = Prefix(prefix)
         with closing(self._conn_factory()) as conn:
@@ -174,20 +187,23 @@ WHERE table_schema = $1 and table_name IN ($2, $3);""",
                     sql.SQL(
                         """
 CREATE TEMP TABLE {dest_table} ON COMMIT DROP AS
-SELECT * from {raw_table};
+"""
+                        + self.source_table_cte_stmt(keep_source=keep_raw)
+                        + """
+SELECT * from ld_source;
 """,
                     )
                     .format(
                         dest_table=pfx.origin_table,
-                        raw_table=pfx.schemafy(pfx.raw_table),
+                        source_table=pfx.schemafy(pfx.raw_table),
                     )
                     .as_string(),
                 )
+
+            with conn.cursor() as cur:
                 if not keep_raw:
-                    # TODO: Refactor this to use DELETE RETURNING when DuckDb resolves
-                    # https://github.com/duckdb/duckdb/issues/3417
                     cur.execute(
-                        sql.SQL("DROP TABLE {raw_table}")
+                        sql.SQL("DROP TABLE IF EXISTS {raw_table}")
                         .format(
                             raw_table=pfx.schemafy(pfx.raw_table),
                         )
@@ -203,6 +219,8 @@ SELECT * from {raw_table};
                     json_depth,
                     pfx.transform_table,
                     pfx.output_table,
+                    self.preprocess_source_table,  # type: ignore [arg-type]
+                    self.source_table_cte_stmt,
                 ),
             )
 
