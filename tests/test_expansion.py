@@ -103,6 +103,21 @@ def case_basic_array() -> ExpansionTC:
         assertions=[
             Assertion("""SELECT COUNT(*) FROM tests.prefix__t__list1""", expect=6),
             Assertion("""SELECT COUNT(*) FROM tests.prefix__t__list2""", expect=2),
+            Assertion(
+                """
+SELECT id, list1_o, list1
+FROM tests.prefix__t__list1
+ORDER BY id, list1_o
+                """,
+                expect=[
+                    ("id1", 1, "a1"),
+                    ("id1", 2, "b1"),
+                    ("id1", 3, "c1"),
+                    ("id2", 1, "a2"),
+                    ("id2", 2, "b2"),
+                    ("id2", 3, "c2"),
+                ],
+            ),
             *[
                 Assertion(
                     f"""
@@ -151,6 +166,19 @@ def case_nested_arrays() -> ExpansionTC:
         ],
         assertions=[
             Assertion("""SELECT COUNT(*) FROM tests.prefix__t__sub""", expect=4),
+            Assertion(
+                """
+SELECT id, sub_o, sub__id
+FROM tests.prefix__t__sub
+ORDER BY id, sub_o
+                """,
+                expect=[
+                    ("id1", 1, "sub1id1"),
+                    ("id1", 2, "sub2id1"),
+                    ("id2", 1, "sub1id2"),
+                    ("id2", 2, "sub2id2"),
+                ],
+            ),
             Assertion(
                 """
 SELECT COLUMN_NAME, DATA_TYPE
