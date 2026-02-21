@@ -9,7 +9,7 @@ import psycopg
 from psycopg import sql
 
 from . import Database, LoadHistory
-from ._expansion_node import ExpandContext, ExpansionNode
+from ._expansion import ExpandContext, expand_nonmarc
 from ._prefix import Prefix
 
 if TYPE_CHECKING:
@@ -194,7 +194,7 @@ SELECT * from {raw_table};
                         .as_string(),
                     )
 
-            ExpansionNode.expand(
+            expand_nonmarc(
                 "jsonb",
                 ["__id"],
                 ExpandContext(

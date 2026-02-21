@@ -1,76 +1,19 @@
-# pyright: reportArgumentType=false
 from __future__ import annotations
 
 from collections import deque
-from dataclasses import dataclass
-from typing import TYPE_CHECKING, Literal
+from typing import TYPE_CHECKING, TypeVar
 
 from psycopg import sql
 
 if TYPE_CHECKING:
-    from collections.abc import Callable, Iterator
+    from collections.abc import Iterator
 
     import duckdb
     import psycopg
 
+from .metadata import Metadata
 
-@dataclass
-class ExpandContext:
-    conn: duckdb.DuckDBPyConnection | psycopg.Connection
-    source_table: sql.Identifier
-    json_depth: int
-    get_transform_table: Callable[[int], sql.Identifier]
-    get_output_table: Callable[[str], sql.Identifier]
-
-    def array_context(self, new_source_table: sql.Identifier) -> ExpandContext:
-        return ExpandContext(
-            self.conn,
-            new_source_table,
-            self.json_depth,
-            self.get_transform_table,
-            self.get_output_table,
-        )
-
-
-@dataclass
-class Metadata:
-    prop: str
-    # array is technically a type
-    # but the metadata query returns inner type of the array
-    # the jtype_of function normalizes the names between pg and duckdb
-    json_type: Literal["string", "number", "object", "boolean", "null"]
-    is_array: bool
-    is_uuid: bool
-    is_datetime: bool
-    is_float: bool
-
-    def select_column(
-        self,
-        json_col: sql.Identifier,
-        alias: str,
-    ) -> sql.Composed:
-        if self.is_array or self.json_type == "object":
-            stmt = sql.SQL(
-                "(ldlite_system.jextract({json_col}, {prop})) AS {alias}",
-            )
-        elif self.json_type == "number":
-            stmt = sql.SQL(
-                "(ldlite_system.jextract({json_col}, {prop}))::numeric AS {alias}",
-            )
-        elif self.json_type == "string" and self.is_uuid:
-            stmt = sql.SQL(
-                "(ldlite_system.jextract_string({json_col}, {prop}))::uuid AS {alias}",
-            )
-        else:
-            stmt = sql.SQL(
-                "(ldlite_system.jextract_string({json_col}, {prop})) AS {alias}",
-            )
-
-        return stmt.format(
-            json_col=json_col,
-            prop=self.prop,
-            alias=sql.Identifier(alias),
-        )
+TNode = TypeVar("TNode", bound="ExpansionNode")
 
 
 class ExpansionNode:
@@ -89,7 +32,7 @@ class ExpansionNode:
         self.children: list[ExpansionNode] = []
 
     def add(self, meta: Metadata) -> str:
-        snake = "".join("_" + c.lower() if c.isupper() else c for c in meta.prop)
+        snake = meta.snake
         prefixed_name = self.prefix + snake
 
         if meta.is_array:
@@ -132,144 +75,24 @@ class ExpansionNode:
         root = [p for p in self.parents if p.parent is None]
         return root[0]
 
-    def _object_children(self) -> Iterator[ObjectNode]:
-        for c in self.children:
-            if isinstance(c, ObjectNode):
-                yield c
-
-    @property
-    def object_children(self) -> list[ObjectNode]:
-        return list(self._object_children())
-
-    def _descendents(self) -> Iterator[ExpansionNode]:
+    def _descendents(self, cls: type[TNode]) -> Iterator[TNode]:
         to_visit = deque([self])
         while to_visit:
             n = to_visit.pop()
-            yield n
+            if isinstance(n, cls):
+                yield n
 
             to_visit.extend(n.children)
 
     @property
     def descendents(self) -> list[ExpansionNode]:
-        return list(self._descendents())
+        return list(self._descendents(ExpansionNode))
 
-    def _object_descendents(self) -> Iterator[ObjectNode]:
-        for n in self._descendents():
-            if isinstance(n, ObjectNode):
-                yield n
-
-    @property
-    def object_descendents(self) -> list[ObjectNode]:
-        return list(self._object_descendents())
-
-    def _array_descendents(self) -> Iterator[ArrayNode]:
-        for n in self._descendents():
-            if isinstance(n, ArrayNode):
-                yield n
-
-    @property
-    def array_descendents(self) -> list[ArrayNode]:
-        return list(self._array_descendents())
+    def descendents_oftype(self, cls: type[TNode]) -> list[TNode]:
+        return list(self._descendents(cls))
 
     def __str__(self) -> str:
         return "->".join([n.name for n in reversed([self, *self.parents])])
-
-    @staticmethod
-    def _expand(
-        root: ObjectNode,
-        count: int,
-        ctx: ExpandContext,
-    ) -> int:
-        initial_count = count
-        root.unnest(ctx.conn, ctx.source_table, ctx.get_transform_table(count))
-
-        expand_children_of = deque([root])
-        while expand_children_of:
-            on = expand_children_of.popleft()
-            for c in on.object_children:
-                c.unnest(
-                    ctx.conn,
-                    ctx.get_transform_table(count),
-                    ctx.get_transform_table(count + 1),
-                )
-                expand_children_of.append(c)
-                count += 1
-
-        new_source_table = ctx.get_transform_table(count)
-        arrays = root.array_descendents
-        for an in arrays:
-            values = an.explode(
-                ctx.conn,
-                new_source_table,
-                ctx.get_transform_table(count + 1),
-            )
-            count += 1
-
-            if an.meta.json_type == "object":
-                count += ExpansionNode._expand(
-                    ObjectNode(
-                        an.name,
-                        an.name,
-                        None,
-                        values,
-                    ),
-                    count + 1,
-                    ctx.array_context(ctx.get_transform_table(count)),
-                )
-            else:
-                with ctx.conn.cursor() as cur:
-                    cur.execute(
-                        sql.SQL(
-                            """
-CREATE TABLE {dest_table} AS
-SELECT {cols} FROM {transform_table}
-""",
-                        )
-                        .format(
-                            dest_table=ctx.get_output_table(an.name),
-                            transform_table=ctx.get_transform_table(count),
-                            cols=sql.SQL("\n    ,").join(
-                                [sql.Identifier(v) for v in [*values, an.name]],
-                            ),
-                        )
-                        .as_string(),
-                    )
-
-        stamped_values = [
-            sql.Identifier(v)
-            for n in set(root.descendents).difference(arrays)
-            for v in n.values
-        ]
-
-        with ctx.conn.cursor() as cur:
-            cur.execute(
-                sql.SQL(
-                    """
-CREATE TABLE {dest_table} AS
-SELECT {cols} FROM {transform_table}
-""",
-                )
-                .format(
-                    dest_table=ctx.get_output_table(root.path),
-                    transform_table=new_source_table,
-                    cols=sql.SQL("\n    ,").join(stamped_values),
-                )
-                .as_string(),
-            )
-
-        return count - initial_count
-
-    @staticmethod
-    def expand(
-        root_name: str,
-        root_values: list[str],
-        ctx: ExpandContext,
-    ) -> None:
-        ExpansionNode._expand(
-            ObjectNode(root_name, "", None, root_values),
-            0,
-            ctx,
-        )
 
 
 class ObjectNode(ExpansionNode):
@@ -282,6 +105,15 @@ class ObjectNode(ExpansionNode):
     ):
         super().__init__(name, path, parent, values)
         self.unnested = False
+
+    def _object_children(self) -> Iterator[ObjectNode]:
+        for c in self.children:
+            if isinstance(c, ObjectNode):
+                yield c
+
+    @property
+    def object_children(self) -> list[ObjectNode]:
+        return list(self._object_children())
 
     def unnest(
         self,
@@ -378,7 +210,7 @@ FROM {source_table};
             )
 
     def _carryover(self) -> Iterator[str]:
-        for n in self.root.object_descendents:
+        for n in self.root.descendents_oftype(ObjectNode):
             if not n.unnested:
                 yield n.name
             yield from n.values
@@ -450,8 +282,7 @@ FROM
 
     def _carryover(self) -> Iterator[str]:
         for n in reversed(self.parents):
-            if isinstance(n, ObjectNode):
-                yield from [v for v in n.values if v != "__id"]
+            yield from [v for v in n.values if v != "__id"]
 
     @property
     def carryover(self) -> list[str]:
