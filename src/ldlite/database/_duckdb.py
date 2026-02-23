@@ -93,7 +93,11 @@ CREATE OR REPLACE FUNCTION ldlite_system.jis_datetime(j) AS
 ;
 
 CREATE OR REPLACE FUNCTION ldlite_system.jis_float(j) AS
-    coalesce(main.json_type(j), 'NULL')='DOUBLE'
+    coalesce(main.json_type(j), 'NULL') == 'DOUBLE'
+;
+
+CREATE OR REPLACE FUNCTION ldlite_system.jis_null(j) AS
+    j is NULL or j == 'null'::JSON
 ;
 
 CREATE OR REPLACE FUNCTION ldlite_system.jexplode(j) AS TABLE (

@@ -122,13 +122,19 @@ LANGUAGE sql
 IMMUTABLE
 PARALLEL SAFE;
 
-
 CREATE OR REPLACE FUNCTION ldlite_system.jis_float(j JSONB) RETURNS BOOLEAN AS $$
 SELECT
     CASE
         WHEN ldlite_system.jtype_of(j) = 'number' THEN j->>0 LIKE '%.%'
         ELSE FALSE
     END;
+$$
+LANGUAGE sql
+IMMUTABLE
+PARALLEL SAFE;
+
+CREATE OR REPLACE FUNCTION ldlite_system.jis_null(j JSONB) RETURNS BOOLEAN AS $$
+SELECT j IS NULL OR j = 'null'::JSONB;
 $$
 LANGUAGE sql
 IMMUTABLE

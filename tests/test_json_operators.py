@@ -163,6 +163,24 @@ FROM j;""",
 
 @parametrize(
     p=[
+        ("na", True),
+        ("obj_empty", False),
+        ("arr_zero", False),
+        ("na_str1", False),
+        ("na_str2", False),
+    ],
+)
+def case_jis_null(p: tuple[Any, ...]) -> JsonTC:
+    return JsonTC(
+        """SELECT ldlite_system.jis_null(jc->$1){assertion} FROM j;""",
+        p[:1],
+        """= $2""",
+        p[1:],
+    )
+
+
+@parametrize(
+    p=[
         ("str", False),
         ("str_empty", False),
         ("num", False),
