@@ -134,7 +134,54 @@ WHERE TABLE_NAME LIKE 'prefix__t%' AND COLUMN_NAME = '{assertion[0]}'
                 exp_pg=assertion[1],
                 exp_duck=assertion[2],
             )
-            for _ in range(10)
+            for _ in range(15)
+        ],
+    )
+
+
+@parametrize(
+    "prop",
+    ["some_uuid", "some_numeric", "some_object", "some_array"],
+)
+def case_mixed_types(prop: str) -> ExpansionTC:
+    return ExpansionTC(
+        records=[
+            b"""
+{
+    "some_uuid": "0b03c888-102b-18e9-afb7-85e22229ca4d",
+    "some_numeric": 5,
+    "some_object": { "id": 5 },
+    "some_array": [5]
+}
+""",
+            b"""
+{
+    "some_uuid": "not-uuid",
+    "some_numeric": "not-numeric",
+    "some_object": "not-object",
+    "some_array": "not-array"
+}
+""",
+            b"""
+{
+    "some_uuid": "0b03c888-102b-18e9-afb7-85e22229ca4d",
+    "some_numeric": 5,
+    "some_object": { "id": 5 },
+    "some_array": [5]
+}
+""",
+        ],
+        assertions=[
+            Assertion(
+                f"""
+SELECT DATA_TYPE
+FROM INFORMATION_SCHEMA.COLUMNS
+WHERE TABLE_NAME = 'prefix__t' AND COLUMN_NAME = '{prop}'
+""",
+                exp_pg="text",
+                exp_duck="VARCHAR",
+            )
+            for _ in range(15)
         ],
     )
 

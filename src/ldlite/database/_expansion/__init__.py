@@ -109,7 +109,7 @@ def _expand_nonmarc(
         )
         count += 1
 
-        if an.meta.json_type == "object":
+        if an.meta.is_object:
             count += _expand_nonmarc(
                 ObjectNode(
                     an.name,

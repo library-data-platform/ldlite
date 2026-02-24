@@ -12,11 +12,22 @@ class Metadata:
     # array is technically a type
     # but the metadata query returns inner type of the array
     # the jtype_of function normalizes the names between pg and duckdb
-    json_type: Literal["string", "number", "object", "boolean", "null"]
+    json_type: Literal["string", "number", "object", "boolean"]
     is_array: bool
     is_uuid: bool
     is_datetime: bool
     is_float: bool
+
+    def __post_init__(self) -> None:
+        # Mixed json_type columns (which shouldn't really happen)
+        # get STRING_AGG'ed with a pipe delimeter.
+        # Fallback to the lowest common denominator in this case.
+        if "|" in self.json_type:
+            object.__setattr__(self, "json_type", "string")
+
+    @property
+    def is_object(self) -> bool:
+        return self.json_type == "object"
 
     @property
     def snake(self) -> str:
@@ -27,7 +38,7 @@ class Metadata:
         json_col: sql.Identifier,
         alias: str,
     ) -> sql.Composed:
-        if self.is_array or self.json_type == "object":
+        if self.is_array or self.is_object:
             stmt = sql.SQL(
                 "(ldlite_system.jextract({json_col}, {prop})) AS {alias}",
             )

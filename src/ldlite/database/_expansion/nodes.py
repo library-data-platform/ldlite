@@ -37,7 +37,7 @@ class ExpansionNode:
 
         if meta.is_array:
             self.children.append(ArrayNode(prefixed_name, snake, self, meta))
-        elif meta.json_type == "object":
+        elif meta.is_object:
             self.children.append(ObjectNode(prefixed_name, snake, self))
         else:
             prefixed_name = self.prefix + snake
@@ -180,8 +180,8 @@ WITH
     )
 SELECT
     prop
-    ,ANY_VALUE(json_type) AS json_type
-    ,ANY_VALUE(is_array) AS is_array
+    ,STRING_AGG(DISTINCT json_type, '|') AS json_type
+    ,bool_and(is_array) AS is_array
     ,bool_and(ldlite_system.jis_uuid(value)) AS is_uuid
     ,bool_and(ldlite_system.jis_datetime(value)) AS is_datetime
     ,bool_and(ldlite_system.jis_float(value)) AS is_float
