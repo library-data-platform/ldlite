@@ -200,15 +200,8 @@ SELECT * from ld_source;
                     .as_string(),
                 )
 
-            with conn.cursor() as cur:
-                if not keep_raw:
-                    cur.execute(
-                        sql.SQL("DROP TABLE IF EXISTS {raw_table}")
-                        .format(
-                            raw_table=pfx.schemafy(pfx.raw_table),
-                        )
-                        .as_string(),
-                    )
+            if not keep_raw:
+                self._drop_raw_table(conn, pfx)
 
             expand_nonmarc(
                 "jsonb",

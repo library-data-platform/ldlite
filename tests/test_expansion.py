@@ -7,7 +7,7 @@ from uuid import uuid4
 import duckdb
 import psycopg
 import pytest
-from pytest_cases import parametrize_with_cases
+from pytest_cases import parametrize, parametrize_with_cases
 
 if TYPE_CHECKING:
     from _typeshed import dbapi
@@ -78,6 +78,63 @@ WHERE TABLE_NAME = 'prefix__t' AND COLUMN_NAME = '{a[0]}'
                 ("text", "VARCHAR"),
                 ("uuid", "UUID"),
             ]
+        ],
+    )
+
+
+@parametrize(
+    "assertion",
+    [
+        ("all_null", None, None),
+        ("nullable_numeric", "numeric", "DECIMAL(18,3)"),
+        ("nullable_uuid", "uuid", "UUID"),
+        ("nullable_object__id", "numeric", "DECIMAL(18,3)"),
+        ("nullable_array", "numeric", "DECIMAL(18,3)"),
+    ],
+    idgen="prop={assertion[0]}",
+)
+def case_null(assertion: tuple[str, str | None, str | None]) -> ExpansionTC:
+    return ExpansionTC(
+        records=[
+            b"""
+{
+    "all_null": null,
+    "nullable_numeric": null,
+    "nullable_uuid": null,
+    "nullable_object": null,
+    "nullable_array": []
+}
+""",
+            b"""
+{
+    "all_null": null,
+    "nullable_numeric": 5,
+    "nullable_uuid": null,
+    "nullable_object": { "id": 5 },
+    "nullable_array": null
+}
+""",
+            b"""
+{
+    "all_null": null,
+    "nullable_numeric": null,
+    "nullable_uuid": "0b03c888-102b-18e9-afb7-85e22229ca4d",
+    "nullable_object": { "id": null},
+    "nullable_array": [null, 5, null]
+}
+""",
+        ],
+        assertions=[
+            Assertion(
+                f"""
+SELECT DATA_TYPE
+FROM INFORMATION_SCHEMA.COLUMNS
+WHERE TABLE_NAME LIKE 'prefix__t%' AND COLUMN_NAME = '{assertion[0]}'
+""",
+                exp_pg=assertion[1],
+                exp_duck=assertion[2],
+            )
+            for _ in range(10)
         ],
     )
 
@@ -444,8 +501,11 @@ def _assert(
                 assert cur.fetchone() is None
             else:
                 actual = cur.fetchone()
-                assert actual is not None
-                assert actual[0] == a.expected(db)
+                if a.expected(db) is None:
+                    assert actual is None
+                else:
+                    assert actual is not None
+                    assert actual[0] == a.expected(db)
 
 
 @parametrize_with_cases("tc", cases=".")

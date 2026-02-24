@@ -132,7 +132,12 @@ class ObjectNode(ExpansionNode):
                 sql.SQL(
                     """
 WITH
-    one_object AS (SELECT {json_col} as json FROM {table} LIMIT 1),
+    one_object AS (
+        SELECT {json_col} AS json
+        FROM {table}
+        WHERE NOT ldlite_system.jis_null({json_col})
+        LIMIT 1
+    ),
     props AS (SELECT ldlite_system.jobject_keys(json) AS prop FROM one_object),
     values AS (
         SELECT
@@ -146,6 +151,7 @@ WITH
             ,ldlite_system.jtype_of(value) AS json_type
             ,value
         FROM values
+        WHERE NOT ldlite_system.jis_null(value)
     ),
     array_values AS (
         SELECT
@@ -170,6 +176,7 @@ WITH
             ,value
             ,TRUE AS is_array
         FROM array_values
+        WHERE NOT ldlite_system.jis_null(value)
     )
 SELECT
     prop
@@ -279,6 +286,7 @@ SELECT
 FROM
     ld_source s
     ,ldlite_system.jexplode({json_col}) a
+WHERE NOT ldlite_system.jis_null({json_col})
 """,
                 )
                 .format(

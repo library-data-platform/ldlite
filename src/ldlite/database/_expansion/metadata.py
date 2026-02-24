@@ -33,7 +33,8 @@ class Metadata:
             )
         elif self.json_type == "number":
             stmt = sql.SQL(
-                "(ldlite_system.jextract({json_col}, {prop}))::numeric AS {alias}",
+                "(ldlite_system.jextract_string({json_col}, {prop}))"
+                "::numeric AS {alias}",
             )
         elif self.json_type == "string" and self.is_uuid:
             stmt = sql.SQL(
