@@ -32,14 +32,14 @@ class Database(ABC):
     def drop_raw_table(self, prefix: str) -> None:
         """Drops the raw table for a given prefix.
 
-        This is deprecated and will be removed before release of 4.0.0.
+        This is deprecated and will be removed in a future release.
         """
 
     @abstractmethod
     def drop_extracted_tables(self, prefix: str) -> None:
         """Drops any extracted tables for a given prefix.
 
-        This is deprecated and will be removed before release of 4.0.0.
+        This is deprecated and will be removed in a future release.
         """
 
     @abstractmethod

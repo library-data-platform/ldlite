@@ -572,10 +572,10 @@ def test_duckdb(tc: ExpansionTC) -> None:
 
     ld = LDLite()
     ld.connect_db(dsn)
-    assert ld.database is not None
+    assert ld.database_experimental is not None
 
-    ld.database.ingest_records("tests.prefix", iter(tc.records))
-    ld.database.expand_prefix("tests.prefix", tc.json_depth, tc.keep_raw)
+    ld.database_experimental.ingest_records("tests.prefix", iter(tc.records))
+    ld.database_experimental.expand_prefix("tests.prefix", tc.json_depth, tc.keep_raw)
 
     with duckdb.connect(dsn) as conn:
         _assert(cast("dbapi.DBAPIConnection", conn), "duckdb", tc)
@@ -592,10 +592,10 @@ def test_postgres(pg_dsn: None | Callable[[str], str], tc: ExpansionTC) -> None:
 
     ld = LDLite()
     ld.connect_db_postgresql(dsn)
-    assert ld.database is not None
+    assert ld.database_experimental is not None
 
-    ld.database.ingest_records("tests.prefix", iter(tc.records))
-    ld.database.expand_prefix("tests.prefix", tc.json_depth, tc.keep_raw)
+    ld.database_experimental.ingest_records("tests.prefix", iter(tc.records))
+    ld.database_experimental.expand_prefix("tests.prefix", tc.json_depth, tc.keep_raw)
 
     with psycopg.connect(dsn, cursor_factory=psycopg.RawCursor) as conn:
         _assert(cast("dbapi.DBAPIConnection", conn), "postgres", tc)

@@ -158,15 +158,8 @@ class LDLite:
         ret_db.set_autocommit(True)
         return ret_db
 
-    def experimental_connect_database(self, database: Database) -> None:
-        """Connects to a custom Database implementation for storing data.
-
-        This is to experimentally allow non duckdb/postgres database connections.
-        """
-        self._database = database
-
     @property
-    def database(self) -> Database | None:
+    def database_experimental(self) -> Database | None:
         """The current Database implementation used by LDLite.
 
         This is experimental and isn't really intended for public consumption.
