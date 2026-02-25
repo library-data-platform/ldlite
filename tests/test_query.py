@@ -24,6 +24,7 @@ if TYPE_CHECKING:
 class QueryTC(MockedResponseTestCase):
     expected_tables: list[str]
     expected_values: dict[str, tuple[list[str], list[tuple[Any, ...]]]]
+    unexpected_columns: list[tuple[str, str]] | None = None
     expected_indexes: list[tuple[str, str]] | None = None
 
 
@@ -436,6 +437,110 @@ def case_nested_object_underexpansion() -> QueryTC:
     )
 
 
+def case_tables_and_lists() -> QueryTC:
+    return QueryTC(
+        Call(
+            "prefix",
+            json_depth=3,
+            returns={
+                "purchaseOrders": [
+                    {
+                        "id": "b096504a-3d54-4664-9bf5-1b872466fd66",
+                        "subObjects": [
+                            {
+                                "id": "2b94c631-fca9-4892-a730-03ee529ffe2a",
+                            },
+                            {
+                                "id": "f5bda109-a719-4f72-b797-b9c22f45e4e1",
+                            },
+                        ],
+                        "excludedFromLists": {
+                            "id": "b0f3e260-8eb7-4dd2-b9c6-be74e00229a8",
+                        },
+                        "subObject": {
+                            "id": "2b94c631-fca9-4892-a730-03ee529ffe2a",
+                            "subSubObject": {
+                                "id": "2b94c631-fca9-4892-a730-03ee529ffe2a",
+                            },
+                            "subObjects": [
+                                {
+                                    "id": "15f1d05d-6a54-4704-9d53-90718a8339b1",
+                                },
+                                {
+                                    "id": "37de4f71-cc99-4e8c-90c6-5a17f168f21d",
+                                },
+                            ],
+                        },
+                    },
+                ],
+            },
+        ),
+        expected_tables=[
+            "prefix",
+            "prefix__t",
+            "prefix__t__sub_objects",
+            "prefix__t__sub_object__sub_objects",
+            "prefix__tcatalog",
+        ],
+        expected_values={
+            "prefix__t": (
+                ["id", "sub_object__id", "sub_object__sub_sub_object__id"],
+                [
+                    (
+                        "b096504a-3d54-4664-9bf5-1b872466fd66",
+                        "2b94c631-fca9-4892-a730-03ee529ffe2a",
+                        "2b94c631-fca9-4892-a730-03ee529ffe2a",
+                    ),
+                ],
+            ),
+            "prefix__t__sub_objects": (
+                ["id", "sub_objects__id"],
+                [
+                    (
+                        "b096504a-3d54-4664-9bf5-1b872466fd66",
+                        "2b94c631-fca9-4892-a730-03ee529ffe2a",
+                    ),
+                    (
+                        "b096504a-3d54-4664-9bf5-1b872466fd66",
+                        "f5bda109-a719-4f72-b797-b9c22f45e4e1",
+                    ),
+                ],
+            ),
+            "prefix__t__sub_object__sub_objects": (
+                [
+                    "id",
+                    "sub_object__id",
+                    "sub_object__sub_objects__id",
+                ],
+                [
+                    (
+                        "b096504a-3d54-4664-9bf5-1b872466fd66",
+                        "2b94c631-fca9-4892-a730-03ee529ffe2a",
+                        "15f1d05d-6a54-4704-9d53-90718a8339b1",
+                    ),
+                    (
+                        "b096504a-3d54-4664-9bf5-1b872466fd66",
+                        "2b94c631-fca9-4892-a730-03ee529ffe2a",
+                        "37de4f71-cc99-4e8c-90c6-5a17f168f21d",
+                    ),
+                ],
+            ),
+            "prefix__tcatalog": (
+                ["table_name"],
+                [
+                    ("prefix__t",),
+                    ("prefix__t__sub_object__sub_objects",),
+                    ("prefix__t__sub_objects",),
+                ],
+            ),
+        },
+        unexpected_columns=[
+            ("prefix__t__sub_objects", "sub_object__id"),
+            ("prefix__t__sub_object__sub_objects", "excluded_from_lists__id"),
+        ],
+    )
+
+
 def case_id_generation() -> QueryTC:
     return QueryTC(
         Call(
@@ -691,6 +796,18 @@ def _assert(
                 assert cur.fetchone() == v
 
             assert cur.fetchone() is None
+
+        if tc.unexpected_columns is not None:
+            for exp in tc.unexpected_columns:
+                cur.execute(
+                    """
+                SELECT COUNT(*)
+                FROM information_schema.columns
+                WHERE table_name=$1 and column_name=$2
+                """,
+                    exp,
+                )
+                assert cur.fetchone() == (0,)
 
 
 @mock.patch("httpx_folio.auth.httpx.post")

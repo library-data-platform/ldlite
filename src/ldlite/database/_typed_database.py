@@ -1,3 +1,4 @@
+# pyright: reportArgumentType=false
 from abc import abstractmethod
 from collections.abc import Callable, Sequence
 from contextlib import closing
@@ -7,7 +8,9 @@ from typing import TYPE_CHECKING, Any, Generic, TypeVar, cast
 import psycopg
 from psycopg import sql
 
-from . import Database, LoadHistory, Prefix
+from . import Database, LoadHistory
+from ._expansion import ExpandContext, expand_nonmarc
+from ._prefix import Prefix
 
 if TYPE_CHECKING:
     import duckdb
@@ -48,23 +51,24 @@ CREATE TABLE IF NOT EXISTS "ldlite_system"."load_history" (
 
     def drop_prefix(
         self,
-        prefix: Prefix,
+        prefix: str,
     ) -> None:
+        pfx = Prefix(prefix)
         with closing(self._conn_factory()) as conn:
-            self._drop_extracted_tables(conn, prefix)
-            self._drop_raw_table(conn, prefix)
+            self._drop_extracted_tables(conn, pfx)
+            self._drop_raw_table(conn, pfx)
             conn.execute(
                 'DELETE FROM "ldlite_system"."load_history" WHERE "table_name" = $1',
-                (prefix.load_history_key,),
+                (pfx.load_history_key,),
             )
             conn.commit()
 
     def drop_raw_table(
         self,
-        prefix: Prefix,
+        prefix: str,
     ) -> None:
         with closing(self._conn_factory()) as conn:
-            self._drop_raw_table(conn, prefix)
+            self._drop_raw_table(conn, Prefix(prefix))
             conn.commit()
 
     def _drop_raw_table(
@@ -75,16 +79,16 @@ CREATE TABLE IF NOT EXISTS "ldlite_system"."load_history" (
         with closing(conn.cursor()) as cur:
             cur.execute(
                 sql.SQL("DROP TABLE IF EXISTS {table};")
-                .format(table=prefix.raw_table_identifier)
+                .format(table=prefix.schemafy(prefix.raw_table))
                 .as_string(),
             )
 
     def drop_extracted_tables(
         self,
-        prefix: Prefix,
+        prefix: str,
     ) -> None:
         with closing(self._conn_factory()) as conn:
-            self._drop_extracted_tables(conn, prefix)
+            self._drop_extracted_tables(conn, Prefix(prefix))
             conn.commit()
 
     def _drop_extracted_tables(
@@ -100,23 +104,23 @@ SELECT table_name FROM information_schema.tables
 WHERE table_schema = $1 and table_name IN ($2, $3);""",
                 (
                     prefix.schema or self._default_schema,
-                    prefix.catalog_table_name,
-                    prefix.legacy_jtable_name,
+                    prefix.catalog_table,
+                    prefix.legacy_jtable,
                 ),
             )
             for (tname,) in cur.fetchall():
-                if tname == prefix.catalog_table_name:
+                if tname == prefix.catalog_table:
                     cur.execute(
                         sql.SQL("SELECT table_name FROM {catalog};")
-                        .format(catalog=prefix.catalog_table_identifier)
+                        .format(catalog=prefix.schemafy(prefix.catalog_table))
                         .as_string(),
                     )
                     tables.extend(cur.fetchall())
 
-                if tname == prefix.legacy_jtable_name:
+                if tname == prefix.legacy_jtable:
                     cur.execute(
                         sql.SQL("SELECT table_name FROM {catalog};")
-                        .format(catalog=prefix.legacy_jtable_identifier)
+                        .format(catalog=prefix.schemafy(prefix.legacy_jtable))
                         .as_string(),
                     )
                     tables.extend(cur.fetchall())
@@ -130,12 +134,12 @@ WHERE table_schema = $1 and table_name IN ($2, $3);""",
                 )
             cur.execute(
                 sql.SQL("DROP TABLE IF EXISTS {catalog};")
-                .format(catalog=prefix.catalog_table_identifier)
+                .format(catalog=prefix.schemafy(prefix.catalog_table))
                 .as_string(),
             )
             cur.execute(
                 sql.SQL("DROP TABLE IF EXISTS {catalog};")
-                .format(catalog=prefix.legacy_jtable_identifier)
+                .format(catalog=prefix.schemafy(prefix.legacy_jtable))
                 .as_string(),
             )
 
@@ -148,19 +152,72 @@ WHERE table_schema = $1 and table_name IN ($2, $3);""",
         prefix: Prefix,
     ) -> None:
         with closing(conn.cursor()) as cur:
-            if prefix.schema_identifier is not None:
+            if prefix.schema is not None:
                 cur.execute(
                     sql.SQL("CREATE SCHEMA IF NOT EXISTS {schema};")
-                    .format(schema=prefix.schema_identifier)
+                    .format(schema=sql.Identifier(prefix.schema))
                     .as_string(),
                 )
         self._drop_raw_table(conn, prefix)
         with closing(conn.cursor()) as cur:
             cur.execute(
                 self._create_raw_table_sql.format(
-                    table=prefix.raw_table_identifier,
+                    table=prefix.schemafy(prefix.raw_table),
                 ).as_string(),
             )
+
+    def preprocess_source_table(
+        self,
+        conn: DB,
+        table_name: sql.Identifier,
+        column_names: list[sql.Identifier],
+    ) -> None: ...
+
+    # TODO: Refactor this to use DELETE RETURNING when DuckDb resolves
+    # https://github.com/duckdb/duckdb/issues/3417
+    # Only postgres supports it which is why we have an abstraction here
+    @abstractmethod
+    def source_table_cte_stmt(self, keep_source: bool) -> str: ...
+
+    def expand_prefix(self, prefix: str, json_depth: int, keep_raw: bool) -> None:
+        pfx = Prefix(prefix)
+        with closing(self._conn_factory()) as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    sql.SQL(
+                        """
+CREATE TEMP TABLE {dest_table} ON COMMIT DROP AS
+"""
+                        + self.source_table_cte_stmt(keep_source=keep_raw)
+                        + """
+SELECT * from ld_source;
+""",
+                    )
+                    .format(
+                        dest_table=pfx.origin_table,
+                        source_table=pfx.schemafy(pfx.raw_table),
+                    )
+                    .as_string(),
+                )
+
+            if not keep_raw:
+                self._drop_raw_table(conn, pfx)
+
+            expand_nonmarc(
+                "jsonb",
+                ["__id"],
+                ExpandContext(
+                    conn,
+                    pfx.origin_table,
+                    json_depth,
+                    pfx.transform_table,
+                    pfx.output_table,
+                    self.preprocess_source_table,  # type: ignore [arg-type]
+                    self.source_table_cte_stmt,
+                ),
+            )
+
+            conn.commit()
 
     def record_history(self, history: LoadHistory) -> None:
         with closing(self._conn_factory()) as conn, conn.cursor() as cur:
@@ -178,7 +235,7 @@ ON CONFLICT ("table_name") DO UPDATE SET
     ,"index_time" = EXCLUDED."index_time"
 """,
                 (
-                    history.table_name.load_history_key,
+                    Prefix(history.table_name).load_history_key,
                     history.path,
                     history.query,
                     history.total,
