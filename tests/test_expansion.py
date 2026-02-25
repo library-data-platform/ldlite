@@ -90,6 +90,7 @@ WHERE TABLE_NAME = 'prefix__t' AND COLUMN_NAME = '{a[0]}'
         ("nullable_uuid", "uuid", "UUID"),
         ("nullable_object__id", "numeric", "DECIMAL(18,3)"),
         ("nullable_array", "numeric", "DECIMAL(18,3)"),
+        ("sortof_nullable_array__id", "numeric", "DECIMAL(18,3)"),
     ],
     idgen="prop={assertion[0]}",
 )
@@ -102,7 +103,8 @@ def case_null(assertion: tuple[str, str | None, str | None]) -> ExpansionTC:
     "nullable_numeric": null,
     "nullable_uuid": null,
     "nullable_object": null,
-    "nullable_array": []
+    "nullable_array": [],
+    "sortof_nullable_array": [{ "id": 5 }]
 }
 """,
             b"""
@@ -111,7 +113,8 @@ def case_null(assertion: tuple[str, str | None, str | None]) -> ExpansionTC:
     "nullable_numeric": 5,
     "nullable_uuid": null,
     "nullable_object": { "id": 5 },
-    "nullable_array": null
+    "nullable_array": null,
+    "sortof_nullable_array": [{}, {}]
 }
 """,
             b"""
@@ -120,7 +123,8 @@ def case_null(assertion: tuple[str, str | None, str | None]) -> ExpansionTC:
     "nullable_numeric": null,
     "nullable_uuid": "0b03c888-102b-18e9-afb7-85e22229ca4d",
     "nullable_object": { "id": null},
-    "nullable_array": [null, 5, null]
+    "nullable_array": [null, 5, null],
+    "sortof_nullable_array": [{ "id": 5 }]
 }
 """,
         ],
@@ -141,7 +145,12 @@ WHERE TABLE_NAME LIKE 'prefix__t%' AND COLUMN_NAME = '{assertion[0]}'
 
 @parametrize(
     "prop",
-    ["some_uuid", "some_numeric", "some_object", "some_array"],
+    [
+        "some_uuid",
+        "some_numeric",
+        "some_object",
+        "some_array",
+    ],
 )
 def case_mixed_types(prop: str) -> ExpansionTC:
     return ExpansionTC(
