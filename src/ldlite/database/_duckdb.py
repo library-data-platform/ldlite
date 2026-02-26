@@ -25,13 +25,6 @@ class DuckDbDatabase(TypedDatabase[duckdb.DuckDBPyConnection]):
     @staticmethod
     def _setup_jfuncs(conn: duckdb.DuckDBPyConnection) -> None:
         with conn.cursor() as cur:
-            cur.execute("SELECT string_split(ltrim(version(),'v'), '.') AS has_lambda;")
-            if ver := cur.fetchone():
-                (ma, mi, _) = ver[0]
-                if int(ma) > 1 and int(mi) >= 3:
-                    cur.execute("SET lambda_syntax = 'ENABLE_SINGLE_ARROW';")
-
-        with conn.cursor() as cur:
             cur.execute(
                 r"""
 CREATE OR REPLACE FUNCTION ldlite_system.jtype_of(j) AS
@@ -63,8 +56,8 @@ CREATE OR REPLACE FUNCTION ldlite_system.jextract(j, p) AS
             END
         WHEN 'array' THEN
             CASE
-                WHEN length(list_filter((main.json_extract(j, p))::JSON[], x -> x != 'null'::JSON)) = 0 THEN 'null'::JSON
-                ELSE list_filter((main.json_extract(j, p))::JSON[], x -> x != 'null'::JSON)
+                WHEN length(list_filter((main.json_extract(j, p))::JSON[], lambda x : x != 'null'::JSON)) = 0 THEN 'null'::JSON
+                ELSE list_filter((main.json_extract(j, p))::JSON[], lambda x : x != 'null'::JSON)
             END
         ELSE coalesce(main.json_extract(j, p), 'null'::JSON)
     END
