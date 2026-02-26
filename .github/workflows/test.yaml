@@ -51,7 +51,7 @@ jobs:
       # install dependencies
       - uses: pdm-project/setup-pdm@v4
         with:
-          python-version: 3.13
+          python-version: 3.14
           cache: true
           cache-dependency-path: pylock.maximal.toml
       - run: pdm install -G:all --lockfile pylock.maximal.toml
