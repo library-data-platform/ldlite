@@ -78,7 +78,7 @@ test.composite = [
 lock.composite = [
   "rm -f pylock.toml pylock.maximal.toml pylock.minimal.toml",
   "pdm lock --python=3.10",
-  "pdm lock --lockfile pylock.maximal.toml --python=3.13",
+  "pdm lock --lockfile pylock.maximal.toml --python=3.14",
   "pdm lock --strategy direct_minimal_versions --lockfile pylock.minimal.toml --python=3.10",
 ]
 test-install.composite = [
