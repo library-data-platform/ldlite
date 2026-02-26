@@ -64,6 +64,7 @@ def to_csv(
                         s += ","
                     if attrs[i][1] in [
                         "NUMBER",
+                        "DECIMAL(18,3)",
                         "bigint",
                         "numeric",
                         20,

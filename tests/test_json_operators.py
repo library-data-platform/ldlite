@@ -7,7 +7,7 @@ from uuid import uuid4
 import duckdb
 import psycopg
 import pytest
-from pytest_cases import parametrize, parametrize_with_cases
+from pytest_cases import get_case_id, parametrize, parametrize_with_cases
 
 if TYPE_CHECKING:
     from _typeshed import dbapi
@@ -38,9 +38,6 @@ class JsonTC:
         ("obj_some", '{"k1":"v1","k2":null}'),
         ("obj_empty", "null"),
         ("arr_zero", "null"),
-        ("arr_str", '["s1","s2","s3"]'),
-        ("arr_str_some", '["s1","s2"]'),
-        ("arr_obj_some", '[{"k1":"v1"}]'),
         ("na", "null"),
         ("na_str1", "null"),
         ("na_str2", "null"),
@@ -51,6 +48,43 @@ def case_jextract(p: tuple[Any, ...]) -> JsonTC:
         """SELECT ldlite_system.jextract(jc, $1){assertion} FROM j;""",
         p[:1],
         """= $2::{jtype}""",
+        p[1:],
+    )
+
+
+# Duckdb through 1.3 and 1.4 have different json comparison behavior here
+# Whitespace matters in 1.4 and not 1.3
+# This makes the arrays text and compares the values as a workaround
+@parametrize(
+    p=[
+        ("arr_str", '["s1", "s2", "s3"]'),
+        ("arr_str_some", '["s1", "s2"]'),
+        ("arr_obj_some", '[{"k1":"v1"}]'),
+    ],
+)
+def case_jextract_duckdb(p: tuple[Any, ...]) -> JsonTC:
+    return JsonTC(
+        """SELECT ldlite_system.jextract(jc, $1){assertion} FROM j;""",
+        p[:1],
+        """::text[] = $2::JSON::text[]""",
+        p[1:],
+    )
+
+
+# The differences betweeen postgres/duckdb here only matters for tests
+# This can all be rectified when duckdb 1.4 is the minimum version
+@parametrize(
+    p=[
+        ("arr_str", '["s1", "s2", "s3"]'),
+        ("arr_str_some", '["s1", "s2"]'),
+        ("arr_obj_some", '[{"k1":"v1"}]'),
+    ],
+)
+def case_jextract_postgres(p: tuple[Any, ...]) -> JsonTC:
+    return JsonTC(
+        """SELECT ldlite_system.jextract(jc, $1){assertion} FROM j;""",
+        p[:1],
+        """ = $2::JSONB""",
         p[1:],
     )
 
@@ -293,7 +327,11 @@ def duckdb_jop_dsn() -> Iterator[str]:
         yield dsn
 
 
-@parametrize_with_cases("tc", cases=".")
+@parametrize_with_cases(
+    "tc",
+    cases=".",
+    filter=lambda cf: "postgres" not in get_case_id(cf),
+)
 def test_duckdb(duckdb_jop_dsn: str, tc: JsonTC) -> None:
     from ldlite import LDLite
 
@@ -316,7 +354,11 @@ def pg_jop_dsn(pg_dsn: None | Callable[[str], str]) -> str:
     return dsn
 
 
-@parametrize_with_cases("tc", cases=".")
+@parametrize_with_cases(
+    "tc",
+    cases=".",
+    filter=lambda cf: "duckdb" not in get_case_id(cf),
+)
 def test_postgres(pg_jop_dsn: str, tc: JsonTC) -> None:
     from ldlite import LDLite
 
