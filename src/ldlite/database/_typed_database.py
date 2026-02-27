@@ -182,6 +182,11 @@ WHERE table_schema = $1 and table_name IN ($2, $3);""",
     def expand_prefix(self, prefix: str, json_depth: int, keep_raw: bool) -> None:
         pfx = Prefix(prefix)
         with closing(self._conn_factory()) as conn:
+            self._drop_extracted_tables(conn, pfx)
+            if json_depth < 1:
+                conn.commit()
+                return
+
             with conn.cursor() as cur:
                 cur.execute(
                     sql.SQL(
@@ -203,7 +208,7 @@ SELECT * from ld_source;
             if not keep_raw:
                 self._drop_raw_table(conn, pfx)
 
-            expand_nonmarc(
+            created_tables = expand_nonmarc(
                 "jsonb",
                 ["__id"],
                 ExpandContext(
@@ -216,6 +221,27 @@ SELECT * from ld_source;
                     self.source_table_cte_stmt,
                 ),
             )
+
+            with conn.cursor() as cur:
+                cur.execute(
+                    sql.SQL(
+                        """
+CREATE TABLE {catalog_table} (
+    table_name text
+)
+""",
+                    )
+                    .format(catalog_table=pfx.schemafy(pfx.catalog_table))
+                    .as_string(),
+                )
+                cur.executemany(
+                    sql.SQL("INSERT INTO {catalog_table} VALUES ($1)")
+                    .format(
+                        catalog_table=pfx.schemafy(pfx.catalog_table),
+                    )
+                    .as_string(),
+                    [(t,) for t in created_tables],
+                )
 
             conn.commit()
 

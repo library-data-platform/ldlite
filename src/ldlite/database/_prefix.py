@@ -27,11 +27,12 @@ class Prefix:
     def _output_table(self) -> str:
         return self._prefix + "__t"
 
-    def output_table(self, prefix: str) -> sql.Identifier:
+    def output_table(self, prefix: str) -> tuple[str, sql.Identifier]:
         if len(prefix) == 0:
-            return self.schemafy(self._output_table)
+            return (self._output_table, self.schemafy(self._output_table))
 
-        return self.schemafy(self._output_table + "__" + prefix)
+        output_table = self._output_table + "__" + prefix
+        return (output_table, self.schemafy(output_table))
 
     @property
     def catalog_table(self) -> str:

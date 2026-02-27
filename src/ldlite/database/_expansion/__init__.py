@@ -21,7 +21,7 @@ class ExpandContext:
     source_table: sql.Identifier
     json_depth: int
     get_transform_table: Callable[[int], sql.Identifier]
-    get_output_table: Callable[[str], sql.Identifier]
+    get_output_table: Callable[[str], tuple[str, sql.Identifier]]
     # This is necessary for Analyzing the table in pg before querying it
     # I don't love how this is implemented
     preprocess: Callable[
@@ -55,19 +55,20 @@ def expand_nonmarc(
     root_name: str,
     root_values: list[str],
     ctx: ExpandContext,
-) -> None:
-    _expand_nonmarc(
+) -> list[str]:
+    (_, created_tables) = _expand_nonmarc(
         ObjectNode(root_name, "", None, root_values),
         0,
         ctx,
     )
+    return created_tables
 
 
 def _expand_nonmarc(
     root: ObjectNode,
     count: int,
     ctx: ExpandContext,
-) -> int:
+) -> tuple[int, list[str]]:
     initial_count = count
     ctx.preprocess(ctx.conn, ctx.source_table, [root.identifier])
     root.unnest(
@@ -95,6 +96,8 @@ def _expand_nonmarc(
             expand_children_of.append(c)
             count += 1
 
+    created_tables = []
+
     new_source_table = ctx.get_transform_table(count)
     arrays = root.descendents_oftype(ArrayNode)
     ctx.preprocess(ctx.conn, new_source_table, [a.identifier for a in arrays])
@@ -110,7 +113,7 @@ def _expand_nonmarc(
         count += 1
 
         if an.meta.is_object:
-            count += _expand_nonmarc(
+            (sub_index, array_tables) = _expand_nonmarc(
                 ObjectNode(
                     an.name,
                     an.name,
@@ -123,8 +126,12 @@ def _expand_nonmarc(
                     ctx.json_depth - len(an.parents),
                 ),
             )
+            count += sub_index
+            created_tables.extend(array_tables)
         else:
             with ctx.conn.cursor() as cur:
+                (tname, tid) = ctx.get_output_table(an.name)
+                created_tables.append(tname)
                 cur.execute(
                     sql.SQL(
                         """
@@ -136,7 +143,7 @@ SELECT {cols} FROM ld_source
 """,
                     )
                     .format(
-                        dest_table=ctx.get_output_table(an.name),
+                        dest_table=tid,
                         source_table=ctx.get_transform_table(count),
                         cols=sql.SQL("\n    ,").join(
                             [sql.Identifier(v) for v in [*values, an.name]],
@@ -152,6 +159,8 @@ SELECT {cols} FROM ld_source
     ]
 
     with ctx.conn.cursor() as cur:
+        (tname, tid) = ctx.get_output_table(root.path)
+        created_tables.append(tname)
         cur.execute(
             sql.SQL(
                 """
@@ -163,11 +172,11 @@ SELECT {cols} FROM ld_source
 """,
             )
             .format(
-                dest_table=ctx.get_output_table(root.path),
+                dest_table=tid,
                 source_table=new_source_table,
                 cols=sql.SQL("\n    ,").join(stamped_values),
             )
             .as_string(),
         )
 
-    return count + 1 - initial_count
+    return (count + 1 - initial_count, created_tables)

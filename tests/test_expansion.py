@@ -217,6 +217,14 @@ def case_basic_array() -> ExpansionTC:
             Assertion("""SELECT COUNT(*) FROM tests.prefix__t__list1""", expect=6),
             Assertion("""SELECT COUNT(*) FROM tests.prefix__t__list2""", expect=2),
             Assertion(
+                """SELECT * FROM tests.prefix__tcatalog ORDER BY table_name""",
+                expect=[
+                    ("prefix__t",),
+                    ("prefix__t__list1",),
+                    ("prefix__t__list2",),
+                ],
+            ),
+            Assertion(
                 """
 SELECT id, list1
 FROM tests.prefix__t__list1
@@ -295,6 +303,13 @@ def case_nested_arrays() -> ExpansionTC:
         assertions=[
             Assertion("""SELECT COUNT(*) FROM tests.prefix__t__sub""", expect=4),
             Assertion(
+                """SELECT * FROM tests.prefix__tcatalog ORDER BY table_name""",
+                expect=[
+                    ("prefix__t",),
+                    ("prefix__t__sub",),
+                ],
+            ),
+            Assertion(
                 """
 SELECT id, sub__id
 FROM tests.prefix__t__sub
@@ -352,6 +367,12 @@ def case_basic_object() -> ExpansionTC:
         ],
         assertions=[
             Assertion("SELECT COUNT(*) FROM tests.prefix__t;", 2),
+            Assertion(
+                """SELECT * FROM tests.prefix__tcatalog ORDER BY table_name""",
+                expect=[
+                    ("prefix__t",),
+                ],
+            ),
             Assertion("SELECT id FROM tests.prefix__t WHERE __id = 1", "id1"),
             Assertion(
                 "SELECT camel_value FROM tests.prefix__t WHERE __id = 1",
@@ -410,6 +431,12 @@ def case_nested_objects() -> ExpansionTC:
         ],
         assertions=[
             Assertion("SELECT COUNT(*) FROM tests.prefix__t;", 2),
+            Assertion(
+                """SELECT * FROM tests.prefix__tcatalog ORDER BY table_name""",
+                expect=[
+                    ("prefix__t",),
+                ],
+            ),
             Assertion("SELECT id FROM tests.prefix__t WHERE __id = 1", "id1"),
             Assertion("SELECT sub__id FROM tests.prefix__t WHERE __id = 1", "sub_id1"),
             Assertion(
@@ -483,6 +510,15 @@ def case_json_depth() -> ExpansionTC:
         ],
         assertions=[
             Assertion("""SELECT "depth2_obj4__id" FROM tests.prefix__t""", "id2"),
+            Assertion(
+                """SELECT * FROM tests.prefix__tcatalog ORDER BY table_name""",
+                expect=[
+                    ("prefix__t",),
+                    ("prefix__t__depth2_arr",),
+                    ("prefix__t__depth2_arr__depth3_arr",),
+                    ("prefix__t__depth2_obj__depth3_arr",),
+                ],
+            ),
             Assertion(
                 """
 SELECT "depth2_obj__depth3_obj__id"
