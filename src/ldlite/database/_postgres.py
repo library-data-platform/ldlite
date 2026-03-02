@@ -140,7 +140,7 @@ LANGUAGE sql
 IMMUTABLE
 PARALLEL SAFE;
 
-CREATE OR REPLACE FUNCTION ldlite_system.jexplode(j JSONB) RETURNS TABLE (value JSONB) AS $$
+CREATE OR REPLACE FUNCTION ldlite_system.jexplode(j JSONB) RETURNS TABLE (ld_value JSONB) AS $$
 SELECT * FROM jsonb_array_elements(j);
 $$
 LANGUAGE sql
