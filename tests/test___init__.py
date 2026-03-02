@@ -54,6 +54,20 @@ class TestIntegration:
         ld.query(table="g", path="/groups", query="cql.allRecords=1 sortby id")
         ld.select(table="g__t")
 
+    def test_ok_legacy_transform(self, folio_params: tuple[bool, FolioParams]) -> None:
+        from ldlite import LDLite as uut
+
+        ld = uut()
+        ld.connect_folio(*astuple(folio_params[1]))
+        ld.connect_db()
+        ld.query(
+            table="g",
+            path="/groups",
+            query="cql.allRecords=1 sortby id",
+            use_legacy_transform=True,
+        )
+        ld.select(table="g__t")
+
     def test_ok_limit(self, folio_params: tuple[bool, FolioParams]) -> None:
         from ldlite import LDLite as uut
 
