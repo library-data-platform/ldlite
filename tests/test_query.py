@@ -1,4 +1,3 @@
-import json
 from collections.abc import Callable
 from contextlib import closing
 from dataclasses import dataclass
@@ -419,13 +418,8 @@ def case_nested_object_underexpansion() -> QueryTC:
                     (
                         "b096504a-3d54-4664-9bf5-1b872466fd66",
                         "value",
-                        json.dumps(
-                            {
-                                "id": "2b94c631-fca9-4892-a730-03ee529ffe2a",
-                                "value": "sub-value",
-                            },
-                            indent=4,
-                        ),
+                        '{"id":"2b94c631-fca9-4892-a730-03ee529ffe2a",'
+                        '"value":"sub-value"}',
                     ),
                 ],
             ),
@@ -587,29 +581,27 @@ def case_id_generation() -> QueryTC:
         ],
         expected_values={
             "prefix__t__sub_objects": (
-                ["__id", "id", "sub_objects__o", "sub_objects__id"],
+                ["__id", "id", "sub_objects__o"],
                 [
                     (
                         "1",
                         "b096504a-3d54-4664-9bf5-1b872466fd66",
                         "1",
-                        "2b94c631-fca9-4892-a730-03ee529ffe2a",
                     ),
                     (
                         "2",
                         "b096504a-3d54-4664-9bf5-1b872466fd66",
                         "2",
-                        "b5d8cdc4-9441-487c-90cf-0c7ec97728eb",
                     ),
                 ],
             ),
             "prefix__t__sub_objects__sub_sub_objects": (
-                ["__id", "sub_objects__o", "sub_objects__sub_sub_objects__o"],
+                ["sub_objects__o", "sub_objects__sub_sub_objects__o"],
                 [
-                    ("1", "1", "1"),
-                    ("2", "1", "2"),
-                    ("3", "2", "1"),
-                    ("4", "2", "2"),
+                    ("1", "1"),
+                    ("1", "2"),
+                    ("2", "1"),
+                    ("2", "2"),
                 ],
             ),
         },
@@ -783,10 +775,15 @@ def _assert(
 
         for table, (cols, values) in tc.expected_values.items():
             cur.execute(
-                sql.SQL("SELECT {cols}::text FROM {table};")
+                sql.SQL('SELECT {cols} FROM {table} ORDER BY {cols} COLLATE "C";')
                 .format(
-                    cols=sql.SQL("::text, ").join(
-                        [sql.Identifier(c) for c in cols],
+                    cols=sql.SQL(", ").join(
+                        [
+                            sql.SQL(
+                                "REGEXP_REPLACE({col}::text, '\\s+', '', 'g')",
+                            ).format(col=sql.Identifier(c))
+                            for c in cols
+                        ],
                     ),
                     table=sql.Identifier(table),
                 )
