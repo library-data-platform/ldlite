@@ -248,9 +248,9 @@ ORDER BY id, list1
             ),
             Assertion(
                 """
-SELECT id, list1_o
+SELECT id, list1__o
 FROM tests.prefix__t__list1
-ORDER BY id, list1_o
+ORDER BY id, list1__o
                 """,
                 expect=[
                     ("id1", 1),
@@ -270,15 +270,15 @@ WHERE TABLE_NAME = 'prefix__t__{a[0]}'
 ORDER BY ORDINAL_POSITION
 """,
                     exp_duck=[
-                        ("__id", "BIGINT"),
+                        ("__id", "INTEGER"),
                         ("id", "VARCHAR"),
-                        (f"{a[0]}_o", "BIGINT"),
+                        (f"{a[0]}__o", "SMALLINT"),
                         (f"{a[0]}", a[1]),
                     ],
                     exp_pg=[
-                        ("__id", "bigint"),
+                        ("__id", "integer"),
                         ("id", "text"),
-                        (f"{a[0]}_o", "bigint"),
+                        (f"{a[0]}__o", "smallint"),
                         (f"{a[0]}", a[2]),
                     ],
                 )
@@ -331,9 +331,9 @@ ORDER BY id, sub__id
             ),
             Assertion(
                 """
-SELECT id, sub_o
+SELECT id, sub__o
 FROM tests.prefix__t__sub
-ORDER BY id, sub_o
+ORDER BY id, sub__o
                 """,
                 expect=[
                     ("id1", 1),
@@ -350,15 +350,15 @@ WHERE TABLE_NAME = 'prefix__t__sub'
 ORDER BY ORDINAL_POSITION
 """,
                 exp_duck=[
-                    ("__id", "BIGINT"),
+                    ("__id", "INTEGER"),
                     ("id", "VARCHAR"),
-                    ("sub_o", "BIGINT"),
+                    ("sub__o", "SMALLINT"),
                     ("sub__id", "VARCHAR"),
                 ],
                 exp_pg=[
-                    ("__id", "bigint"),
+                    ("__id", "integer"),
                     ("id", "text"),
-                    ("sub_o", "bigint"),
+                    ("sub__o", "smallint"),
                     ("sub__id", "text"),
                 ],
             ),

@@ -261,11 +261,15 @@ class ArrayNode(ExpansionNode):
         source_cte: str,
     ) -> list[str]:
         with conn.cursor() as cur:
-            o_col = self.name + "_o"
+            o_col = self.name + "__o"
             create_columns: list[sql.Composable] = [
-                sql.SQL("ROW_NUMBER() OVER (ORDER BY (SELECT NULL)) AS __id"),
+                sql.SQL(
+                    "(ROW_NUMBER() OVER (ORDER BY (SELECT NULL)))::integer AS __id"
+                ),
                 *[sql.Identifier(v) for v in self.carryover],
-                sql.SQL("ROW_NUMBER() OVER (PARTITION BY s.__id) AS {id_alias}").format(
+                sql.SQL(
+                    "(ROW_NUMBER() OVER (PARTITION BY s.__id))::smallint AS {id_alias}",
+                ).format(
                     id_alias=sql.Identifier(o_col),
                 ),
                 self.meta.select_column(
