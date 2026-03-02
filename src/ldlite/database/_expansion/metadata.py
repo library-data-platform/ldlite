@@ -31,7 +31,9 @@ class Metadata:
 
     @property
     def snake(self) -> str:
-        return "".join("_" + c.lower() if c.isupper() else c for c in self.prop)
+        return "".join("_" + c.lower() if c.isupper() else c for c in self.prop).lstrip(
+            "_",
+        )
 
     def select_column(
         self,
