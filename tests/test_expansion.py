@@ -51,6 +51,7 @@ def case_typed_columns() -> ExpansionTC:
     "id": "id1",
     "numeric": 1,
     "text": "value",
+    "boolean": false,
     "uuid": "88888888-8888-1888-8888-888888888888"
 }
 """,
@@ -59,6 +60,7 @@ def case_typed_columns() -> ExpansionTC:
     "id": "id2",
     "numeric": 2,
     "text": "00000000-0000-1000-A000-000000000000",
+    "boolean": false,
     "uuid": "11111111-1111-1111-8111-111111111111"
 }
 """,
@@ -77,6 +79,7 @@ WHERE TABLE_NAME = 'prefix__t' AND COLUMN_NAME = '{a[0]}'
                 ("numeric", "DECIMAL(18,3)"),
                 ("text", "VARCHAR"),
                 ("uuid", "UUID"),
+                ("boolean", "BOOLEAN"),
             ]
         ],
     )
@@ -88,6 +91,7 @@ WHERE TABLE_NAME = 'prefix__t' AND COLUMN_NAME = '{a[0]}'
         ("all_null", None, None),
         ("nullable_numeric", "numeric", "DECIMAL(18,3)"),
         ("nullable_uuid", "uuid", "UUID"),
+        ("nullable_bool", "boolean", "BOOLEAN"),
         ("nullable_object__id", "numeric", "DECIMAL(18,3)"),
         ("nullable_array", "numeric", "DECIMAL(18,3)"),
         ("sortof_nullable_array__id", "numeric", "DECIMAL(18,3)"),
@@ -101,6 +105,7 @@ def case_null(assertion: tuple[str, str | None, str | None]) -> ExpansionTC:
 {
     "all_null": null,
     "nullable_numeric": null,
+    "nullable_bool": null,
     "nullable_uuid": null,
     "nullable_object": null,
     "nullable_array": [],
@@ -112,6 +117,7 @@ def case_null(assertion: tuple[str, str | None, str | None]) -> ExpansionTC:
     "all_null": null,
     "nullable_numeric": 5,
     "nullable_uuid": null,
+    "nullable_bool": false,
     "nullable_object": { "id": 5 },
     "nullable_array": null,
     "sortof_nullable_array": [{}, {}]
@@ -121,6 +127,7 @@ def case_null(assertion: tuple[str, str | None, str | None]) -> ExpansionTC:
 {
     "all_null": null,
     "nullable_numeric": null,
+    "nullable_bool": true,
     "nullable_uuid": "0b03c888-102b-18e9-afb7-85e22229ca4d",
     "nullable_object": { "id": null},
     "nullable_array": [null, 5, null],
