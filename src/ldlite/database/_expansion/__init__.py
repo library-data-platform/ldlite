@@ -153,9 +153,7 @@ SELECT {cols} FROM ld_source
                 )
 
     stamped_values = [
-        sql.Identifier(v)
-        for n in set(root.descendents).difference(arrays)
-        for v in n.values
+        sql.Identifier(v) for n in root.descendents if n not in arrays for v in n.values
     ]
 
     with ctx.conn.cursor() as cur:
