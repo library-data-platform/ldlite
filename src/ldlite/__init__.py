@@ -351,8 +351,9 @@ class LDLite:
 
         transform_started = datetime.now(timezone.utc)
         if not use_legacy_transform:
-            self._database.expand_prefix(table, json_depth, keep_raw)
-            newtables = [table]
+            newtables = self._database.expand_prefix(table, json_depth, keep_raw)
+            if keep_raw:
+                newtables = [table, *newtables]
             indexable_attrs = []
 
         else:

@@ -179,13 +179,13 @@ WHERE table_schema = $1 and table_name IN ($2, $3);""",
     @abstractmethod
     def source_table_cte_stmt(self, keep_source: bool) -> str: ...
 
-    def expand_prefix(self, prefix: str, json_depth: int, keep_raw: bool) -> None:
+    def expand_prefix(self, prefix: str, json_depth: int, keep_raw: bool) -> list[str]:
         pfx = Prefix(prefix)
         with closing(self._conn_factory()) as conn:
             self._drop_extracted_tables(conn, pfx)
             if json_depth < 1:
                 conn.commit()
-                return
+                return []
 
             with conn.cursor() as cur:
                 cur.execute(
@@ -244,6 +244,8 @@ CREATE TABLE {catalog_table} (
                 )
 
             conn.commit()
+
+        return created_tables
 
     def record_history(self, history: LoadHistory) -> None:
         with closing(self._conn_factory()) as conn, conn.cursor() as cur:
