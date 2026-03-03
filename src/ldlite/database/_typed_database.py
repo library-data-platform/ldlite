@@ -26,7 +26,7 @@ class TypedDatabase(Database, Generic[DB]):
             with conn.cursor() as cur:
                 cur.execute('CREATE SCHEMA IF NOT EXISTS "ldlite_system";')
                 cur.execute("""
-CREATE TABLE IF NOT EXISTS "ldlite_system"."load_history" (
+CREATE TABLE IF NOT EXISTS "ldlite_system"."load_history_v1" (
     "table_name" TEXT UNIQUE
     ,"path" TEXT
     ,"query" TEXT
@@ -58,7 +58,7 @@ CREATE TABLE IF NOT EXISTS "ldlite_system"."load_history" (
             self._drop_extracted_tables(conn, pfx)
             self._drop_raw_table(conn, pfx)
             conn.execute(
-                'DELETE FROM "ldlite_system"."load_history" WHERE "table_name" = $1',
+                'DELETE FROM "ldlite_system"."load_history_v1" WHERE "table_name" = $1',
                 (pfx.load_history_key,),
             )
             conn.commit()
@@ -251,7 +251,7 @@ CREATE TABLE {catalog_table} (
         with closing(self._conn_factory()) as conn, conn.cursor() as cur:
             cur.execute(
                 """
-INSERT INTO "ldlite_system"."load_history" VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9)
+INSERT INTO "ldlite_system"."load_history_v1" VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9)
 ON CONFLICT ("table_name") DO UPDATE SET
     "path" = EXCLUDED."path"
     ,"query" = EXCLUDED."query"

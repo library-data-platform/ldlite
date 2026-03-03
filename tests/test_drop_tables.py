@@ -120,11 +120,11 @@ def _assert(
         )
         assert sorted([r[0] for r in cur.fetchall()]) == sorted(tc.expected_tables)
 
-        cur.execute('SELECT COUNT(*) FROM "ldlite_system"."load_history"')
+        cur.execute('SELECT COUNT(*) FROM "ldlite_system"."load_history_v1"')
         assert (ud := cur.fetchone()) is not None
         assert ud[0] == len(tc.calls_list) - 1
         cur.execute(
-            'SELECT COUNT(*) FROM "ldlite_system"."load_history" '
+            'SELECT COUNT(*) FROM "ldlite_system"."load_history_v1" '
             'WHERE "table_name" = $1',
             (tc.drop,),
         )
