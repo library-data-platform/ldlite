@@ -28,11 +28,11 @@ class DropTablesTC(MockedResponseTestCase):
 def case_one_table(keep_raw: bool) -> DropTablesTC:
     return DropTablesTC(
         Call(
-            "prefix",
+            "sch.prefix",
             returns={"purchaseOrders": [{"id": "1"}]},
             keep_raw=keep_raw,
         ),
-        drop="prefix",
+        drop="sch.prefix",
         expected_tables=[],
     )
 
@@ -41,7 +41,7 @@ def case_one_table(keep_raw: bool) -> DropTablesTC:
 def case_two_tables(keep_raw: bool) -> DropTablesTC:
     return DropTablesTC(
         Call(
-            "prefix",
+            "sch.prefix",
             returns={
                 "purchaseOrders": [
                     {
@@ -52,7 +52,7 @@ def case_two_tables(keep_raw: bool) -> DropTablesTC:
             },
             keep_raw=keep_raw,
         ),
-        drop="prefix",
+        drop="sch.prefix",
         expected_tables=[],
     )
 
@@ -69,7 +69,7 @@ def case_separate_table(keep_raw: bool) -> DropTablesTC:
     return DropTablesTC(
         [
             Call(
-                "prefix",
+                "sch.prefix",
                 returns={"purchaseOrders": [{"id": "1"}]},
                 keep_raw=keep_raw,
             ),
@@ -79,7 +79,7 @@ def case_separate_table(keep_raw: bool) -> DropTablesTC:
                 keep_raw=keep_raw,
             ),
         ],
-        drop="prefix",
+        drop="sch.prefix",
         expected_tables=expected_tables,
     )
 
@@ -120,11 +120,11 @@ def _assert(
         )
         assert sorted([r[0] for r in cur.fetchall()]) == sorted(tc.expected_tables)
 
-        cur.execute('SELECT COUNT(*) FROM "ldlite_system"."load_history"')
+        cur.execute('SELECT COUNT(*) FROM "ldlite_system"."load_history_v1"')
         assert (ud := cur.fetchone()) is not None
         assert ud[0] == len(tc.calls_list) - 1
         cur.execute(
-            'SELECT COUNT(*) FROM "ldlite_system"."load_history" '
+            'SELECT COUNT(*) FROM "ldlite_system"."load_history_v1" '
             'WHERE "table_name" = $1',
             (tc.drop,),
         )

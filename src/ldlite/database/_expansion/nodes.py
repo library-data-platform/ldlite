@@ -142,30 +142,30 @@ WITH
     values AS (
         SELECT
             prop
-            ,ldlite_system.jextract({json_col}, prop) as value
+            ,ldlite_system.jextract({json_col}, prop) as ld_value
         FROM {table}, props
     ),
     value_and_types AS (
         SELECT
             prop
-            ,ldlite_system.jtype_of(value) AS json_type
-            ,value
+            ,ldlite_system.jtype_of(ld_value) AS json_type
+            ,ld_value
         FROM values
-        WHERE NOT ldlite_system.jis_null(value)
+        WHERE NOT ldlite_system.jis_null(ld_value)
     ),
     array_values AS (
         SELECT
             v.prop
-            ,ldlite_system.jtype_of(a.value) AS json_type
-            ,v.value
-        FROM value_and_types v, ldlite_system.jexplode(v.value) a
+            ,ldlite_system.jtype_of(a.ld_value) AS json_type
+            ,v.ld_value
+        FROM value_and_types v, ldlite_system.jexplode(v.ld_value) a
         WHERE v.json_type = 'array'
     ),
     all_values AS (
         SELECT
             prop
             ,json_type
-            ,value
+            ,ld_value
             ,FALSE AS is_array
         FROM value_and_types
         WHERE json_type <> 'array'
@@ -173,18 +173,18 @@ WITH
         SELECT
             prop
             ,json_type
-            ,value
+            ,ld_value
             ,TRUE AS is_array
         FROM array_values
-        WHERE NOT ldlite_system.jis_null(value)
+        WHERE NOT ldlite_system.jis_null(ld_value)
     )
 SELECT
     prop
     ,STRING_AGG(DISTINCT json_type, '|') AS json_type
     ,bool_and(is_array) AS is_array
-    ,bool_and(ldlite_system.jis_uuid(value)) AS is_uuid
-    ,bool_and(ldlite_system.jis_datetime(value)) AS is_datetime
-    ,bool_and(ldlite_system.jis_float(value)) AS is_float
+    ,bool_and(ldlite_system.jis_uuid(ld_value)) AS is_uuid
+    ,bool_and(ldlite_system.jis_datetime(ld_value)) AS is_datetime
+    ,bool_and(ldlite_system.jis_float(ld_value)) AS is_float
 FROM all_values
 GROUP BY prop
 """,
@@ -261,15 +261,19 @@ class ArrayNode(ExpansionNode):
         source_cte: str,
     ) -> list[str]:
         with conn.cursor() as cur:
-            o_col = self.name + "_o"
+            o_col = self.name + "__o"
             create_columns: list[sql.Composable] = [
-                sql.SQL("ROW_NUMBER() OVER (ORDER BY (SELECT NULL)) AS __id"),
+                sql.SQL(
+                    "(ROW_NUMBER() OVER (ORDER BY (SELECT NULL)))::integer AS __id"
+                ),
                 *[sql.Identifier(v) for v in self.carryover],
-                sql.SQL("ROW_NUMBER() OVER (PARTITION BY s.__id) AS {id_alias}").format(
+                sql.SQL(
+                    "(ROW_NUMBER() OVER (PARTITION BY s.__id))::smallint AS {id_alias}",
+                ).format(
                     id_alias=sql.Identifier(o_col),
                 ),
                 self.meta.select_column(
-                    sql.Identifier("a", "value"),
+                    sql.Identifier("a", "ld_value"),
                     self.name,
                 ),
             ]

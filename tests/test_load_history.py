@@ -126,13 +126,14 @@ def _assert(
     tc: LoadHistoryTC,
 ) -> None:
     with closing(conn.cursor()) as cur:
-        cur.execute('SELECT COUNT(*) FROM "ldlite_system"."load_history"')
+        cur.execute('SELECT COUNT(*) FROM "ldlite_system"."load_history_v1"')
         assert (ud := cur.fetchone()) is not None
         assert ud[0] == len(tc.expected_loads)
 
         for tn, (q, t) in tc.expected_loads.items():
             cur.execute(
-                'SELECT * FROM "ldlite_system"."load_history" WHERE "table_name" = $1',
+                'SELECT * FROM "ldlite_system"."load_history_v1" '
+                'WHERE "table_name" = $1',
                 (tn,),
             )
             assert (d := cur.fetchone()) is not None

@@ -51,6 +51,7 @@ def case_typed_columns() -> ExpansionTC:
     "id": "id1",
     "numeric": 1,
     "text": "value",
+    "boolean": false,
     "uuid": "88888888-8888-1888-8888-888888888888"
 }
 """,
@@ -59,6 +60,7 @@ def case_typed_columns() -> ExpansionTC:
     "id": "id2",
     "numeric": 2,
     "text": "00000000-0000-1000-A000-000000000000",
+    "boolean": false,
     "uuid": "11111111-1111-1111-8111-111111111111"
 }
 """,
@@ -77,6 +79,7 @@ WHERE TABLE_NAME = 'prefix__t' AND COLUMN_NAME = '{a[0]}'
                 ("numeric", "DECIMAL(18,3)"),
                 ("text", "VARCHAR"),
                 ("uuid", "UUID"),
+                ("boolean", "BOOLEAN"),
             ]
         ],
     )
@@ -88,6 +91,7 @@ WHERE TABLE_NAME = 'prefix__t' AND COLUMN_NAME = '{a[0]}'
         ("all_null", None, None),
         ("nullable_numeric", "numeric", "DECIMAL(18,3)"),
         ("nullable_uuid", "uuid", "UUID"),
+        ("nullable_bool", "boolean", "BOOLEAN"),
         ("nullable_object__id", "numeric", "DECIMAL(18,3)"),
         ("nullable_array", "numeric", "DECIMAL(18,3)"),
         ("sortof_nullable_array__id", "numeric", "DECIMAL(18,3)"),
@@ -101,6 +105,7 @@ def case_null(assertion: tuple[str, str | None, str | None]) -> ExpansionTC:
 {
     "all_null": null,
     "nullable_numeric": null,
+    "nullable_bool": null,
     "nullable_uuid": null,
     "nullable_object": null,
     "nullable_array": [],
@@ -112,6 +117,7 @@ def case_null(assertion: tuple[str, str | None, str | None]) -> ExpansionTC:
     "all_null": null,
     "nullable_numeric": 5,
     "nullable_uuid": null,
+    "nullable_bool": false,
     "nullable_object": { "id": 5 },
     "nullable_array": null,
     "sortof_nullable_array": [{}, {}]
@@ -121,6 +127,7 @@ def case_null(assertion: tuple[str, str | None, str | None]) -> ExpansionTC:
 {
     "all_null": null,
     "nullable_numeric": null,
+    "nullable_bool": true,
     "nullable_uuid": "0b03c888-102b-18e9-afb7-85e22229ca4d",
     "nullable_object": { "id": null},
     "nullable_array": [null, 5, null],
@@ -217,6 +224,14 @@ def case_basic_array() -> ExpansionTC:
             Assertion("""SELECT COUNT(*) FROM tests.prefix__t__list1""", expect=6),
             Assertion("""SELECT COUNT(*) FROM tests.prefix__t__list2""", expect=2),
             Assertion(
+                """SELECT * FROM tests.prefix__tcatalog ORDER BY table_name""",
+                expect=[
+                    ("tests.prefix__t",),
+                    ("tests.prefix__t__list1",),
+                    ("tests.prefix__t__list2",),
+                ],
+            ),
+            Assertion(
                 """
 SELECT id, list1
 FROM tests.prefix__t__list1
@@ -233,9 +248,9 @@ ORDER BY id, list1
             ),
             Assertion(
                 """
-SELECT id, list1_o
+SELECT id, list1__o
 FROM tests.prefix__t__list1
-ORDER BY id, list1_o
+ORDER BY id, list1__o
                 """,
                 expect=[
                     ("id1", 1),
@@ -255,15 +270,15 @@ WHERE TABLE_NAME = 'prefix__t__{a[0]}'
 ORDER BY ORDINAL_POSITION
 """,
                     exp_duck=[
-                        ("__id", "BIGINT"),
+                        ("__id", "INTEGER"),
                         ("id", "VARCHAR"),
-                        (f"{a[0]}_o", "BIGINT"),
+                        (f"{a[0]}__o", "SMALLINT"),
                         (f"{a[0]}", a[1]),
                     ],
                     exp_pg=[
-                        ("__id", "bigint"),
+                        ("__id", "integer"),
                         ("id", "text"),
-                        (f"{a[0]}_o", "bigint"),
+                        (f"{a[0]}__o", "smallint"),
                         (f"{a[0]}", a[2]),
                     ],
                 )
@@ -295,6 +310,13 @@ def case_nested_arrays() -> ExpansionTC:
         assertions=[
             Assertion("""SELECT COUNT(*) FROM tests.prefix__t__sub""", expect=4),
             Assertion(
+                """SELECT * FROM tests.prefix__tcatalog ORDER BY table_name""",
+                expect=[
+                    ("tests.prefix__t",),
+                    ("tests.prefix__t__sub",),
+                ],
+            ),
+            Assertion(
                 """
 SELECT id, sub__id
 FROM tests.prefix__t__sub
@@ -309,9 +331,9 @@ ORDER BY id, sub__id
             ),
             Assertion(
                 """
-SELECT id, sub_o
+SELECT id, sub__o
 FROM tests.prefix__t__sub
-ORDER BY id, sub_o
+ORDER BY id, sub__o
                 """,
                 expect=[
                     ("id1", 1),
@@ -328,15 +350,15 @@ WHERE TABLE_NAME = 'prefix__t__sub'
 ORDER BY ORDINAL_POSITION
 """,
                 exp_duck=[
-                    ("__id", "BIGINT"),
+                    ("__id", "INTEGER"),
                     ("id", "VARCHAR"),
-                    ("sub_o", "BIGINT"),
+                    ("sub__o", "SMALLINT"),
                     ("sub__id", "VARCHAR"),
                 ],
                 exp_pg=[
-                    ("__id", "bigint"),
+                    ("__id", "integer"),
                     ("id", "text"),
-                    ("sub_o", "bigint"),
+                    ("sub__o", "smallint"),
                     ("sub__id", "text"),
                 ],
             ),
@@ -352,6 +374,12 @@ def case_basic_object() -> ExpansionTC:
         ],
         assertions=[
             Assertion("SELECT COUNT(*) FROM tests.prefix__t;", 2),
+            Assertion(
+                """SELECT * FROM tests.prefix__tcatalog ORDER BY table_name""",
+                expect=[
+                    ("tests.prefix__t",),
+                ],
+            ),
             Assertion("SELECT id FROM tests.prefix__t WHERE __id = 1", "id1"),
             Assertion(
                 "SELECT camel_value FROM tests.prefix__t WHERE __id = 1",
@@ -410,6 +438,12 @@ def case_nested_objects() -> ExpansionTC:
         ],
         assertions=[
             Assertion("SELECT COUNT(*) FROM tests.prefix__t;", 2),
+            Assertion(
+                """SELECT * FROM tests.prefix__tcatalog ORDER BY table_name""",
+                expect=[
+                    ("tests.prefix__t",),
+                ],
+            ),
             Assertion("SELECT id FROM tests.prefix__t WHERE __id = 1", "id1"),
             Assertion("SELECT sub__id FROM tests.prefix__t WHERE __id = 1", "sub_id1"),
             Assertion(
@@ -483,6 +517,15 @@ def case_json_depth() -> ExpansionTC:
         ],
         assertions=[
             Assertion("""SELECT "depth2_obj4__id" FROM tests.prefix__t""", "id2"),
+            Assertion(
+                """SELECT * FROM tests.prefix__tcatalog ORDER BY table_name""",
+                expect=[
+                    ("tests.prefix__t",),
+                    ("tests.prefix__t__depth2_arr",),
+                    ("tests.prefix__t__depth2_arr__depth3_arr",),
+                    ("tests.prefix__t__depth2_obj__depth3_arr",),
+                ],
+            ),
             Assertion(
                 """
 SELECT "depth2_obj__depth3_obj__id"

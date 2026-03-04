@@ -140,7 +140,7 @@ LANGUAGE sql
 IMMUTABLE
 PARALLEL SAFE;
 
-CREATE OR REPLACE FUNCTION ldlite_system.jexplode(j JSONB) RETURNS TABLE (value JSONB) AS $$
+CREATE OR REPLACE FUNCTION ldlite_system.jexplode(j JSONB) RETURNS TABLE (ld_value JSONB) AS $$
 SELECT * FROM jsonb_array_elements(j);
 $$
 LANGUAGE sql
@@ -174,7 +174,7 @@ PARALLEL SAFE;
                 cur.copy(
                     sql.SQL(
                         "COPY {table} (__id, jsonb) FROM STDIN (FORMAT BINARY)",
-                    ).format(table=pfx.schemafy(pfx.raw_table)),
+                    ).format(table=pfx.raw_table.id),
                 ) as copy,
             ):
                 # postgres jsonb is always version 1

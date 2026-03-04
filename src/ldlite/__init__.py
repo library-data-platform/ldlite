@@ -250,6 +250,7 @@ class LDLite:
         limit: int | None = None,
         transform: bool | None = None,
         keep_raw: bool = True,
+        use_legacy_transform: bool = False,
     ) -> list[str]:
         """Submits a query to a FOLIO module, and transforms and stores the result.
 
@@ -279,6 +280,9 @@ class LDLite:
         If *keep_raw* is set to False, then the raw table of
         __id, json will be dropped saving an estimated 20% disk space.
 
+        *use_legacy_transform* will use the pre 4.0 transformation logic.
+        This parameter is deprecated and will not function in a future release.
+
         The *transform* parameter is no longer supported and will be
         removed in the future.  Instead, specify *json_depth* as 0 to
         disable JSON transformation.
@@ -307,70 +311,88 @@ class LDLite:
         start = datetime.now(timezone.utc)
         if not self._quiet:
             print("ldlite: querying: " + path, file=sys.stderr)
-        try:
-            (total_records, records) = self._folio.iterate_records(
-                path,
-                self._okapi_timeout,
-                self._okapi_max_retries,
-                self.page_size,
-                query=cast("QueryType", query),
-            )
-            if limit is not None:
-                total_records = min(total_records, limit)
-                records = (x for _, x in zip(range(limit), records, strict=False))
-            if self._verbose:
-                print(
-                    "ldlite: estimated row count: " + str(total_records),
-                    file=sys.stderr,
-                )
 
-            download_started = datetime.now(timezone.utc)
-            processed = self._database.ingest_records(
-                table,
-                cast(
-                    "Iterator[bytes]",
-                    tqdm(
-                        records,
-                        desc="downloading",
-                        total=total_records,
-                        leave=False,
-                        mininterval=5,
-                        disable=self._quiet,
-                        unit=table.split(".")[-1],
-                        unit_scale=True,
-                        delay=5,
-                    ),
+        (total_records, records) = self._folio.iterate_records(
+            path,
+            self._okapi_timeout,
+            self._okapi_max_retries,
+            self.page_size,
+            query=cast("QueryType", query),
+        )
+        if limit is not None:
+            total_records = min(total_records, limit)
+            records = (x for _, x in zip(range(limit), records, strict=False))
+        if self._verbose:
+            print(
+                "ldlite: estimated row count: " + str(total_records),
+                file=sys.stderr,
+            )
+
+        download_started = datetime.now(timezone.utc)
+        processed = self._database.ingest_records(
+            table,
+            cast(
+                "Iterator[bytes]",
+                tqdm(
+                    records,
+                    desc="downloading",
+                    total=total_records,
+                    leave=False,
+                    mininterval=5,
+                    disable=self._quiet,
+                    unit=table.split(".")[-1],
+                    unit_scale=True,
+                    delay=5,
                 ),
-            )
-            download = datetime.now(timezone.utc)
-            download_elapsed = datetime.now(timezone.utc) - download_started
+            ),
+        )
+        download = datetime.now(timezone.utc)
+        download_elapsed = datetime.now(timezone.utc) - download_started
 
-            transform_started = datetime.now(timezone.utc)
-            self._database.drop_extracted_tables(table)
-            newtables = [table]
-            newattrs = {}
-            if json_depth > 0:
-                autocommit(self.db, self.dbtype, False)
-                (jsontables, jsonattrs) = transform_json(
-                    self.db,
-                    self.dbtype,
-                    table,
-                    processed,
-                    self._quiet,
-                    json_depth,
-                )
-                newtables += jsontables
-                newattrs = jsonattrs
-                for t in newattrs:
-                    newattrs[t]["__id"] = Attr("__id", "bigint")
-                newattrs[table] = {"__id": Attr("__id", "bigint")}
+        transform_started = datetime.now(timezone.utc)
+        if not use_legacy_transform:
+            newtables = self._database.expand_prefix(table, json_depth, keep_raw)
+            if keep_raw:
+                newtables = [table, *newtables]
+            indexable_attrs = []
 
-            if not keep_raw:
-                self._database.drop_raw_table(table)
+        else:
+            try:
+                self._database.drop_extracted_tables(table)
+                newtables = [table]
+                newattrs = {}
+                if json_depth > 0:
+                    autocommit(self.db, self.dbtype, False)
+                    (jsontables, jsonattrs) = transform_json(
+                        self.db,
+                        self.dbtype,
+                        table,
+                        processed,
+                        self._quiet,
+                        json_depth,
+                    )
+                    newtables += jsontables
+                    newattrs = jsonattrs
+                    for t in newattrs:
+                        newattrs[t]["__id"] = Attr("__id", "bigint")
+                    newattrs[table] = {"__id": Attr("__id", "bigint")}
 
-            transform_elapsed = datetime.now(timezone.utc) - transform_started
-        finally:
-            autocommit(self.db, self.dbtype, True)
+                if not keep_raw:
+                    self._database.drop_raw_table(table)
+
+                indexable_attrs = [
+                    (t, a)
+                    for t, attrs in newattrs.items()
+                    for n, a in attrs.items()
+                    if n in ["__id", "id"]
+                    or n.endswith(("_id", "__o"))
+                    or a.datatype == "uuid"
+                ]
+
+            finally:
+                autocommit(self.db, self.dbtype, True)
+
+        transform_elapsed = datetime.now(timezone.utc) - transform_started
         # Create indexes on id columns (for postgres)
         index_started = datetime.now(timezone.utc)
         if self.dbtype == DBType.POSTGRES:
@@ -381,14 +403,6 @@ class LDLite:
 
             pbar: tqdm | PbarNoop = PbarNoop()  # type:ignore[type-arg]
 
-            indexable_attrs = [
-                (t, a)
-                for t, attrs in newattrs.items()
-                for n, a in attrs.items()
-                if n in ["__id", "id"]
-                or n.endswith(("_id", "__o"))
-                or a.datatype == "uuid"
-            ]
             index_total = len(indexable_attrs)
             if not self._quiet:
                 pbar = tqdm(

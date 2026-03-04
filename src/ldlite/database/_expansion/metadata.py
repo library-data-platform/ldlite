@@ -31,7 +31,9 @@ class Metadata:
 
     @property
     def snake(self) -> str:
-        return "".join("_" + c.lower() if c.isupper() else c for c in self.prop)
+        return "".join("_" + c.lower() if c.isupper() else c for c in self.prop).lstrip(
+            "_",
+        )
 
     def select_column(
         self,
@@ -46,6 +48,10 @@ class Metadata:
             stmt = sql.SQL(
                 "(ldlite_system.jextract_string({json_col}, {prop}))"
                 "::numeric AS {alias}",
+            )
+        elif self.json_type == "boolean":
+            stmt = sql.SQL(
+                "(ldlite_system.jextract_string({json_col}, {prop}))::bool AS {alias}",
             )
         elif self.json_type == "string" and self.is_uuid:
             stmt = sql.SQL(

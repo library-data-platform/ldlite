@@ -26,7 +26,7 @@ class TypedDatabase(Database, Generic[DB]):
             with conn.cursor() as cur:
                 cur.execute('CREATE SCHEMA IF NOT EXISTS "ldlite_system";')
                 cur.execute("""
-CREATE TABLE IF NOT EXISTS "ldlite_system"."load_history" (
+CREATE TABLE IF NOT EXISTS "ldlite_system"."load_history_v1" (
     "table_name" TEXT UNIQUE
     ,"path" TEXT
     ,"query" TEXT
@@ -58,7 +58,7 @@ CREATE TABLE IF NOT EXISTS "ldlite_system"."load_history" (
             self._drop_extracted_tables(conn, pfx)
             self._drop_raw_table(conn, pfx)
             conn.execute(
-                'DELETE FROM "ldlite_system"."load_history" WHERE "table_name" = $1',
+                'DELETE FROM "ldlite_system"."load_history_v1" WHERE "table_name" = $1',
                 (pfx.load_history_key,),
             )
             conn.commit()
@@ -79,7 +79,7 @@ CREATE TABLE IF NOT EXISTS "ldlite_system"."load_history" (
         with closing(conn.cursor()) as cur:
             cur.execute(
                 sql.SQL("DROP TABLE IF EXISTS {table};")
-                .format(table=prefix.schemafy(prefix.raw_table))
+                .format(table=prefix.raw_table.id)
                 .as_string(),
             )
 
@@ -104,23 +104,23 @@ SELECT table_name FROM information_schema.tables
 WHERE table_schema = $1 and table_name IN ($2, $3);""",
                 (
                     prefix.schema or self._default_schema,
-                    prefix.catalog_table,
-                    prefix.legacy_jtable,
+                    prefix.catalog_table.name,
+                    prefix.legacy_jtable.name,
                 ),
             )
             for (tname,) in cur.fetchall():
-                if tname == prefix.catalog_table:
+                if tname == prefix.catalog_table.name:
                     cur.execute(
                         sql.SQL("SELECT table_name FROM {catalog};")
-                        .format(catalog=prefix.schemafy(prefix.catalog_table))
+                        .format(catalog=prefix.catalog_table.id)
                         .as_string(),
                     )
                     tables.extend(cur.fetchall())
 
-                if tname == prefix.legacy_jtable:
+                if tname == prefix.legacy_jtable.name:
                     cur.execute(
                         sql.SQL("SELECT table_name FROM {catalog};")
-                        .format(catalog=prefix.schemafy(prefix.legacy_jtable))
+                        .format(catalog=prefix.legacy_jtable.id)
                         .as_string(),
                     )
                     tables.extend(cur.fetchall())
@@ -134,12 +134,12 @@ WHERE table_schema = $1 and table_name IN ($2, $3);""",
                 )
             cur.execute(
                 sql.SQL("DROP TABLE IF EXISTS {catalog};")
-                .format(catalog=prefix.schemafy(prefix.catalog_table))
+                .format(catalog=prefix.catalog_table.id)
                 .as_string(),
             )
             cur.execute(
                 sql.SQL("DROP TABLE IF EXISTS {catalog};")
-                .format(catalog=prefix.schemafy(prefix.legacy_jtable))
+                .format(catalog=prefix.legacy_jtable.id)
                 .as_string(),
             )
 
@@ -162,7 +162,7 @@ WHERE table_schema = $1 and table_name IN ($2, $3);""",
         with closing(conn.cursor()) as cur:
             cur.execute(
                 self._create_raw_table_sql.format(
-                    table=prefix.schemafy(prefix.raw_table),
+                    table=prefix.raw_table.id,
                 ).as_string(),
             )
 
@@ -179,9 +179,14 @@ WHERE table_schema = $1 and table_name IN ($2, $3);""",
     @abstractmethod
     def source_table_cte_stmt(self, keep_source: bool) -> str: ...
 
-    def expand_prefix(self, prefix: str, json_depth: int, keep_raw: bool) -> None:
+    def expand_prefix(self, prefix: str, json_depth: int, keep_raw: bool) -> list[str]:
         pfx = Prefix(prefix)
         with closing(self._conn_factory()) as conn:
+            self._drop_extracted_tables(conn, pfx)
+            if json_depth < 1:
+                conn.commit()
+                return []
+
             with conn.cursor() as cur:
                 cur.execute(
                     sql.SQL(
@@ -195,7 +200,7 @@ SELECT * from ld_source;
                     )
                     .format(
                         dest_table=pfx.origin_table,
-                        source_table=pfx.schemafy(pfx.raw_table),
+                        source_table=pfx.raw_table.id,
                     )
                     .as_string(),
                 )
@@ -203,7 +208,7 @@ SELECT * from ld_source;
             if not keep_raw:
                 self._drop_raw_table(conn, pfx)
 
-            expand_nonmarc(
+            created_tables = expand_nonmarc(
                 "jsonb",
                 ["__id"],
                 ExpandContext(
@@ -217,13 +222,36 @@ SELECT * from ld_source;
                 ),
             )
 
+            with conn.cursor() as cur:
+                cur.execute(
+                    sql.SQL(
+                        """
+CREATE TABLE {catalog_table} (
+    table_name text
+)
+""",
+                    )
+                    .format(catalog_table=pfx.catalog_table.id)
+                    .as_string(),
+                )
+                cur.executemany(
+                    sql.SQL("INSERT INTO {catalog_table} VALUES ($1)")
+                    .format(
+                        catalog_table=pfx.catalog_table.id,
+                    )
+                    .as_string(),
+                    [(pfx.catalog_table_row(t),) for t in created_tables],
+                )
+
             conn.commit()
+
+        return created_tables
 
     def record_history(self, history: LoadHistory) -> None:
         with closing(self._conn_factory()) as conn, conn.cursor() as cur:
             cur.execute(
                 """
-INSERT INTO "ldlite_system"."load_history" VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9)
+INSERT INTO "ldlite_system"."load_history_v1" VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9)
 ON CONFLICT ("table_name") DO UPDATE SET
     "path" = EXCLUDED."path"
     ,"query" = EXCLUDED."query"

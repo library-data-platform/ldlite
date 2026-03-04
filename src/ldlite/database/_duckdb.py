@@ -94,7 +94,7 @@ CREATE OR REPLACE FUNCTION ldlite_system.jis_null(j) AS
 ;
 
 CREATE OR REPLACE FUNCTION ldlite_system.jexplode(j) AS TABLE (
-    SELECT value FROM main.json_each(j)
+    SELECT value as ld_value FROM main.json_each(j)
 );
 
 """,  # noqa: E501
@@ -120,7 +120,7 @@ CREATE OR REPLACE FUNCTION ldlite_system.jexplode(j) AS TABLE (
 
             insert_sql = (
                 sql.SQL("INSERT INTO {table} VALUES(?, ?);")
-                .format(table=pfx.schemafy(pfx.raw_table))
+                .format(table=pfx.raw_table.id)
                 .as_string()
             )
             # duckdb has better performance bulk inserting in a transaction

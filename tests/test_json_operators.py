@@ -159,11 +159,11 @@ def case_jexplode(p: tuple[Any, ...]) -> JsonTC:
         """
 {assertion}
 (
-    SELECT a.value FROM j, ldlite_system.jexplode(j.jc->$1) a
+    SELECT a.ld_value FROM j, ldlite_system.jexplode(j.jc->$1) a
     EXCEPT SELECT value::{jtype} FROM unnest($2::text[]) AS expect(value)
     UNION ALL
     SELECT value::{jtype} FROM unnest($2::text[]) AS expect(value)
-    EXCEPT SELECT a.value FROM j, ldlite_system.jexplode(j.jc->$1) a
+    EXCEPT SELECT a.ld_value FROM j, ldlite_system.jexplode(j.jc->$1) a
 )
 """,
         p,
