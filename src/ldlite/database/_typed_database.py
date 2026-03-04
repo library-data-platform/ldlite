@@ -79,7 +79,7 @@ CREATE TABLE IF NOT EXISTS "ldlite_system"."load_history_v1" (
         with closing(conn.cursor()) as cur:
             cur.execute(
                 sql.SQL("DROP TABLE IF EXISTS {table};")
-                .format(table=prefix.schemafy(prefix.raw_table))
+                .format(table=prefix.raw_table.id)
                 .as_string(),
             )
 
@@ -104,23 +104,23 @@ SELECT table_name FROM information_schema.tables
 WHERE table_schema = $1 and table_name IN ($2, $3);""",
                 (
                     prefix.schema or self._default_schema,
-                    prefix.catalog_table,
-                    prefix.legacy_jtable,
+                    prefix.catalog_table.name,
+                    prefix.legacy_jtable.name,
                 ),
             )
             for (tname,) in cur.fetchall():
-                if tname == prefix.catalog_table:
+                if tname == prefix.catalog_table.name:
                     cur.execute(
                         sql.SQL("SELECT table_name FROM {catalog};")
-                        .format(catalog=prefix.schemafy(prefix.catalog_table))
+                        .format(catalog=prefix.catalog_table.id)
                         .as_string(),
                     )
                     tables.extend(cur.fetchall())
 
-                if tname == prefix.legacy_jtable:
+                if tname == prefix.legacy_jtable.name:
                     cur.execute(
                         sql.SQL("SELECT table_name FROM {catalog};")
-                        .format(catalog=prefix.schemafy(prefix.legacy_jtable))
+                        .format(catalog=prefix.legacy_jtable.id)
                         .as_string(),
                     )
                     tables.extend(cur.fetchall())
@@ -134,12 +134,12 @@ WHERE table_schema = $1 and table_name IN ($2, $3);""",
                 )
             cur.execute(
                 sql.SQL("DROP TABLE IF EXISTS {catalog};")
-                .format(catalog=prefix.schemafy(prefix.catalog_table))
+                .format(catalog=prefix.catalog_table.id)
                 .as_string(),
             )
             cur.execute(
                 sql.SQL("DROP TABLE IF EXISTS {catalog};")
-                .format(catalog=prefix.schemafy(prefix.legacy_jtable))
+                .format(catalog=prefix.legacy_jtable.id)
                 .as_string(),
             )
 
@@ -162,7 +162,7 @@ WHERE table_schema = $1 and table_name IN ($2, $3);""",
         with closing(conn.cursor()) as cur:
             cur.execute(
                 self._create_raw_table_sql.format(
-                    table=prefix.schemafy(prefix.raw_table),
+                    table=prefix.raw_table.id,
                 ).as_string(),
             )
 
@@ -200,7 +200,7 @@ SELECT * from ld_source;
                     )
                     .format(
                         dest_table=pfx.origin_table,
-                        source_table=pfx.schemafy(pfx.raw_table),
+                        source_table=pfx.raw_table.id,
                     )
                     .as_string(),
                 )
@@ -231,16 +231,16 @@ CREATE TABLE {catalog_table} (
 )
 """,
                     )
-                    .format(catalog_table=pfx.schemafy(pfx.catalog_table))
+                    .format(catalog_table=pfx.catalog_table.id)
                     .as_string(),
                 )
                 cur.executemany(
                     sql.SQL("INSERT INTO {catalog_table} VALUES ($1)")
                     .format(
-                        catalog_table=pfx.schemafy(pfx.catalog_table),
+                        catalog_table=pfx.catalog_table.id,
                     )
                     .as_string(),
-                    [(t,) for t in created_tables],
+                    [(pfx.catalog_table_row(t),) for t in created_tables],
                 )
 
             conn.commit()

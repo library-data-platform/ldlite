@@ -174,7 +174,7 @@ PARALLEL SAFE;
                 cur.copy(
                     sql.SQL(
                         "COPY {table} (__id, jsonb) FROM STDIN (FORMAT BINARY)",
-                    ).format(table=pfx.schemafy(pfx.raw_table)),
+                    ).format(table=pfx.raw_table.id),
                 ) as copy,
             ):
                 # postgres jsonb is always version 1

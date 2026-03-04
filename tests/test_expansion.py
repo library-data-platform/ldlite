@@ -226,9 +226,9 @@ def case_basic_array() -> ExpansionTC:
             Assertion(
                 """SELECT * FROM tests.prefix__tcatalog ORDER BY table_name""",
                 expect=[
-                    ("prefix__t",),
-                    ("prefix__t__list1",),
-                    ("prefix__t__list2",),
+                    ("tests.prefix__t",),
+                    ("tests.prefix__t__list1",),
+                    ("tests.prefix__t__list2",),
                 ],
             ),
             Assertion(
@@ -312,8 +312,8 @@ def case_nested_arrays() -> ExpansionTC:
             Assertion(
                 """SELECT * FROM tests.prefix__tcatalog ORDER BY table_name""",
                 expect=[
-                    ("prefix__t",),
-                    ("prefix__t__sub",),
+                    ("tests.prefix__t",),
+                    ("tests.prefix__t__sub",),
                 ],
             ),
             Assertion(
@@ -377,7 +377,7 @@ def case_basic_object() -> ExpansionTC:
             Assertion(
                 """SELECT * FROM tests.prefix__tcatalog ORDER BY table_name""",
                 expect=[
-                    ("prefix__t",),
+                    ("tests.prefix__t",),
                 ],
             ),
             Assertion("SELECT id FROM tests.prefix__t WHERE __id = 1", "id1"),
@@ -441,7 +441,7 @@ def case_nested_objects() -> ExpansionTC:
             Assertion(
                 """SELECT * FROM tests.prefix__tcatalog ORDER BY table_name""",
                 expect=[
-                    ("prefix__t",),
+                    ("tests.prefix__t",),
                 ],
             ),
             Assertion("SELECT id FROM tests.prefix__t WHERE __id = 1", "id1"),
@@ -520,10 +520,10 @@ def case_json_depth() -> ExpansionTC:
             Assertion(
                 """SELECT * FROM tests.prefix__tcatalog ORDER BY table_name""",
                 expect=[
-                    ("prefix__t",),
-                    ("prefix__t__depth2_arr",),
-                    ("prefix__t__depth2_arr__depth3_arr",),
-                    ("prefix__t__depth2_obj__depth3_arr",),
+                    ("tests.prefix__t",),
+                    ("tests.prefix__t__depth2_arr",),
+                    ("tests.prefix__t__depth2_arr__depth3_arr",),
+                    ("tests.prefix__t__depth2_obj__depth3_arr",),
                 ],
             ),
             Assertion(

@@ -1,4 +1,11 @@
+from typing import NamedTuple
+
 from psycopg import sql
+
+
+class PrefixedTable(NamedTuple):
+    name: str
+    id: sql.Identifier
 
 
 class Prefix:
@@ -14,33 +21,34 @@ class Prefix:
         else:
             (self.schema, self._prefix) = sandt
 
-    def schemafy(self, table: str) -> sql.Identifier:
+    def _prefixed_table(self, name: str) -> PrefixedTable:
         if self.schema is None:
-            return sql.Identifier(table)
-        return sql.Identifier(self.schema, table)
+            return PrefixedTable(name, sql.Identifier(name))
+        return PrefixedTable(name, sql.Identifier(self.schema, name))
 
     @property
-    def raw_table(self) -> str:
-        return self._prefix
+    def raw_table(self) -> PrefixedTable:
+        return self._prefixed_table(self._prefix)
 
     @property
     def _output_table(self) -> str:
         return self._prefix + "__t"
 
-    def output_table(self, prefix: str) -> tuple[str, sql.Identifier]:
-        if len(prefix) == 0:
-            return (self._output_table, self.schemafy(self._output_table))
-
-        output_table = self._output_table + "__" + prefix
-        return (output_table, self.schemafy(output_table))
+    def output_table(self, prefix: str) -> PrefixedTable:
+        return self._prefixed_table(
+            self._output_table + ("" if len(prefix) == 0 else "__" + prefix),
+        )
 
     @property
-    def catalog_table(self) -> str:
-        return f"{self._prefix}__tcatalog"
+    def catalog_table(self) -> PrefixedTable:
+        return self._prefixed_table(self._prefix + "__tcatalog")
+
+    def catalog_table_row(self, created_table: str) -> str:
+        return ((self.schema + ".") if self.schema is not None else "") + created_table
 
     @property
-    def legacy_jtable(self) -> str:
-        return f"{self._prefix}_jtable"
+    def legacy_jtable(self) -> PrefixedTable:
+        return self._prefixed_table(self._prefix + "_jtable")
 
     @property
     def load_history_key(self) -> str:
