@@ -51,8 +51,6 @@ def case_one_table(json_depth: int) -> QueryTC:
             "prefix__tcatalog": (["table_name"], [("prefix__t",)]),
         },
         expected_indexes=[
-            ("prefix", "__id"),
-            ("prefix__t", "__id"),
             ("prefix__t", "id"),
         ],
     )
@@ -115,12 +113,8 @@ def case_two_tables(json_depth: int) -> QueryTC:
             ),
         },
         expected_indexes=[
-            ("prefix", "__id"),
-            ("prefix__t", "__id"),
             ("prefix__t", "id"),
-            ("prefix__t__sub_objects", "__id"),
             ("prefix__t__sub_objects", "id"),
-            ("prefix__t__sub_objects", "sub_objects__o"),
             ("prefix__t__sub_objects", "sub_objects__id"),
         ],
     )
@@ -267,21 +261,11 @@ def case_three_tables(json_depth: int) -> QueryTC:
             ),
         },
         expected_indexes=[
-            ("prefix", "__id"),
-            ("prefix__t", "__id"),
             ("prefix__t", "id"),
-            ("prefix__t__sub_objects", "__id"),
             ("prefix__t__sub_objects", "id"),
-            ("prefix__t__sub_objects", "sub_objects__o"),
             ("prefix__t__sub_objects", "sub_objects__id"),
-            ("prefix__t__sub_objects__sub_sub_objects", "__id"),
             ("prefix__t__sub_objects__sub_sub_objects", "id"),
-            ("prefix__t__sub_objects__sub_sub_objects", "sub_objects__o"),
             ("prefix__t__sub_objects__sub_sub_objects", "sub_objects__id"),
-            (
-                "prefix__t__sub_objects__sub_sub_objects",
-                "sub_objects__sub_sub_objects__o",
-            ),
             (
                 "prefix__t__sub_objects__sub_sub_objects",
                 "sub_objects__sub_sub_objects__id",
@@ -327,8 +311,6 @@ def case_nested_object() -> QueryTC:
             ),
         },
         expected_indexes=[
-            ("prefix", "__id"),
-            ("prefix__t", "__id"),
             ("prefix__t", "id"),
             ("prefix__t", "sub_object__id"),
         ],
@@ -383,8 +365,6 @@ def case_doubly_nested_object() -> QueryTC:
             ),
         },
         expected_indexes=[
-            ("prefix", "__id"),
-            ("prefix__t", "__id"),
             ("prefix__t", "id"),
             ("prefix__t", "sub_object__id"),
             ("prefix__t", "sub_object__sub_sub_object__id"),
@@ -632,8 +612,6 @@ def case_indexing_id_like() -> QueryTC:
         ],
         expected_values={},
         expected_indexes=[
-            ("prefix", "__id"),
-            ("prefix__t", "__id"),
             ("prefix__t", "id"),
             ("prefix__t", "other_id"),
             ("prefix__t", "an_id_but_with_a_different_ending"),
@@ -666,7 +644,6 @@ def case_drop_raw(json_depth: int) -> QueryTC:
             "prefix__tcatalog": (["table_name"], [("prefix__t",)]),
         },
         expected_indexes=[
-            ("prefix__t", "__id"),
             ("prefix__t", "id"),
         ],
     )
@@ -692,8 +669,6 @@ def case_null_records() -> QueryTC:
         expected_tables=["prefix", "prefix__t", "prefix__tcatalog"],
         expected_values={},
         expected_indexes=[
-            ("prefix", "__id"),
-            ("prefix__t", "__id"),
             ("prefix__t", "id"),
         ],
     )
@@ -727,8 +702,6 @@ def case_erm_keys() -> QueryTC:
             "prefix__tcatalog": (["table_name"], [("prefix__t",)]),
         },
         expected_indexes=[
-            ("prefix", "__id"),
-            ("prefix__t", "__id"),
             ("prefix__t", "id"),
         ],
     )
@@ -790,7 +763,7 @@ def _assert(
                 .as_string(),
             )
             for v in values:
-                assert cur.fetchone() == v
+                assert cur.fetchone() == v, str(v)
 
             assert cur.fetchone() is None
 
@@ -804,7 +777,32 @@ def _assert(
                 """,
                     exp,
                 )
-                assert cur.fetchone() == (0,)
+                assert cur.fetchone() == (0,), str(exp)
+
+        if tc.expected_indexes is not None:
+            for exp in tc.expected_indexes:
+                cur.execute(
+                    """
+                    SELECT * FROM pg_indexes
+                    WHERE tablename = $1 and indexdef LIKE $2;
+                    """,
+                    (exp[0], "%" + exp[1] + "%"),
+                )
+                assert cur.fetchone() is not None, str(exp)
+
+            indexed_tables = {exp[0] for exp in tc.expected_indexes}
+            where = ",".join([f"${n}" for n in range(1, len(indexed_tables) + 1)])
+            cur.execute(
+                f"""
+                    SELECT tablename, indexdef FROM pg_indexes
+                    WHERE tablename IN ({where})
+                    ORDER BY tablename;
+                    """,
+                list(indexed_tables),
+            )
+            actual_indexes = cur.fetchall()
+            expected_indexes = tc.expected_indexes
+            assert len(actual_indexes) == len(expected_indexes)
 
 
 @mock.patch("httpx_folio.auth.httpx.post")
