@@ -131,74 +131,83 @@ class ObjectNode(ExpansionNode):
             cur.execute(
                 sql.SQL(
                     """
+SELECT ldlite_system.jobject_keys(j) FROM (
+    SELECT {json_col} AS j
+    FROM {table}
+    WHERE NOT ldlite_system.jis_null({json_col})
+    LIMIT 1
+)
+""",
+                )
+                .format(table=source_table, json_col=self.identifier)
+                .as_string(),
+            )
+            props = [prop[0] for prop in cur.fetchall()]
+
+        for prop in props:
+            with conn.cursor() as cur:
+                cur.execute(
+                    sql.SQL(
+                        """
 WITH
-    one_object AS (
-        SELECT {json_col} AS json
-        FROM {table}
-        WHERE NOT ldlite_system.jis_null({json_col})
-        LIMIT 1
-    ),
-    props AS (SELECT ldlite_system.jobject_keys(json) AS prop FROM one_object),
     values AS (
-        SELECT
-            prop
-            ,ldlite_system.jextract({json_col}, prop) as ld_value
-        FROM {table}, props
+        SELECT ldlite_system.jextract({json_col}, $1) as ld_value
+        FROM {table}
     ),
     value_and_types AS (
         SELECT
-            prop
-            ,ldlite_system.jtype_of(ld_value) AS json_type
+            ldlite_system.jtype_of(ld_value) AS json_type
             ,ld_value
         FROM values
         WHERE NOT ldlite_system.jis_null(ld_value)
     ),
     array_values AS (
         SELECT
-            v.prop
-            ,ldlite_system.jtype_of(a.ld_value) AS json_type
-            ,v.ld_value
-        FROM value_and_types v, ldlite_system.jexplode(v.ld_value) a
+            ldlite_system.jtype_of(a.ld_value) AS json_type
+            ,a.ld_value
+        FROM value_and_types v
+        CROSS JOIN LATERAL (
+            SELECT s.ld_value
+            FROM ldlite_system.jexplode(v.ld_value) AS s
+            WHERE NOT ldlite_system.jis_null(s.ld_value)
+            LIMIT 3
+        ) a
         WHERE v.json_type = 'array'
     ),
     all_values AS (
         SELECT
-            prop
-            ,json_type
+            json_type
             ,ld_value
             ,FALSE AS is_array
         FROM value_and_types
         WHERE json_type <> 'array'
         UNION
         SELECT
-            prop
-            ,json_type
+            json_type
             ,ld_value
             ,TRUE AS is_array
         FROM array_values
         WHERE NOT ldlite_system.jis_null(ld_value)
     )
 SELECT
-    prop
-    ,STRING_AGG(DISTINCT json_type, '|') AS json_type
+    STRING_AGG(DISTINCT json_type, '|') AS json_type
     ,bool_and(is_array) AS is_array
     ,bool_and(ldlite_system.jis_uuid(ld_value)) AS is_uuid
     ,bool_and(ldlite_system.jis_datetime(ld_value)) AS is_datetime
     ,bool_and(ldlite_system.jis_float(ld_value)) AS is_float
 FROM all_values
-GROUP BY prop
+HAVING COUNT(*) > 0
 """,
+                    )
+                    .format(table=source_table, json_col=self.identifier)
+                    .as_string(),
+                    (prop,),
                 )
-                .format(table=source_table, json_col=self.identifier)
-                .as_string(),
-            )
-
-            create_columns.extend(
-                [
-                    row.select_column(self.identifier, self.add(row))
-                    for row in [Metadata(*r) for r in cur.fetchall()]
-                ],
-            )
+                if (row := cur.fetchone()) is not None:
+                    meta = Metadata(prop, *row)
+                    create_columns.append(
+                        meta.select_column(self.identifier, self.add(meta)),
+                    )
 
         with conn.cursor() as cur:
             cur.execute(
@@ -264,7 +273,7 @@ class ArrayNode(ExpansionNode):
             o_col = self.name + "__o"
             create_columns: list[sql.Composable] = [
                 sql.SQL(
-                    "(ROW_NUMBER() OVER (ORDER BY (SELECT NULL)))::integer AS __id"
+                    "(ROW_NUMBER() OVER (ORDER BY (SELECT NULL)))::integer AS __id",
                 ),
                 *[sql.Identifier(v) for v in self.carryover],
                 sql.SQL(
