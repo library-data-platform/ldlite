@@ -51,5 +51,9 @@ class Database(ABC):
         """Unnests and explodes the raw data at the given prefix."""
 
     @abstractmethod
+    def index_prefix(self, prefix: str) -> None:
+        """Finds and indexes all tables at the given prefix."""
+
+    @abstractmethod
     def record_history(self, history: LoadHistory) -> None:
         """Records the statistics and history of a single ldlite operation."""
