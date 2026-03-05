@@ -1,9 +1,10 @@
 # pyright: reportArgumentType=false
+from __future__ import annotations
+
 from abc import abstractmethod
-from collections.abc import Callable, Sequence
 from contextlib import closing
 from datetime import timezone
-from typing import TYPE_CHECKING, Any, Generic, TypeVar, cast
+from typing import TYPE_CHECKING, Any, Generic, NoReturn, TypeVar, cast
 from uuid import uuid4
 
 import psycopg
@@ -14,7 +15,10 @@ from ._expansion import ExpandContext, expand_nonmarc
 from ._prefix import Prefix
 
 if TYPE_CHECKING:
+    from collections.abc import Callable, Sequence
+
     import duckdb
+    from tqdm import tqdm
 
 
 DB = TypeVar("DB", bound="duckdb.DuckDBPyConnection | psycopg.Connection")
@@ -248,7 +252,7 @@ CREATE TABLE {catalog_table} (
 
         return created_tables
 
-    def index_prefix(self, prefix: str) -> None:
+    def index_prefix(self, prefix: str, progress: tqdm[NoReturn] | None = None) -> None:
         pfx = Prefix(prefix)
         with closing(self._conn_factory()) as conn:
             with closing(conn.cursor()) as cur:
@@ -285,6 +289,10 @@ WHERE
                 )
                 indexes = cur.fetchall()
 
+            if progress is not None:
+                progress.total = len(indexes)
+                progress.refresh()
+
             for index in indexes:
                 with closing(conn.cursor()) as cur:
                     cur.execute(
@@ -296,6 +304,8 @@ WHERE
                         )
                         .as_string(),
                     )
+                if progress is not None:
+                    progress.update(1)
 
             conn.commit()
 

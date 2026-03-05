@@ -355,8 +355,17 @@ class LDLite:
             if keep_raw:
                 newtables = [table, *newtables]
             transform_elapsed = datetime.now(timezone.utc) - transform_started
-            index_started = datetime.now(timezone.utc)
-            self._database.index_prefix(table)
+
+            with tqdm(
+                desc="indexing",
+                leave=False,
+                mininterval=5,
+                disable=self._quiet,
+                unit="ix",
+                delay=5,
+            ) as progress:
+                index_started = datetime.now(timezone.utc)
+                self._database.index_prefix(table, progress)
 
         else:
             try:
