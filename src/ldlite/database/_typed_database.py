@@ -16,6 +16,7 @@ from ._prefix import Prefix
 
 if TYPE_CHECKING:
     from collections.abc import Callable, Sequence
+    from typing import NoReturn
 
     import duckdb
     from tqdm import tqdm
@@ -184,7 +185,13 @@ WHERE table_schema = $1 and table_name IN ($2, $3);""",
     @abstractmethod
     def source_table_cte_stmt(self, keep_source: bool) -> str: ...
 
-    def expand_prefix(self, prefix: str, json_depth: int, keep_raw: bool) -> list[str]:
+    def expand_prefix(
+        self,
+        prefix: str,
+        json_depth: int,
+        keep_raw: bool,
+        progress: tqdm[NoReturn] | None = None,
+    ) -> list[str]:
         pfx = Prefix(prefix)
         with closing(self._conn_factory()) as conn:
             self._drop_extracted_tables(conn, pfx)
@@ -224,6 +231,7 @@ SELECT * from ld_source;
                     pfx.output_table,
                     self.preprocess_source_table,  # type: ignore [arg-type]
                     self.source_table_cte_stmt,
+                    progress,
                 ),
             )
 

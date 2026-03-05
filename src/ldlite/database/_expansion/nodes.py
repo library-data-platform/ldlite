@@ -7,9 +7,11 @@ from psycopg import sql
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
+    from typing import NoReturn
 
     import duckdb
     import psycopg
+    from tqdm import tqdm
 
 from .metadata import Metadata
 
@@ -121,6 +123,7 @@ class ObjectNode(ExpansionNode):
         source_table: sql.Identifier,
         dest_table: sql.Identifier,
         source_cte: str,
+        progress: tqdm[NoReturn] | None,
     ) -> None:
         self.unnested = True
         create_columns: list[sql.Composable] = [
@@ -143,6 +146,10 @@ SELECT ldlite_system.jobject_keys(j) FROM (
                 .as_string(),
             )
             props = [prop[0] for prop in cur.fetchall()]
+
+        prop_count = len(props)
+        if progress is not None:
+            progress.total += prop_count * 2
 
         for prop in props:
             with conn.cursor() as cur:
@@ -208,6 +215,11 @@ HAVING COUNT(*) > 0
                     create_columns.append(
                         meta.select_column(self.identifier, self.add(meta)),
                     )
+                    if progress is not None and meta.is_array:
+                        progress.total += 1
+
+                if progress is not None:
+                    progress.update(1)
 
         with conn.cursor() as cur:
             cur.execute(
@@ -229,6 +241,8 @@ FROM ld_source;
                 )
                 .as_string(),
             )
+            if progress is not None:
+                progress.update(prop_count)
 
     def _carryover(self) -> Iterator[str]:
         for n in self.root.descendents:
@@ -268,6 +282,7 @@ class ArrayNode(ExpansionNode):
         source_table: sql.Identifier,
         dest_table: sql.Identifier,
         source_cte: str,
+        progress: tqdm[NoReturn] | None,
     ) -> list[str]:
         with conn.cursor() as cur:
             o_col = self.name + "__o"
@@ -310,6 +325,8 @@ WHERE NOT ldlite_system.jis_null({json_col})
                 )
                 .as_string(),
             )
+            if progress is not None:
+                progress.update(1)
 
         return ["__id", *self.carryover, o_col]
 

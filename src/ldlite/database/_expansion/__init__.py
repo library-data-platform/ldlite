@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from collections import deque
 from dataclasses import dataclass
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, NoReturn
 
 from psycopg import sql
 
@@ -13,6 +13,7 @@ if TYPE_CHECKING:
 
     import duckdb
     import psycopg
+    from tqdm import tqdm
 
 
 @dataclass
@@ -34,6 +35,7 @@ class ExpandContext:
     ]
     # source_cte will go away when DuckDB implements CTAS RETURNING
     source_cte: Callable[[bool], str]
+    progress: tqdm[NoReturn] | None
 
     def array_context(
         self,
@@ -48,6 +50,7 @@ class ExpandContext:
             self.get_output_table,
             self.preprocess,
             self.source_cte,
+            self.progress,
         )
 
 
@@ -76,6 +79,7 @@ def _expand_nonmarc(
         ctx.source_table,
         ctx.get_transform_table(count),
         ctx.source_cte(False),
+        ctx.progress,
     )
 
     expand_children_of = deque([root])
@@ -92,6 +96,7 @@ def _expand_nonmarc(
                 ctx.get_transform_table(count),
                 ctx.get_transform_table(count + 1),
                 ctx.source_cte(False),
+                ctx.progress,
             )
             expand_children_of.append(c)
             count += 1
@@ -109,6 +114,7 @@ def _expand_nonmarc(
             new_source_table,
             ctx.get_transform_table(count + 1),
             ctx.source_cte(True),
+            ctx.progress,
         )
         count += 1
 

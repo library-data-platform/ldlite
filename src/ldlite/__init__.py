@@ -350,7 +350,21 @@ class LDLite:
 
         transform_started = datetime.now(timezone.utc)
         if not use_legacy_transform:
-            newtables = self._database.expand_prefix(table, json_depth, keep_raw)
+            with tqdm(
+                total=0,
+                desc="transforming",
+                leave=False,
+                mininterval=5,
+                disable=self._quiet,
+                unit="ops",
+                delay=5,
+            ) as progress:
+                newtables = self._database.expand_prefix(
+                    table,
+                    json_depth,
+                    keep_raw,
+                    progress,
+                )
             if keep_raw:
                 newtables = [table, *newtables]
             transform_elapsed = datetime.now(timezone.utc) - transform_started
