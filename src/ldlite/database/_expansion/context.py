@@ -32,7 +32,8 @@ class ExpandContext:
     # source_cte will go away when DuckDB implements CTAS RETURNING
     source_cte: Callable[[bool], str]
     tablesample: str
-    progress: tqdm[NoReturn] | None
+    scan_progress: tqdm[NoReturn]
+    transform_progress: tqdm[NoReturn]
 
     def array_context(
         self,
@@ -48,5 +49,6 @@ class ExpandContext:
             self.preprocess,
             self.source_cte,
             self.tablesample,
-            self.progress,
+            self.scan_progress,
+            self.transform_progress,
         )

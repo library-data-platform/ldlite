@@ -350,20 +350,33 @@ class LDLite:
 
         transform_started = datetime.now(timezone.utc)
         if not use_legacy_transform:
-            with tqdm(
-                total=0,
-                desc="transforming",
-                leave=False,
-                mininterval=5,
-                disable=self._quiet,
-                unit="ops",
-                delay=5,
-            ) as progress:
+            no_iters_format = (
+                "{l_bar}{bar}| {n_fmt}/{total_fmt} [{elapsed}<{remaining}]"
+            )
+            with (
+                tqdm(
+                    desc="scanning",
+                    leave=False,
+                    mininterval=5,
+                    disable=self._quiet,
+                    delay=5,
+                    bar_format=no_iters_format,
+                ) as scan_progress,
+                tqdm(
+                    desc="transforming",
+                    leave=False,
+                    mininterval=5,
+                    disable=self._quiet,
+                    delay=5,
+                    bar_format=no_iters_format,
+                ) as transform_progress,
+            ):
                 newtables = self._database.expand_prefix(
                     table,
                     json_depth,
                     keep_raw,
-                    progress,
+                    scan_progress,
+                    transform_progress,
                 )
             if keep_raw:
                 newtables = [table, *newtables]

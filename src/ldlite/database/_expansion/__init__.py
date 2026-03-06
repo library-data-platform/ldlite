@@ -29,15 +29,25 @@ def _expand_nonmarc(
     count: int,
     ctx: ExpandContext,
 ) -> tuple[int, list[str]]:
+    ctx.scan_progress.total = (ctx.scan_progress.total or 0) + 1
+    ctx.transform_progress.total = (ctx.transform_progress.total or 0) + 1
+    ctx.transform_progress.refresh()
     initial_count = count
     ctx.preprocess(ctx.conn, ctx.source_table, [root.identifier])
     root.unnest(
-        ctx, ctx.source_table, ctx.get_transform_table(count), ctx.source_cte(False)
+        ctx,
+        ctx.source_table,
+        ctx.get_transform_table(count),
+        ctx.source_cte(False),
     )
+    ctx.transform_progress.update(1)
 
     expand_children_of = deque([root])
     while expand_children_of:
         on = expand_children_of.popleft()
+        if ctx.transform_progress:
+            ctx.transform_progress.total += len(on.object_children)
+            ctx.transform_progress.refresh()
         for c in on.object_children:
             if len(c.parents) >= ctx.json_depth:
                 if c.parent is not None:
@@ -52,11 +62,14 @@ def _expand_nonmarc(
             )
             expand_children_of.append(c)
             count += 1
+            ctx.transform_progress.update(1)
 
     created_tables = []
 
     new_source_table = ctx.get_transform_table(count)
     arrays = root.descendents_oftype(ArrayNode)
+    ctx.transform_progress.total += len(arrays)
+    ctx.transform_progress.refresh()
     ctx.preprocess(ctx.conn, new_source_table, [a.identifier for a in arrays])
     for an in arrays:
         if len(an.parents) >= ctx.json_depth:
@@ -66,9 +79,9 @@ def _expand_nonmarc(
             new_source_table,
             ctx.get_transform_table(count + 1),
             ctx.source_cte(True),
-            ctx.progress,
         )
         count += 1
+        ctx.transform_progress.update(1)
 
         if an.meta.is_object:
             (sub_index, array_tables) = _expand_nonmarc(

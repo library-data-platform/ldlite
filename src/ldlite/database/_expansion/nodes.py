@@ -1,17 +1,16 @@
 from __future__ import annotations
 
 from collections import deque
+from math import floor
 from typing import TYPE_CHECKING, TypeVar, cast
 
 from psycopg import sql
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
-    from typing import NoReturn
 
     import duckdb
     import psycopg
-    from tqdm import tqdm
 
     from .context import ExpandContext
 
@@ -159,8 +158,8 @@ SELECT ldlite_system.jobject_keys(j) FROM (
             props = [prop[0] for prop in cur.fetchall()]
 
         prop_count = len(props)
-        if ctx.progress is not None:
-            ctx.progress.total += prop_count * 2
+        ctx.scan_progress.total += prop_count
+        ctx.scan_progress.update(1)
 
         for prop in props:
             with ctx.conn.cursor() as cur:
@@ -232,7 +231,7 @@ SELECT
                     .format(
                         table=source_table,
                         json_col=self.identifier,
-                        sample=sql.Literal(min(100, 100000 // total * 100)),
+                        sample=sql.Literal(min(100, floor((100000 / total) * 100))),
                     )
                     .as_string(),
                     (prop,),
@@ -244,11 +243,10 @@ SELECT
                     create_columns.append(
                         meta.select_column(self.identifier, self.add(meta)),
                     )
-                    if ctx.progress is not None and meta.is_array:
-                        ctx.progress.total += 1
+                    if meta.is_object:
+                        ctx.scan_progress.total += 1
 
-                if ctx.progress is not None:
-                    ctx.progress.update(1)
+                ctx.scan_progress.update(1)
 
         with ctx.conn.cursor() as cur:
             cur.execute(
@@ -270,8 +268,6 @@ FROM ld_source;
                 )
                 .as_string(),
             )
-            if ctx.progress is not None:
-                ctx.progress.update(prop_count)
 
     def _carryover(self) -> Iterator[str]:
         for n in self.root.descendents:
@@ -311,7 +307,6 @@ class ArrayNode(ExpansionNode):
         source_table: sql.Identifier,
         dest_table: sql.Identifier,
         source_cte: str,
-        progress: tqdm[NoReturn] | None,
     ) -> list[str]:
         with conn.cursor() as cur:
             o_col = self.name + "__o"
@@ -354,8 +349,6 @@ WHERE NOT ldlite_system.jis_null({json_col})
                 )
                 .as_string(),
             )
-            if progress is not None:
-                progress.update(1)
 
         return ["__id", *self.carryover, o_col]
 

@@ -9,6 +9,7 @@ from uuid import uuid4
 
 import psycopg
 from psycopg import sql
+from tqdm import tqdm
 
 from . import Database, LoadHistory
 from ._expansion import expand_nonmarc
@@ -20,7 +21,6 @@ if TYPE_CHECKING:
     from typing import NoReturn
 
     import duckdb
-    from tqdm import tqdm
 
 
 DB = TypeVar("DB", bound="duckdb.DuckDBPyConnection | psycopg.Connection")
@@ -195,7 +195,8 @@ WHERE table_schema = $1 and table_name IN ($2, $3);""",
         prefix: str,
         json_depth: int,
         keep_raw: bool,
-        progress: tqdm[NoReturn] | None = None,
+        scan_progress: tqdm[NoReturn] | None = None,
+        transform_progress: tqdm[NoReturn] | None = None,
     ) -> list[str]:
         pfx = Prefix(prefix)
         with closing(self._conn_factory()) as conn:
@@ -237,7 +238,10 @@ SELECT * from ld_source;
                     self.preprocess_source_table,  # type: ignore [arg-type]
                     self.source_table_cte_stmt,
                     self.tablesample,
-                    progress,
+                    scan_progress if scan_progress is not None else tqdm(disable=True),
+                    transform_progress
+                    if transform_progress is not None
+                    else tqdm(disable=True),
                 ),
             )
 

@@ -59,7 +59,8 @@ class Database(ABC):
         prefix: str,
         json_depth: int,
         keep_raw: bool,
-        progress: tqdm[NoReturn] | None = None,
+        scan_progress: tqdm[NoReturn] | None = None,
+        transform_progress: tqdm[NoReturn] | None = None,
     ) -> list[str]:
         """Unnests and explodes the raw data at the given prefix."""
 
