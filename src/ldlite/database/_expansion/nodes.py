@@ -197,20 +197,32 @@ WITH
         WHERE NOT ldlite_system.jis_null(ld_value)
     )
 SELECT
-    STRING_AGG(DISTINCT json_type, '|') AS json_type
-    ,bool_and(is_array) AS is_array
-    ,bool_and(json_type = 'string' AND ldlite_system.jis_uuid(ld_value)) AS is_uuid
-    ,bool_and(json_type = 'string' AND ldlite_system.jis_datetime(ld_value)) AS is_datetime
-    ,bool_and(json_type = 'number' AND ldlite_system.jis_float(ld_value)) AS is_float
-FROM all_values
-HAVING COUNT(*) > 0
-""",  # noqa: E501
+    (SELECT STRING_AGG(DISTINCT json_type, '|') FROM all_values) AS json_type
+    ,(SELECT BOOL_AND(is_array) FROM all_values) AS is_array
+    ,NOT EXISTS
+    (
+        SELECT 1 FROM all_values
+        WHERE json_type = 'string' AND NOT ldlite_system.jis_uuid(ld_value)
+    ) AS is_uuid
+    ,NOT EXISTS
+    (
+        SELECT 1 FROM all_values
+        WHERE json_type = 'string' AND NOT ldlite_system.jis_datetime(ld_value)
+    ) AS is_datetime
+    ,NOT EXISTS
+    (
+        SELECT 1 FROM all_values
+        WHERE json_type = 'number' AND NOT ldlite_system.jis_float(ld_value)
+    ) AS is_float
+""",
                     )
                     .format(table=source_table, json_col=self.identifier)
                     .as_string(),
                     (prop,),
                 )
-                if (row := cur.fetchone()) is not None:
+                if (row := cur.fetchone()) is not None and all(
+                    c is not None for c in row
+                ):
                     meta = Metadata(prop, *row)
                     create_columns.append(
                         meta.select_column(self.identifier, self.add(meta)),
