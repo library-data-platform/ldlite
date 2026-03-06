@@ -105,153 +105,28 @@ IMMUTABLE
 PARALLEL SAFE;
 
 CREATE OR REPLACE FUNCTION ldlite_system.jis_uuid(j JSONB) RETURNS BOOLEAN AS $$
-SELECT
-    CASE
-        WHEN jsonb_typeof(j) = 'string' THEN
-        (
-            WITH v AS (SELECT $1 #>> '{}' AS s)
-            SELECT
-                LENGTH(s) = 36
-                -- Hyphens at canonical positions: 9,14,19,24
-                AND substr(s,  9,1) = '-'
-                AND substr(s, 14,1) = '-'
-                AND substr(s, 19,1) = '-'
-                AND substr(s, 24,1) = '-'
-
-                -- Version M at pos 15 must be 1..5
-                AND substr(s, 15,1) BETWEEN '1' AND '5'
-
-                -- Variant N at pos 20 must be 8,9,a,b,A,B
-                AND substr(s, 20,1) IN ('8','9','a','b','A','B')
-
-                -- All other non-hyphen characters must be hex [0-9a-fA-F]
-                AND (
-                -- positions 1..8
-                    (substr(s,  1,1) BETWEEN '0' AND '9' OR substr(s,  1,1) BETWEEN 'a' AND 'f' OR substr(s,  1,1) BETWEEN 'A' AND 'F') AND
-                    (substr(s,  2,1) BETWEEN '0' AND '9' OR substr(s,  2,1) BETWEEN 'a' AND 'f' OR substr(s,  2,1) BETWEEN 'A' AND 'F') AND
-                    (substr(s,  3,1) BETWEEN '0' AND '9' OR substr(s,  3,1) BETWEEN 'a' AND 'f' OR substr(s,  3,1) BETWEEN 'A' AND 'F') AND
-                    (substr(s,  4,1) BETWEEN '0' AND '9' OR substr(s,  4,1) BETWEEN 'a' AND 'f' OR substr(s,  4,1) BETWEEN 'A' AND 'F') AND
-                    (substr(s,  5,1) BETWEEN '0' AND '9' OR substr(s,  5,1) BETWEEN 'a' AND 'f' OR substr(s,  5,1) BETWEEN 'A' AND 'F') AND
-                    (substr(s,  6,1) BETWEEN '0' AND '9' OR substr(s,  6,1) BETWEEN 'a' AND 'f' OR substr(s,  6,1) BETWEEN 'A' AND 'F') AND
-                    (substr(s,  7,1) BETWEEN '0' AND '9' OR substr(s,  7,1) BETWEEN 'a' AND 'f' OR substr(s,  7,1) BETWEEN 'A' AND 'F') AND
-                    (substr(s,  8,1) BETWEEN '0' AND '9' OR substr(s,  8,1) BETWEEN 'a' AND 'f' OR substr(s,  8,1) BETWEEN 'A' AND 'F') AND
-
-                    -- positions 10..13
-                    (substr(s, 10,1) BETWEEN '0' AND '9' OR substr(s, 10,1) BETWEEN 'a' AND 'f' OR substr(s, 10,1) BETWEEN 'A' AND 'F') AND
-                    (substr(s, 11,1) BETWEEN '0' AND '9' OR substr(s, 11,1) BETWEEN 'a' AND 'f' OR substr(s, 11,1) BETWEEN 'A' AND 'F') AND
-                    (substr(s, 12,1) BETWEEN '0' AND '9' OR substr(s, 12,1) BETWEEN 'a' AND 'f' OR substr(s, 12,1) BETWEEN 'A' AND 'F') AND
-                    (substr(s, 13,1) BETWEEN '0' AND '9' OR substr(s, 13,1) BETWEEN 'a' AND 'f' OR substr(s, 13,1) BETWEEN 'A' AND 'F') AND
-
-                    -- positions 16..18 (pos 15 is version, already checked)
-                    (substr(s, 16,1) BETWEEN '0' AND '9' OR substr(s, 16,1) BETWEEN 'a' AND 'f' OR substr(s, 16,1) BETWEEN 'A' AND 'F') AND
-                    (substr(s, 17,1) BETWEEN '0' AND '9' OR substr(s, 17,1) BETWEEN 'a' AND 'f' OR substr(s, 17,1) BETWEEN 'A' AND 'F') AND
-                    (substr(s, 18,1) BETWEEN '0' AND '9' OR substr(s, 18,1) BETWEEN 'a' AND 'f' OR substr(s, 18,1) BETWEEN 'A' AND 'F') AND
-
-                    -- positions 21..23 (pos 20 is variant, already checked)
-                    (substr(s, 21,1) BETWEEN '0' AND '9' OR substr(s, 21,1) BETWEEN 'a' AND 'f' OR substr(s, 21,1) BETWEEN 'A' AND 'F') AND
-                    (substr(s, 22,1) BETWEEN '0' AND '9' OR substr(s, 22,1) BETWEEN 'a' AND 'f' OR substr(s, 22,1) BETWEEN 'A' AND 'F') AND
-                    (substr(s, 23,1) BETWEEN '0' AND '9' OR substr(s, 23,1) BETWEEN 'a' AND 'f' OR substr(s, 23,1) BETWEEN 'A' AND 'F') AND
-
-                    -- positions 25..36
-                    (substr(s, 25,1) BETWEEN '0' AND '9' OR substr(s, 25,1) BETWEEN 'a' AND 'f' OR substr(s, 25,1) BETWEEN 'A' AND 'F') AND
-                    (substr(s, 26,1) BETWEEN '0' AND '9' OR substr(s, 26,1) BETWEEN 'a' AND 'f' OR substr(s, 26,1) BETWEEN 'A' AND 'F') AND
-                    (substr(s, 27,1) BETWEEN '0' AND '9' OR substr(s, 27,1) BETWEEN 'a' AND 'f' OR substr(s, 27,1) BETWEEN 'A' AND 'F') AND
-                    (substr(s, 28,1) BETWEEN '0' AND '9' OR substr(s, 28,1) BETWEEN 'a' AND 'f' OR substr(s, 28,1) BETWEEN 'A' AND 'F') AND
-                    (substr(s, 29,1) BETWEEN '0' AND '9' OR substr(s, 29,1) BETWEEN 'a' AND 'f' OR substr(s, 29,1) BETWEEN 'A' AND 'F') AND
-                    (substr(s, 30,1) BETWEEN '0' AND '9' OR substr(s, 30,1) BETWEEN 'a' AND 'f' OR substr(s, 30,1) BETWEEN 'A' AND 'F') AND
-                    (substr(s, 31,1) BETWEEN '0' AND '9' OR substr(s, 31,1) BETWEEN 'a' AND 'f' OR substr(s, 31,1) BETWEEN 'A' AND 'F') AND
-                    (substr(s, 32,1) BETWEEN '0' AND '9' OR substr(s, 32,1) BETWEEN 'a' AND 'f' OR substr(s, 32,1) BETWEEN 'A' AND 'F') AND
-                    (substr(s, 33,1) BETWEEN '0' AND '9' OR substr(s, 33,1) BETWEEN 'a' AND 'f' OR substr(s, 33,1) BETWEEN 'A' AND 'F') AND
-                    (substr(s, 34,1) BETWEEN '0' AND '9' OR substr(s, 34,1) BETWEEN 'a' AND 'f' OR substr(s, 34,1) BETWEEN 'A' AND 'F') AND
-                    (substr(s, 35,1) BETWEEN '0' AND '9' OR substr(s, 35,1) BETWEEN 'a' AND 'f' OR substr(s, 35,1) BETWEEN 'A' AND 'F') AND
-                    (substr(s, 36,1) BETWEEN '0' AND '9' OR substr(s, 36,1) BETWEEN 'a' AND 'f' OR substr(s, 36,1) BETWEEN 'A' AND 'F')
-                )
-            FROM v
-        )
-        ELSE FALSE
-    END;
+SELECT j::text ~* '^"[a-f0-9]{8}-[a-f0-9]{4}-[1-5][a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}"$';
 $$
 LANGUAGE sql
 IMMUTABLE
-PARALLEL SAFE;
+PARALLEL SAFE
+STRICT;
 
 CREATE OR REPLACE FUNCTION ldlite_system.jis_datetime(j JSONB) RETURNS BOOLEAN AS $$
-SELECT
-    CASE
-        WHEN jsonb_typeof(j) = 'string' THEN
-        (
-            WITH v AS (SELECT $1 #>> '{}' AS s)
-            SELECT
-                -- Length must be exactly 29 characters
-                length(s) = 29
-
-                -- Fixed punctuation positions
-                AND substr(s, 5, 1)  = '-'
-                AND substr(s, 8, 1)  = '-'
-                AND substr(s, 11, 1) = 'T'
-                AND substr(s, 14, 1) = ':'
-                AND substr(s, 17, 1) = ':'
-                AND substr(s, 20, 1) = '.'
-                AND substr(s, 24, 1) = '+'
-                AND substr(s, 27, 1) = ':'
-
-                -- YYYY
-                AND substr(s, 1, 1) BETWEEN '0' AND '9'
-                AND substr(s, 2, 1) BETWEEN '0' AND '9'
-                AND substr(s, 3, 1) BETWEEN '0' AND '9'
-                AND substr(s, 4, 1) BETWEEN '0' AND '9'
-
-                -- MM
-                AND substr(s, 6, 1) BETWEEN '0' AND '9'
-                AND substr(s, 7, 1) BETWEEN '0' AND '9'
-
-                -- DD
-                AND substr(s, 9, 1) BETWEEN '0' AND '9'
-                AND substr(s, 10, 1) BETWEEN '0' AND '9'
-
-                -- HH
-                AND substr(s, 12, 1) BETWEEN '0' AND '9'
-                AND substr(s, 13, 1) BETWEEN '0' AND '9'
-
-                -- mm
-                AND substr(s, 15, 1) BETWEEN '0' AND '9'
-                AND substr(s, 16, 1) BETWEEN '0' AND '9'
-
-                -- SS
-                AND substr(s, 18, 1) BETWEEN '0' AND '9'
-                AND substr(s, 19, 1) BETWEEN '0' AND '9'
-
-                -- mmm
-                AND substr(s, 21, 1) BETWEEN '0' AND '9'
-                AND substr(s, 22, 1) BETWEEN '0' AND '9'
-                AND substr(s, 23, 1) BETWEEN '0' AND '9'
-
-                -- Timezone HH
-                AND substr(s, 25, 1) BETWEEN '0' AND '9'
-                AND substr(s, 26, 1) BETWEEN '0' AND '9'
-
-                -- Timezone MM
-                AND substr(s, 28, 1) BETWEEN '0' AND '9'
-                AND substr(s, 29, 1) BETWEEN '0' AND '9'
-            FROM v
-        )
-        ELSE FALSE
-    END;
+SELECT j::text ~ '^"\d{4}-[01]\d-[0123]\dT[012]\d:[012345]\d:[012345]\d\.\d{3}(\+\d{2}:\d{2})?"$'
 $$
 LANGUAGE sql
 IMMUTABLE
-PARALLEL SAFE;
+PARALLEL SAFE
+STRICT;
 
 CREATE OR REPLACE FUNCTION ldlite_system.jis_float(j JSONB) RETURNS BOOLEAN AS $$
-SELECT
-    CASE
-        WHEN jsonb_typeof(j) = 'number' THEN scale((j)::numeric) > 0
-        ELSE FALSE
-    END;
+SELECT SCALE((j)::numeric) > 0
 $$
 LANGUAGE sql
 IMMUTABLE
-PARALLEL SAFE;
+PARALLEL SAFE
+STRICT;
 
 CREATE OR REPLACE FUNCTION ldlite_system.jis_null(j JSONB) RETURNS BOOLEAN AS $$
 SELECT COALESCE(j = 'null'::jsonb, TRUE);

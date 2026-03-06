@@ -199,12 +199,12 @@ WITH
 SELECT
     STRING_AGG(DISTINCT json_type, '|') AS json_type
     ,bool_and(is_array) AS is_array
-    ,bool_and(ldlite_system.jis_uuid(ld_value)) AS is_uuid
-    ,bool_and(ldlite_system.jis_datetime(ld_value)) AS is_datetime
-    ,bool_and(ldlite_system.jis_float(ld_value)) AS is_float
+    ,bool_and(json_type = 'string' AND ldlite_system.jis_uuid(ld_value)) AS is_uuid
+    ,bool_and(json_type = 'string' AND ldlite_system.jis_datetime(ld_value)) AS is_datetime
+    ,bool_and(json_type = 'number' AND ldlite_system.jis_float(ld_value)) AS is_float
 FROM all_values
 HAVING COUNT(*) > 0
-""",
+""",  # noqa: E501
                     )
                     .format(table=source_table, json_col=self.identifier)
                     .as_string(),
