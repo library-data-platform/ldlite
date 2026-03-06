@@ -168,7 +168,7 @@ SELECT ldlite_system.jobject_keys(j) FROM (
                         """
 WITH
     values AS (
-        SELECT ldlite_system.jextract({json_col}, $1) as ld_value
+        SELECT {json_col}->$1 as ld_value
         FROM {table} """  # noqa: S608
                         + ctx.tablesample
                         + """
@@ -258,12 +258,14 @@ CREATE TEMP TABLE {dest_table} ON COMMIT DROP AS
                     + """
 SELECT
     {cols}
-FROM ld_source;
+FROM ld_source
+WHERE NOT ldlite_system.jis_null({json_col})
 """,
                 )
                 .format(
                     source_table=source_table,
                     dest_table=dest_table,
+                    json_col=self.identifier,
                     cols=sql.SQL("\n    ,").join(create_columns),
                 )
                 .as_string(),
@@ -275,7 +277,7 @@ FROM ld_source;
                 yield n.name
             else:
                 yield n.name
-            yield from n.values
+            yield from [v for v in n.values if v != "jsonb"]
 
     @property
     def carryover(self) -> list[str]:
@@ -354,7 +356,7 @@ WHERE NOT ldlite_system.jis_null({json_col})
 
     def _carryover(self) -> Iterator[str]:
         for n in reversed(self.parents):
-            yield from [v for v in n.values if v != "__id"]
+            yield from [v for v in n.values if v not in ("__id", "jsonb")]
 
     @property
     def carryover(self) -> list[str]:

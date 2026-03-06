@@ -41,62 +41,33 @@ CREATE OR REPLACE FUNCTION ldlite_system.jtype_of(j) AS
     END
 ;
 
-CREATE OR REPLACE FUNCTION ldlite_system.jextract(j, p) AS
-    CASE ldlite_system.jtype_of(main.json_extract(j, p))
-        WHEN 'string' THEN
-            CASE
-                WHEN lower(main.json_extract_string(j, p)) = 'null' THEN 'null'::JSON
-                WHEN length(main.json_extract_string(j, p)) = 0 THEN 'null'::JSON
-                ELSE main.json_extract(j, p)
-            END
-        WHEN 'object' THEN
-            CASE
-                WHEN main.json_extract_string(j, p) = '{}' THEN 'null'::JSON
-                ELSE main.json_extract(j, p)
-            END
-        WHEN 'array' THEN
-            CASE
-                WHEN length(list_filter((main.json_extract(j, p))::JSON[], lambda x : x != 'null'::JSON)) = 0 THEN 'null'::JSON
-                ELSE list_filter((main.json_extract(j, p))::JSON[], lambda x : x != 'null'::JSON)
-            END
-        ELSE coalesce(main.json_extract(j, p), 'null'::JSON)
-    END
-;
-
-CREATE OR REPLACE FUNCTION ldlite_system.jextract_string(j, p) AS
-    main.json_extract_string(ldlite_system.jextract(j, p), '$')
-;
-
 CREATE OR REPLACE FUNCTION ldlite_system.jobject_keys(j) AS
     unnest(main.json_keys(j))
 ;
 
 CREATE OR REPLACE FUNCTION ldlite_system.jis_uuid(j) AS
-    CASE ldlite_system.jtype_of(j)
-        WHEN 'string' THEN regexp_full_match(main.json_extract_string(j, '$'), '^[a-fA-F0-9]{8}-[a-fA-F0-9]{4}-[1-5][a-fA-F0-9]{3}-[89abAB][a-fA-F0-9]{3}-[a-fA-F0-9]{12}$')
-        ELSE FALSE
-    END
+    regexp_full_match(main.json_extract_string(j, '$'), '(?i)^[a-f0-9]{8}-[a-f0-9]{4}-[1-5][a-f0-9]{3}-[89abAB][a-f0-9]{3}-[a-f0-9]{12}$')
 ;
 
 CREATE OR REPLACE FUNCTION ldlite_system.jis_datetime(j) AS
-    CASE ldlite_system.jtype_of(j)
-        WHEN 'string' THEN regexp_full_match(main.json_extract_string(j, '$'), '^\d{4}-[01]\d-[0123]\dT[012]\d:[012345]\d:[012345]\d\.\d{3}(\+\d{2}:\d{2})?$')
-        ELSE FALSE
-    END
+    regexp_full_match(main.json_extract_string(j, '$'), '^\d{4}-[01]\d-[0123]\dT[012]\d:[012345]\d:[012345]\d\.\d{3}(\+\d{2}:\d{2})?$')
 ;
 
 CREATE OR REPLACE FUNCTION ldlite_system.jis_float(j) AS
-    coalesce(main.json_type(j), 'NULL') == 'DOUBLE'
+    main.json_type(j) == 'DOUBLE'
 ;
 
 CREATE OR REPLACE FUNCTION ldlite_system.jis_null(j) AS
-    j is NULL or j == 'null'::JSON
+    j IS NULL OR j == 'null'::JSON OR main.json_extract_string(j, '$') IN ('NULL', 'null', '', '{}', '[]')
 ;
 
 CREATE OR REPLACE FUNCTION ldlite_system.jexplode(j) AS TABLE (
     SELECT value as ld_value FROM main.json_each(j)
 );
 
+CREATE OR REPLACE FUNCTION ldlite_system.jself_string(j) AS
+    main.json_extract_string(j, '$')
+;
 """,  # noqa: E501
             )
 

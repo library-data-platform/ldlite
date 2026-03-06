@@ -40,26 +40,44 @@ class Metadata:
         json_col: sql.Identifier,
         alias: str,
     ) -> sql.Composed:
+        # '$' is a special character that means the root of the json
+        # I couldn't figure out how to make the array expansion work
+        # without it
         if self.is_array or self.is_object:
             stmt = sql.SQL(
-                "(ldlite_system.jextract({json_col}, {prop})) AS {alias}",
+                "{json_col}->{prop} AS {alias}"
+                if self.prop != "$"
+                else "{json_col} AS {alias}",
             )
         elif self.json_type == "number":
             stmt = sql.SQL(
-                "(ldlite_system.jextract_string({json_col}, {prop}))"
-                "::numeric AS {alias}",
+                "({json_col}->>{prop})::numeric AS {alias}"
+                if self.prop != "$"
+                else "ldlite_system.jself_string({json_col})::numeric AS {alias}",
             )
         elif self.json_type == "boolean":
             stmt = sql.SQL(
-                "(ldlite_system.jextract_string({json_col}, {prop}))::bool AS {alias}",
+                "NULLIF(NULLIF({json_col}->>{prop}, ''), 'null')::bool AS {alias}"
+                if self.prop != "$"
+                else "NULLIF(NULLIF("
+                "ldlite_system.jself_string({json_col})"
+                ", ''), 'null')::bool AS {alias}",
             )
         elif self.json_type == "string" and self.is_uuid:
             stmt = sql.SQL(
-                "(ldlite_system.jextract_string({json_col}, {prop}))::uuid AS {alias}",
+                "NULLIF(NULLIF({json_col}->>{prop}, ''), 'null')::uuid AS {alias}"
+                if self.prop != "$"
+                else "NULLIF(NULLIF("
+                "ldlite_system.jself_string({json_col})"
+                ", ''), 'null')::uuid AS {alias}",
             )
         else:
             stmt = sql.SQL(
-                "(ldlite_system.jextract_string({json_col}, {prop})) AS {alias}",
+                "NULLIF(NULLIF({json_col}->>{prop}, ''), 'null') AS {alias}"
+                if self.prop != "$"
+                else "NULLIF(NULLIF("
+                "ldlite_system.jself_string({json_col})"
+                ", ''), 'null') AS {alias}",
             )
 
         return stmt.format(

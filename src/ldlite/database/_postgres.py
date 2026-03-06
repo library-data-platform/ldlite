@@ -41,62 +41,6 @@ LANGUAGE sql
 IMMUTABLE
 PARALLEL SAFE;
 
-CREATE OR REPLACE FUNCTION ldlite_system.jextract(j JSONB, p TEXT) RETURNS JSONB AS $$
-SELECT
-    CASE jsonb_typeof(val)
-        WHEN 'string' THEN
-            CASE
-                WHEN lower(val #>> '{}') IN ('null', '') THEN 'null'::jsonb
-                ELSE val
-            END
-        WHEN 'array' THEN
-            CASE
-                WHEN jsonb_array_length(val) = 0 THEN 'null'::jsonb
-                WHEN NOT EXISTS (
-                    SELECT 1
-                    FROM jsonb_array_elements(val) AS e(elem)
-                    WHERE elem = 'null'::jsonb
-                    LIMIT 1
-                ) THEN val
-                ELSE COALESCE(
-                    (
-                        SELECT jsonb_agg(e)
-                        FROM jsonb_array_elements(val) AS a(e)
-                        WHERE e <> 'null'::jsonb
-                    ),
-                    'null'::jsonb
-                )
-            END
-        WHEN 'object' THEN
-            CASE
-                WHEN val = '{}'::jsonb THEN 'null'::jsonb
-                ELSE val
-            END
-        ELSE val
-    END
-FROM (
-    -- This is somewhat of a hack.
-    -- There isn't a really good way to get the element unchanged
-    -- which works for duckdb and postgres AND CRUCIALLY
-    -- has a similar syntax to everything else so that we don't
-    -- have to have special cases for exploding the array and it
-    -- can share all the same type checking / statement generation code.
-    -- We're pretending that postgres supports -> '$' style syntax like duckdb.
-    SELECT CASE WHEN p = '$' THEN j ELSE j->p END AS val
-) s;
-$$
-LANGUAGE sql
-IMMUTABLE
-PARALLEL SAFE
-STRICT;
-
-CREATE OR REPLACE FUNCTION ldlite_system.jextract_string(j JSONB, p TEXT) RETURNS TEXT AS $$
-SELECT ldlite_system.jextract(j, p) #>> '{}'
-$$
-LANGUAGE sql
-IMMUTABLE
-PARALLEL SAFE;
-
 CREATE OR REPLACE FUNCTION ldlite_system.jobject_keys(j JSONB) RETURNS SETOF TEXT AS $$
 SELECT jsonb_object_keys(j);
 $$
@@ -129,7 +73,7 @@ PARALLEL SAFE
 STRICT;
 
 CREATE OR REPLACE FUNCTION ldlite_system.jis_null(j JSONB) RETURNS BOOLEAN AS $$
-SELECT COALESCE(j = 'null'::jsonb, TRUE);
+SELECT j IS NULL OR j = 'null'::jsonb OR j #>> '{}' IN ('NULL', 'null', '', '{}', '[]')
 $$
 LANGUAGE sql
 IMMUTABLE
@@ -137,6 +81,14 @@ PARALLEL SAFE;
 
 CREATE OR REPLACE FUNCTION ldlite_system.jexplode(j JSONB) RETURNS TABLE (ld_value JSONB) AS $$
 SELECT * FROM jsonb_array_elements(j);
+$$
+LANGUAGE sql
+IMMUTABLE
+PARALLEL SAFE;
+
+
+CREATE OR REPLACE FUNCTION ldlite_system.jself_string(j JSONB) RETURNS TEXT AS $$
+SELECT j #>> '{}'
 $$
 LANGUAGE sql
 IMMUTABLE
