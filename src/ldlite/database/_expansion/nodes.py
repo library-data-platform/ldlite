@@ -144,15 +144,34 @@ class ObjectNode(ExpansionNode):
             cur.execute(
                 sql.SQL(
                     """
-SELECT ldlite_system.jobject_keys(j) FROM (
-    SELECT {json_col} AS j
-    FROM {table}
-    WHERE NOT ldlite_system.jis_null({json_col})
-    LIMIT 1
-)
+WITH
+    all_objects AS (
+        SELECT {json_col} AS j
+        FROM {source_table}
+        WHERE NOT ldlite_system.jis_null({json_col})
+    ),
+    first_object AS (
+        SELECT * FROM all_objects
+        LIMIT 1
+    ),
+    first_keys AS (
+        SELECT ldlite_system.jobject_keys(j) AS k
+        FROM first_object
+    ),
+    ordered_first_keys AS (
+        SELECT (ROW_NUMBER() OVER (ORDER BY (SELECT NULL))) AS idx, k
+        FROM first_keys
+    ), all_keys AS (
+        SELECT DISTINCT ldlite_system.jobject_keys(j) k
+        FROM all_objects
+    )
+SELECT ak.k
+FROM all_keys ak
+LEFT JOIN ordered_first_keys ofk ON ak.k = ofk.k
+ORDER BY ofk.idx NULLS LAST
 """,
                 )
-                .format(table=source_table, json_col=self.identifier)
+                .format(source_table=source_table, json_col=self.identifier)
                 .as_string(),
             )
             props = [prop[0] for prop in cur.fetchall()]
