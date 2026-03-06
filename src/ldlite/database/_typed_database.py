@@ -11,7 +11,8 @@ import psycopg
 from psycopg import sql
 
 from . import Database, LoadHistory
-from ._expansion import ExpandContext, expand_nonmarc
+from ._expansion import expand_nonmarc
+from ._expansion.context import ExpandContext
 from ._prefix import Prefix
 
 if TYPE_CHECKING:
@@ -185,6 +186,10 @@ WHERE table_schema = $1 and table_name IN ($2, $3);""",
     @abstractmethod
     def source_table_cte_stmt(self, keep_source: bool) -> str: ...
 
+    @property
+    @abstractmethod
+    def tablesample(self) -> str: ...
+
     def expand_prefix(
         self,
         prefix: str,
@@ -231,6 +236,7 @@ SELECT * from ld_source;
                     pfx.output_table,
                     self.preprocess_source_table,  # type: ignore [arg-type]
                     self.source_table_cte_stmt,
+                    self.tablesample,
                     progress,
                 ),
             )

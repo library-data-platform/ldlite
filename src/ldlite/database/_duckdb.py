@@ -134,6 +134,10 @@ CREATE OR REPLACE FUNCTION ldlite_system.jexplode(j) AS TABLE (
     def source_table_cte_stmt(self, keep_source: bool) -> str:  # noqa: ARG002
         return "WITH ld_source AS (SELECT * FROM {source_table})"
 
+    @property
+    def tablesample(self) -> str:
+        return "USING SAMPLE {sample} PERCENT (bernoulli)"
+
 
 # DuckDB has some strong opinions about cursors that are different than postgres
 # https://github.com/duckdb/duckdb/issues/11018

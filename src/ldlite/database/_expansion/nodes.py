@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from collections import deque
-from typing import TYPE_CHECKING, TypeVar
+from typing import TYPE_CHECKING, TypeVar, cast
 
 from psycopg import sql
 
@@ -12,6 +12,8 @@ if TYPE_CHECKING:
     import duckdb
     import psycopg
     from tqdm import tqdm
+
+    from .context import ExpandContext
 
 from .metadata import Metadata
 
@@ -119,18 +121,27 @@ class ObjectNode(ExpansionNode):
 
     def unnest(
         self,
-        conn: duckdb.DuckDBPyConnection | psycopg.Connection,
+        ctx: ExpandContext,
         source_table: sql.Identifier,
         dest_table: sql.Identifier,
         source_cte: str,
-        progress: tqdm[NoReturn] | None,
     ) -> None:
         self.unnested = True
         create_columns: list[sql.Composable] = [
             sql.Identifier(v) for v in self.carryover
         ]
 
-        with conn.cursor() as cur:
+        with ctx.conn.cursor() as cur:
+            cur.execute(
+                sql.SQL("SELECT COUNT(*) FROM {table}")
+                .format(table=source_table)
+                .as_string(),
+            )
+            total = cast("tuple[int]", cur.fetchone())[0]
+            if total == 0:
+                return
+
+        with ctx.conn.cursor() as cur:
             cur.execute(
                 sql.SQL(
                     """
@@ -148,18 +159,20 @@ SELECT ldlite_system.jobject_keys(j) FROM (
             props = [prop[0] for prop in cur.fetchall()]
 
         prop_count = len(props)
-        if progress is not None:
-            progress.total += prop_count * 2
+        if ctx.progress is not None:
+            ctx.progress.total += prop_count * 2
 
         for prop in props:
-            with conn.cursor() as cur:
+            with ctx.conn.cursor() as cur:
                 cur.execute(
                     sql.SQL(
                         """
 WITH
     values AS (
         SELECT ldlite_system.jextract({json_col}, $1) as ld_value
-        FROM {table}
+        FROM {table} """  # noqa: S608
+                        + ctx.tablesample
+                        + """
     ),
     value_and_types AS (
         SELECT
@@ -216,7 +229,11 @@ SELECT
     ) AS is_float
 """,
                     )
-                    .format(table=source_table, json_col=self.identifier)
+                    .format(
+                        table=source_table,
+                        json_col=self.identifier,
+                        sample=sql.Literal(min(100, 100000 // total * 100)),
+                    )
                     .as_string(),
                     (prop,),
                 )
@@ -227,13 +244,13 @@ SELECT
                     create_columns.append(
                         meta.select_column(self.identifier, self.add(meta)),
                     )
-                    if progress is not None and meta.is_array:
-                        progress.total += 1
+                    if ctx.progress is not None and meta.is_array:
+                        ctx.progress.total += 1
 
-                if progress is not None:
-                    progress.update(1)
+                if ctx.progress is not None:
+                    ctx.progress.update(1)
 
-        with conn.cursor() as cur:
+        with ctx.conn.cursor() as cur:
             cur.execute(
                 sql.SQL(
                     """
@@ -253,8 +270,8 @@ FROM ld_source;
                 )
                 .as_string(),
             )
-            if progress is not None:
-                progress.update(prop_count)
+            if ctx.progress is not None:
+                ctx.progress.update(prop_count)
 
     def _carryover(self) -> Iterator[str]:
         for n in self.root.descendents:
