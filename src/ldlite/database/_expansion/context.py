@@ -31,7 +31,6 @@ class ExpandContext:
     ]
     # source_cte will go away when DuckDB implements CTAS RETURNING
     source_cte: Callable[[bool], str]
-    tablesample: str
     scan_progress: tqdm[NoReturn]
     transform_progress: tqdm[NoReturn]
 
@@ -48,7 +47,6 @@ class ExpandContext:
             self.get_output_table,
             self.preprocess,
             self.source_cte,
-            self.tablesample,
             self.scan_progress,
             self.transform_progress,
         )

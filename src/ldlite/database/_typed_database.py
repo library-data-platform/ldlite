@@ -186,10 +186,6 @@ WHERE table_schema = $1 and table_name IN ($2, $3);""",
     @abstractmethod
     def source_table_cte_stmt(self, keep_source: bool) -> str: ...
 
-    @property
-    @abstractmethod
-    def tablesample(self) -> str: ...
-
     def expand_prefix(
         self,
         prefix: str,
@@ -237,7 +233,6 @@ SELECT * from ld_source;
                     pfx.output_table,
                     self.preprocess_source_table,  # type: ignore [arg-type]
                     self.source_table_cte_stmt,
-                    self.tablesample,
                     scan_progress if scan_progress is not None else tqdm(disable=True),
                     transform_progress
                     if transform_progress is not None

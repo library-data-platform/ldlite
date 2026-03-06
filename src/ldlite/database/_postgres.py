@@ -157,7 +157,3 @@ PARALLEL SAFE;
         if keep_source:
             return "WITH ld_source AS (SELECT * FROM {source_table})"
         return "WITH ld_source AS (DELETE FROM {source_table} RETURNING *)"
-
-    @property
-    def tablesample(self) -> str:
-        return "TABLESAMPLE BERNOULLI ({sample})"

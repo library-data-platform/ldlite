@@ -188,9 +188,7 @@ ORDER BY ofk.idx NULLS LAST
 WITH
     values AS (
         SELECT {json_col}->$1 as ld_value
-        FROM {table} """  # noqa: S608
-                        + ctx.tablesample
-                        + """
+        FROM {table}
     ),
     value_and_types AS (
         SELECT
