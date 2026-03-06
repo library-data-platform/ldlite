@@ -290,11 +290,9 @@ WHERE NOT ldlite_system.jis_null({json_col})
 
     def _carryover(self) -> Iterator[str]:
         for n in self.root.descendents:
-            if isinstance(n, ObjectNode) and not n.unnested:
+            if (isinstance(n, ObjectNode) and not n.unnested) or n.name != "jsonb":
                 yield n.name
-            else:
-                yield n.name
-            yield from [v for v in n.values if v != "jsonb"]
+            yield from n.values
 
     @property
     def carryover(self) -> list[str]:
