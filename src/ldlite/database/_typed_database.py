@@ -136,7 +136,7 @@ WHERE table_schema = $1 and table_name IN ($2, $3);""",
             for (et,) in tables:
                 cur.execute(
                     sql.SQL("DROP TABLE IF EXISTS {table};")
-                    .format(table=sql.Identifier(cast("str", et)))
+                    .format(table=sql.Identifier(*cast("str", et).split(".")))
                     .as_string(),
                 )
             cur.execute(
