@@ -30,7 +30,9 @@ def _expand_nonmarc(
     ctx: ExpandContext,
 ) -> tuple[int, list[str]]:
     ctx.scan_progress.total = (ctx.scan_progress.total or 0) + 1
+    ctx.scan_progress.refresh()
     ctx.transform_progress.total = (ctx.transform_progress.total or 0) + 1
+    ctx.transform_progress.refresh()
     initial_count = count
     ctx.preprocess(ctx.conn, ctx.source_table, [root.identifier])
     has_rows = root.unnest(

@@ -356,18 +356,12 @@ class LDLite:
             with (
                 tqdm(
                     desc="scanning",
-                    leave=False,
-                    mininterval=5,
                     disable=self._quiet,
-                    delay=5,
                     bar_format=no_iters_format,
                 ) as scan_progress,
                 tqdm(
                     desc="transforming",
-                    leave=False,
-                    mininterval=5,
                     disable=self._quiet,
-                    delay=5,
                     bar_format=no_iters_format,
                 ) as transform_progress,
             ):
@@ -382,7 +376,11 @@ class LDLite:
                 newtables = [table, *newtables]
             transform_elapsed = datetime.now(timezone.utc) - transform_started
 
-            with tqdm(desc="indexing", disable=self._quiet) as progress:
+            with tqdm(
+                desc="indexing",
+                disable=self._quiet,
+                bar_format=no_iters_format,
+            ) as progress:
                 index_started = datetime.now(timezone.utc)
                 self._database.index_prefix(table, progress)
 

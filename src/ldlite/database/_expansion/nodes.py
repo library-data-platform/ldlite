@@ -172,6 +172,7 @@ ORDER BY idx, freq DESC
 
         prop_count = len(props)
         ctx.scan_progress.total += prop_count
+        ctx.scan_progress.refresh()
         ctx.scan_progress.update(1)
 
         for prop in props:
@@ -256,6 +257,7 @@ SELECT
                     )
                     if meta.is_object:
                         ctx.scan_progress.total += 1
+                        ctx.scan_progress.refresh()
 
                 ctx.scan_progress.update(1)
 
