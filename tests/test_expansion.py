@@ -49,7 +49,9 @@ def case_typed_columns() -> ExpansionTC:
             b"""
 {
     "id": "id1",
-    "numeric": 1,
+    "timestamptz": "2028-01-23T00:00:00.000+00:00",
+    "integer": 1,
+    "numeric": 1.2,
     "text": "value",
     "boolean": false,
     "uuid": "88888888-8888-1888-8888-888888888888"
@@ -58,7 +60,9 @@ def case_typed_columns() -> ExpansionTC:
             b"""
 {
     "id": "id2",
-    "numeric": 2,
+    "timestamptz": "2025-06-20T17:37:58.675+00:00",
+    "integer": 2,
+    "numeric": 2.3,
     "text": "00000000-0000-1000-A000-000000000000",
     "boolean": false,
     "uuid": "11111111-1111-1111-8111-111111111111"
@@ -72,14 +76,16 @@ SELECT DATA_TYPE
 FROM INFORMATION_SCHEMA.COLUMNS
 WHERE TABLE_NAME = 'prefix__t' AND COLUMN_NAME = '{a[0]}'
 """,
-                exp_pg=a[0],
-                exp_duck=a[1],
+                exp_pg=a[1],
+                exp_duck=a[2],
             )
             for a in [
-                ("numeric", "DECIMAL(18,3)"),
-                ("text", "VARCHAR"),
-                ("uuid", "UUID"),
-                ("boolean", "BOOLEAN"),
+                ("integer", "integer", "INTEGER"),
+                ("numeric", "numeric", "DECIMAL(18,3)"),
+                ("text", "text", "VARCHAR"),
+                ("uuid", "uuid", "UUID"),
+                ("boolean", "boolean", "BOOLEAN"),
+                ("timestamptz", "timestamp with time zone", "TIMESTAMP WITH TIME ZONE"),
             ]
         ],
     )
@@ -90,11 +96,12 @@ WHERE TABLE_NAME = 'prefix__t' AND COLUMN_NAME = '{a[0]}'
     [
         ("all_null", None, None),
         ("nullable_numeric", "numeric", "DECIMAL(18,3)"),
+        ("nullable_integer", "integer", "INTEGER"),
         ("nullable_uuid", "uuid", "UUID"),
         ("nullable_bool", "boolean", "BOOLEAN"),
-        ("nullable_object__id", "numeric", "DECIMAL(18,3)"),
-        ("nullable_array", "numeric", "DECIMAL(18,3)"),
-        ("sortof_nullable_array__id", "numeric", "DECIMAL(18,3)"),
+        ("nullable_object__id", "integer", "INTEGER"),
+        ("nullable_array", "integer", "INTEGER"),
+        ("sortof_nullable_array__id", "integer", "INTEGER"),
     ],
     idgen="prop={assertion[0]}",
 )
@@ -104,6 +111,7 @@ def case_null(assertion: tuple[str, str | None, str | None]) -> ExpansionTC:
             b"""
 {
     "all_null": null,
+    "nullable_integer": null,
     "nullable_numeric": null,
     "nullable_bool": null,
     "nullable_uuid": null,
@@ -115,7 +123,8 @@ def case_null(assertion: tuple[str, str | None, str | None]) -> ExpansionTC:
             b"""
 {
     "all_null": null,
-    "nullable_numeric": 5,
+    "nullable_integer": 7,
+    "nullable_numeric": 5.5,
     "nullable_uuid": null,
     "nullable_bool": false,
     "nullable_object": { "id": 5 },
@@ -126,7 +135,8 @@ def case_null(assertion: tuple[str, str | None, str | None]) -> ExpansionTC:
             b"""
 {
     "all_null": null,
-    "nullable_numeric": null,
+    "nullable_integer": 0,
+    "nullable_numeric": 1,
     "nullable_bool": true,
     "nullable_uuid": "0b03c888-102b-18e9-afb7-85e22229ca4d",
     "nullable_object": { "id": null},
@@ -284,7 +294,7 @@ ORDER BY ORDINAL_POSITION
                 )
                 for a in [
                     ("list1", "VARCHAR", "text"),
-                    ("list2", "DECIMAL(18,3)", "numeric"),
+                    ("list2", "INTEGER", "integer"),
                 ]
             ],
         ],

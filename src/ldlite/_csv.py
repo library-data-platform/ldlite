@@ -63,11 +63,14 @@ def to_csv(
                     if i != 0:
                         s += ","
                     if attrs[i][1] in [
+                        "INTEGER",
                         "NUMBER",
                         "DECIMAL(18,3)",
                         "bigint",
+                        "integer",
                         "numeric",
                         20,
+                        23,
                         1700,
                     ]:
                         s += str(d).rstrip("0").rstrip(".")
