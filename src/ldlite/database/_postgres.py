@@ -41,7 +41,7 @@ LANGUAGE sql
 IMMUTABLE
 PARALLEL SAFE;
 
-CREATE OR REPLACE FUNCTION ldlite_system.jobject_keys(j JSONB) RETURNS SETOF TEXT AS $$
+CREATE OR REPLACE FUNCTION ldlite_system.jobject_keys(j JSONB) RETURNS TABLE (ld_key TEXT) AS $$
 SELECT jsonb_object_keys(j);
 $$
 LANGUAGE sql

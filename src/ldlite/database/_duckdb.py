@@ -41,8 +41,8 @@ CREATE OR REPLACE FUNCTION ldlite_system.jtype_of(j) AS
     END
 ;
 
-CREATE OR REPLACE FUNCTION ldlite_system.jobject_keys(j) AS
-    unnest(main.json_keys(j))
+CREATE OR REPLACE FUNCTION ldlite_system.jobject_keys(j) AS TABLE
+    SELECT je.key as ld_key FROM json_each(j) je ORDER BY je.id
 ;
 
 CREATE OR REPLACE FUNCTION ldlite_system.jis_uuid(j) AS

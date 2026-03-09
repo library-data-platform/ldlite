@@ -145,30 +145,24 @@ class ObjectNode(ExpansionNode):
                 sql.SQL(
                     """
 WITH
-    all_objects AS (
-        SELECT {json_col} AS j
-        FROM {source_table}
-        WHERE NOT ldlite_system.jis_null({json_col})
+    keys AS (
+        SELECT
+            keys.ld_key AS k
+            ,ROW_NUMBER() OVER (PARTITION BY t.__id) AS idx
+        FROM {source_table} t, ldlite_system.jobject_keys(t.{json_col}) keys
+        WHERE {json_col} IS NOT NULL AND ldlite_system.jtype_of(t.{json_col}) = 'object'
     ),
-    first_object AS (
-        SELECT * FROM all_objects
-        LIMIT 1
-    ),
-    first_keys AS (
-        SELECT ldlite_system.jobject_keys(j) AS k
-        FROM first_object
-    ),
-    ordered_first_keys AS (
-        SELECT (ROW_NUMBER() OVER (ORDER BY (SELECT NULL))) AS idx, k
-        FROM first_keys
-    ), all_keys AS (
-        SELECT DISTINCT ldlite_system.jobject_keys(j) k
-        FROM all_objects
+    ordered_keys AS (
+        SELECT
+            k
+            ,MAX(idx) idx
+            ,COUNT(idx) freq
+        FROM keys
+        GROUP BY k
     )
-SELECT ak.k
-FROM all_keys ak
-LEFT JOIN ordered_first_keys ofk ON ak.k = ofk.k
-ORDER BY ofk.idx NULLS LAST
+SELECT k
+FROM ordered_keys
+ORDER BY idx, freq DESC
 """,
                 )
                 .format(source_table=source_table, json_col=self.identifier)
