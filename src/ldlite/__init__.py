@@ -337,7 +337,6 @@ class LDLite:
                     records,
                     desc="downloading",
                     total=total_records,
-                    leave=False,
                     mininterval=5,
                     disable=self._quiet,
                     unit=table.split(".")[-1],
@@ -354,7 +353,11 @@ class LDLite:
             newtables = self._database.expand_prefix(table, json_depth, keep_raw)
             if keep_raw:
                 newtables = [table, *newtables]
-            indexable_attrs = []
+            transform_elapsed = datetime.now(timezone.utc) - transform_started
+
+            with tqdm(desc="indexing", disable=self._quiet) as progress:
+                index_started = datetime.now(timezone.utc)
+                self._database.index_prefix(table, progress)
 
         else:
             try:
@@ -392,40 +395,46 @@ class LDLite:
             finally:
                 autocommit(self.db, self.dbtype, True)
 
-        transform_elapsed = datetime.now(timezone.utc) - transform_started
-        # Create indexes on id columns (for postgres)
-        index_started = datetime.now(timezone.utc)
-        if self.dbtype == DBType.POSTGRES:
+            transform_elapsed = datetime.now(timezone.utc) - transform_started
 
-            class PbarNoop:
-                def update(self, _: int) -> None: ...
-                def close(self) -> None: ...
+            # Create indexes on id columns (for postgres)
+            index_started = datetime.now(timezone.utc)
+            if self.dbtype == DBType.POSTGRES:
 
-            pbar: tqdm | PbarNoop = PbarNoop()  # type:ignore[type-arg]
+                class PbarNoop:
+                    def update(self, _: int) -> None: ...
+                    def close(self) -> None: ...
 
-            index_total = len(indexable_attrs)
-            if not self._quiet:
-                pbar = tqdm(
-                    desc="indexing",
-                    total=index_total,
-                    leave=False,
-                    mininterval=3,
-                    smoothing=0,
-                    colour="#A9A9A9",
-                    bar_format="{desc} {bar}{postfix}",
-                )
-            for t, attr in indexable_attrs:
-                cur = self.db.cursor()
-                try:
-                    cur.execute(
-                        "CREATE INDEX ON " + sqlid(t) + " (" + sqlid(attr.name) + ")",
+                pbar: tqdm | PbarNoop = PbarNoop()  # type:ignore[type-arg]
+
+                index_total = len(indexable_attrs)
+                if not self._quiet:
+                    pbar = tqdm(
+                        desc="indexing",
+                        total=index_total,
+                        leave=False,
+                        mininterval=3,
+                        smoothing=0,
+                        colour="#A9A9A9",
+                        bar_format="{desc} {bar}{postfix}",
                     )
-                except (RuntimeError, psycopg.Error):
-                    pass
-                finally:
-                    cur.close()
-                pbar.update(1)
-            pbar.close()
+                for t, attr in indexable_attrs:
+                    cur = self.db.cursor()
+                    try:
+                        cur.execute(
+                            "CREATE INDEX ON "
+                            + sqlid(t)
+                            + " ("
+                            + sqlid(attr.name)
+                            + ")",
+                        )
+                    except (RuntimeError, psycopg.Error):
+                        pass
+                    finally:
+                        cur.close()
+                    pbar.update(1)
+                pbar.close()
+
         index_elapsed = datetime.now(timezone.utc) - index_started
         self._database.record_history(
             LoadHistory(

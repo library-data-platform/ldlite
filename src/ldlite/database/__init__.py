@@ -1,9 +1,16 @@
 """A module for implementing ldlite database targets."""
 
-import datetime
+from __future__ import annotations
+
 from abc import ABC, abstractmethod
-from collections.abc import Iterator
 from dataclasses import dataclass
+from typing import TYPE_CHECKING, NoReturn
+
+if TYPE_CHECKING:
+    import datetime
+    from collections.abc import Iterator
+
+    from tqdm import tqdm
 
 
 @dataclass(frozen=True)
@@ -49,6 +56,10 @@ class Database(ABC):
     @abstractmethod
     def expand_prefix(self, prefix: str, json_depth: int, keep_raw: bool) -> list[str]:
         """Unnests and explodes the raw data at the given prefix."""
+
+    @abstractmethod
+    def index_prefix(self, prefix: str, progress: tqdm[NoReturn] | None = None) -> None:
+        """Finds and indexes all tables at the given prefix."""
 
     @abstractmethod
     def record_history(self, history: LoadHistory) -> None:

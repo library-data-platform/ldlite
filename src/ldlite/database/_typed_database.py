@@ -1,9 +1,11 @@
 # pyright: reportArgumentType=false
+from __future__ import annotations
+
 from abc import abstractmethod
-from collections.abc import Callable, Sequence
 from contextlib import closing
 from datetime import timezone
-from typing import TYPE_CHECKING, Any, Generic, TypeVar, cast
+from typing import TYPE_CHECKING, Any, Generic, NoReturn, TypeVar, cast
+from uuid import uuid4
 
 import psycopg
 from psycopg import sql
@@ -13,7 +15,10 @@ from ._expansion import ExpandContext, expand_nonmarc
 from ._prefix import Prefix
 
 if TYPE_CHECKING:
+    from collections.abc import Callable, Sequence
+
     import duckdb
+    from tqdm import tqdm
 
 
 DB = TypeVar("DB", bound="duckdb.DuckDBPyConnection | psycopg.Connection")
@@ -246,6 +251,63 @@ CREATE TABLE {catalog_table} (
             conn.commit()
 
         return created_tables
+
+    def index_prefix(self, prefix: str, progress: tqdm[NoReturn] | None = None) -> None:
+        pfx = Prefix(prefix)
+        with closing(self._conn_factory()) as conn:
+            with closing(conn.cursor()) as cur:
+                cur.execute(
+                    """
+SELECT table_name FROM information_schema.tables
+WHERE table_schema = $1 and table_name = $2;""",
+                    (
+                        pfx.schema or self._default_schema,
+                        pfx.catalog_table.name,
+                    ),
+                )
+                if len(cur.fetchall()) < 1:
+                    return
+
+            with closing(conn.cursor()) as cur:
+                cur.execute(
+                    sql.SQL(
+                        r"""
+SELECT TABLE_NAME, COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS
+WHERE
+    TABLE_SCHEMA = $1 AND
+    TABLE_NAME IN (SELECT TABLE_NAME FROM {catalog}) AND
+    (
+        DATA_TYPE IN ('UUID', 'uuid') OR
+        COLUMN_NAME = 'id' OR
+        (COLUMN_NAME LIKE '%\_id' AND COLUMN_NAME <> '__id')
+    );
+""",
+                    )
+                    .format(catalog=pfx.catalog_table.id)
+                    .as_string(),
+                    (pfx.schema or self._default_schema,),
+                )
+                indexes = cur.fetchall()
+
+            if progress is not None:
+                progress.total = len(indexes)
+                progress.refresh()
+
+            for index in indexes:
+                with closing(conn.cursor()) as cur:
+                    cur.execute(
+                        sql.SQL("CREATE INDEX {name} ON {table} ({column});")
+                        .format(
+                            name=sql.Identifier(str(uuid4()).split("-")[0]),
+                            table=sql.Identifier(*index[0].split(".")),
+                            column=sql.Identifier(index[1]),
+                        )
+                        .as_string(),
+                    )
+                if progress is not None:
+                    progress.update(1)
+
+            conn.commit()
 
     def record_history(self, history: LoadHistory) -> None:
         with closing(self._conn_factory()) as conn, conn.cursor() as cur:
