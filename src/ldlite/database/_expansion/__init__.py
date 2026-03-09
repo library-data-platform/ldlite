@@ -33,13 +33,15 @@ def _expand_nonmarc(
     ctx.transform_progress.total = (ctx.transform_progress.total or 0) + 1
     initial_count = count
     ctx.preprocess(ctx.conn, ctx.source_table, [root.identifier])
-    root.unnest(
+    has_rows = root.unnest(
         ctx,
         ctx.source_table,
         ctx.get_transform_table(count),
         ctx.source_cte(False),
     )
     ctx.transform_progress.update(1)
+    if not has_rows:
+        return (0, [])
 
     expand_children_of = deque([root])
     while expand_children_of:

@@ -252,14 +252,15 @@ CREATE TABLE {catalog_table} (
                     .format(catalog_table=pfx.catalog_table.id)
                     .as_string(),
                 )
-                cur.executemany(
-                    sql.SQL("INSERT INTO {catalog_table} VALUES ($1)")
-                    .format(
-                        catalog_table=pfx.catalog_table.id,
+                if len(created_tables) > 0:
+                    cur.executemany(
+                        sql.SQL("INSERT INTO {catalog_table} VALUES ($1)")
+                        .format(
+                            catalog_table=pfx.catalog_table.id,
+                        )
+                        .as_string(),
+                        [(pfx.catalog_table_row(t),) for t in created_tables],
                     )
-                    .as_string(),
-                    [(pfx.catalog_table_row(t),) for t in created_tables],
-                )
 
             conn.commit()
 

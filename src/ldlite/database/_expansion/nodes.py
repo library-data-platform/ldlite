@@ -124,7 +124,7 @@ class ObjectNode(ExpansionNode):
         source_table: sql.Identifier,
         dest_table: sql.Identifier,
         source_cte: str,
-    ) -> None:
+    ) -> bool:
         self.unnested = True
         create_columns: list[sql.Composable] = [
             sql.Identifier(v) for v in self.carryover
@@ -138,7 +138,7 @@ class ObjectNode(ExpansionNode):
             )
             total = cast("tuple[int]", cur.fetchone())[0]
             if total == 0:
-                return
+                return False
 
         with ctx.conn.cursor() as cur:
             cur.execute(
@@ -281,6 +281,8 @@ WHERE NOT ldlite_system.jis_null({json_col})
                 )
                 .as_string(),
             )
+
+        return True
 
     def _carryover(self) -> Iterator[str]:
         for n in self.root.descendents:
