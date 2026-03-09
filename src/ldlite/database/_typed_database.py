@@ -299,7 +299,7 @@ WHERE
                         sql.SQL("CREATE INDEX {name} ON {table} ({column});")
                         .format(
                             name=sql.Identifier(str(uuid4()).split("-")[0]),
-                            table=sql.Identifier(index[0]),
+                            table=sql.Identifier(*index[0].split(".")),
                             column=sql.Identifier(index[1]),
                         )
                         .as_string(),
