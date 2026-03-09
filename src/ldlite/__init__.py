@@ -337,7 +337,6 @@ class LDLite:
                     records,
                     desc="downloading",
                     total=total_records,
-                    leave=False,
                     mininterval=5,
                     disable=self._quiet,
                     unit=table.split(".")[-1],
@@ -356,14 +355,7 @@ class LDLite:
                 newtables = [table, *newtables]
             transform_elapsed = datetime.now(timezone.utc) - transform_started
 
-            with tqdm(
-                desc="indexing",
-                leave=False,
-                mininterval=5,
-                disable=self._quiet,
-                unit="ix",
-                delay=5,
-            ) as progress:
+            with tqdm(desc="indexing", disable=self._quiet) as progress:
                 index_started = datetime.now(timezone.utc)
                 self._database.index_prefix(table, progress)
 
