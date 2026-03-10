@@ -17,6 +17,7 @@ class Metadata:
     is_uuid: bool
     is_datetime: bool
     is_float: bool
+    is_bigint: bool
 
     def __post_init__(self) -> None:
         # Mixed json_type columns (which shouldn't really happen)
@@ -55,6 +56,8 @@ class Metadata:
             stmt = sql.SQL(extract + "AS {alias}")
         elif self.json_type == "number" and self.is_float:
             stmt = sql.SQL("(" + str_extract + ")::numeric AS {alias}")
+        elif self.json_type == "number" and self.is_bigint:
+            stmt = sql.SQL("(" + str_extract + ")::bigint AS {alias}")
         elif self.json_type == "number":
             stmt = sql.SQL("(" + str_extract + ")::integer AS {alias}")
         elif self.json_type == "boolean":

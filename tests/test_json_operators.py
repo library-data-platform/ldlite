@@ -50,6 +50,8 @@ WHERE e.jkey IS NULL or a.jkey IS NULL) as q;""",
         ("str", "string"),
         ("num", "number"),
         ("float", "number"),
+        ("bigfloat", "number"),
+        ("bigint", "number"),
         ("bool", "boolean"),
         ("obj", "object"),
         ("arr_str", "array"),
@@ -160,12 +162,33 @@ FROM j;""",
     p=[
         ("num", False),
         ("float", True),
+        ("bigfloat", True),
+        ("bigint", False),
     ],
 )
 def case_jis_float(p: tuple[Any, ...]) -> JsonTC:
     return JsonTC(
         """
 SELECT {assertion}ldlite_system.jis_float(jc->$1)
+FROM j;""",
+        p[:1],
+        "" if (p[1]) else """ NOT """,
+        (),
+    )
+
+
+@parametrize(
+    p=[
+        ("num", False),
+        ("float", False),
+        ("bigfloat", True),
+        ("bigint", True),
+    ],
+)
+def case_jis_bigint(p: tuple[Any, ...]) -> JsonTC:
+    return JsonTC(
+        """
+SELECT {assertion}ldlite_system.jis_bigint(jc->$1)
 FROM j;""",
         p[:1],
         "" if (p[1]) else """ NOT """,
@@ -206,6 +229,8 @@ INSERT INTO j VALUES (
     "str_empty": "",
     "num": 12,
     "float": 16.3,
+    "bigint": 2147483648,
+    "bigfloat": 2147483648.1,
     "bool": true,
     "uuid": "5b285d03-5490-1111-8888-52b2003b475c",
     "uuid_nof": "5b285d03-5490-FFFF-0000-52b2003b475c",

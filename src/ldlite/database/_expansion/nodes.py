@@ -238,6 +238,11 @@ SELECT
         SELECT 1 FROM all_values
         WHERE json_type = 'number' AND ldlite_system.jis_float(ld_value)
     ) AS is_float
+    ,EXISTS
+    (
+        SELECT 1 FROM all_values
+        WHERE json_type = 'number' AND ldlite_system.jis_bigint(ld_value)
+    ) AS is_bigint
 """,
                     )
                     .format(
@@ -316,6 +321,7 @@ class ArrayNode(ExpansionNode):
             meta.is_uuid,
             meta.is_datetime,
             meta.is_float,
+            meta.is_bigint,
         )
 
     def explode(

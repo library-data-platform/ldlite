@@ -57,6 +57,10 @@ CREATE OR REPLACE FUNCTION ldlite_system.jis_float(j) AS
     main.json_type(j) == 'DOUBLE'
 ;
 
+CREATE OR REPLACE FUNCTION ldlite_system.jis_bigint(j) AS
+    COALESCE(TRY_CAST(j AS NUMERIC), 0) > 2147483647
+;
+
 CREATE OR REPLACE FUNCTION ldlite_system.jis_null(j) AS
     j IS NULL OR j == 'null'::JSON OR main.json_extract_string(j, '$') IN ('NULL', 'null', '', '{}', '[]')
 ;
