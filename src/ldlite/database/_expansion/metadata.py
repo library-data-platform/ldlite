@@ -46,40 +46,30 @@ class Metadata:
         alias: str,
     ) -> sql.Composed:
         str_extract = (
-            "ldlite_system.jself_string({json_col})"
-            if self.prop is None
-            else "{json_col}->>{prop}"
+            "{json_col}->>{prop}"
+            if self.prop is not None
+            else "ldlite_system.jself_string({json_col})"
         )
+        nullable_str_extract = f"NULLIF(NULLIF({str_extract}, ''), 'null')"
 
         if self.is_array or self.is_object:
-            extract = "{json_col}" if self.prop is None else "{json_col}->{prop}"
-            stmt = sql.SQL(extract + "AS {alias}")
+            stmt = "{json_col}" if self.prop is None else "{json_col}->{prop}"
         elif self.json_type == "number" and self.is_float:
-            stmt = sql.SQL("(" + str_extract + ")::numeric AS {alias}")
+            stmt = f"({str_extract})::numeric"
         elif self.json_type == "number" and self.is_bigint:
-            stmt = sql.SQL("(" + str_extract + ")::bigint AS {alias}")
+            stmt = f"({str_extract})::bigint"
         elif self.json_type == "number":
-            stmt = sql.SQL("(" + str_extract + ")::integer AS {alias}")
+            stmt = f"({str_extract})::integer"
         elif self.json_type == "boolean":
-            stmt = sql.SQL(
-                "NULLIF(NULLIF(" + str_extract + ", ''), 'null')::bool AS {alias}",
-            )
+            stmt = f"({nullable_str_extract})::bool"
         elif self.json_type == "string" and self.is_uuid:
-            stmt = sql.SQL(
-                "NULLIF(NULLIF(" + str_extract + ", ''), 'null')::uuid AS {alias}",
-            )
+            stmt = f"({nullable_str_extract})::uuid"
         elif self.json_type == "string" and self.is_datetime:
-            stmt = sql.SQL(
-                "NULLIF(NULLIF("
-                + str_extract
-                + ", ''), 'null')::timestamptz AS {alias}",
-            )
+            stmt = f"({nullable_str_extract})::timestamptz"
         else:
-            stmt = sql.SQL(
-                "NULLIF(NULLIF(" + str_extract + ", ''), 'null') AS {alias}",
-            )
+            stmt = nullable_str_extract
 
-        return stmt.format(
+        return sql.SQL(stmt + " AS {alias}").format(
             json_col=json_col,
             prop=self.prop,
             alias=sql.Identifier(alias),
