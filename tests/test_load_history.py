@@ -140,13 +140,17 @@ def _assert(
             assert d[1] == "/patched"
             assert d[2] == q
             assert d[3] == t
-            assert d[4] > d[5]
-            assert d[6] > timedelta(microseconds=0)
-            assert d[6] < timedelta(seconds=1)
-            assert d[7] > timedelta(microseconds=0)
-            assert d[7] < timedelta(seconds=1)
+
+            assert d[6] > d[4]
+            assert d[7] == d[4]
+            assert d[5] == t
+
             assert d[8] > timedelta(microseconds=0)
             assert d[8] < timedelta(seconds=1)
+            assert d[9] > timedelta(microseconds=0)
+            assert d[9] < timedelta(seconds=1)
+            assert d[10] > timedelta(microseconds=0)
+            assert d[10] < timedelta(seconds=1)
 
 
 @mock.patch("httpx_folio.auth.httpx.post")

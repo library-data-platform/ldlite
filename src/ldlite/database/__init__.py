@@ -52,5 +52,5 @@ class Database(ABC):
         """Finds and indexes all tables at the given prefix."""
 
     @abstractmethod
-    def prepare_history(self, prefix: str, path: str, query: str) -> None:
+    def prepare_history(self, prefix: str, path: str, query: str | None) -> None:
         """Creates an entry with the current parameters in the history table."""

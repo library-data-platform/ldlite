@@ -311,7 +311,7 @@ class LDLite:
         self._database.prepare_history(
             table,
             path,
-            str(query),
+            query if query and isinstance(query, str) else None,
         )
         if not self._quiet:
             print("ldlite: querying: " + path, file=sys.stderr)

@@ -344,7 +344,7 @@ WHERE
         self,
         prefix: str,
         path: str,
-        query: str,
+        query: str | None,
     ) -> None:
         with closing(self._conn_factory()) as conn, closing(conn.cursor()) as cur:
             cur.execute(
@@ -388,7 +388,7 @@ WHERE "table_name" = $1;
                     pfx.load_history_key,
                     rowcount,
                     datetime.now(timezone.utc),
-                    download_start - datetime.now(timezone.utc),
+                    datetime.now(timezone.utc) - download_start,
                 ),
             )
 
