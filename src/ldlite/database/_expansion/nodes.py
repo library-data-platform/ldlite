@@ -1,7 +1,8 @@
 from __future__ import annotations
 
 from collections import deque
-from typing import TYPE_CHECKING, TypeVar
+from math import floor
+from typing import TYPE_CHECKING, TypeVar, cast
 
 from psycopg import sql
 
@@ -10,6 +11,8 @@ if TYPE_CHECKING:
 
     import duckdb
     import psycopg
+
+    from .context import ExpandContext
 
 from .metadata import Metadata
 
@@ -117,90 +120,148 @@ class ObjectNode(ExpansionNode):
 
     def unnest(
         self,
-        conn: duckdb.DuckDBPyConnection | psycopg.Connection,
+        ctx: ExpandContext,
         source_table: sql.Identifier,
         dest_table: sql.Identifier,
         source_cte: str,
-    ) -> None:
+    ) -> bool:
         self.unnested = True
         create_columns: list[sql.Composable] = [
             sql.Identifier(v) for v in self.carryover
         ]
 
-        with conn.cursor() as cur:
+        with ctx.conn.cursor() as cur:
+            cur.execute(
+                sql.SQL("SELECT COUNT(*) FROM {table}")
+                .format(table=source_table)
+                .as_string(),
+            )
+            total = cast("tuple[int]", cur.fetchone())[0]
+            if total == 0:
+                return False
+
+        with ctx.conn.cursor() as cur:
             cur.execute(
                 sql.SQL(
                     """
 WITH
-    one_object AS (
-        SELECT {json_col} AS json
-        FROM {table}
-        WHERE NOT ldlite_system.jis_null({json_col})
-        LIMIT 1
-    ),
-    props AS (SELECT ldlite_system.jobject_keys(json) AS prop FROM one_object),
-    values AS (
+    keys AS (
         SELECT
-            prop
-            ,ldlite_system.jextract({json_col}, prop) as ld_value
-        FROM {table}, props
+            keys.ld_key AS k
+            ,ROW_NUMBER() OVER (PARTITION BY t.__id) AS idx
+        FROM {source_table} t, ldlite_system.jobject_keys(t.{json_col}) keys
+        WHERE {json_col} IS NOT NULL AND ldlite_system.jtype_of(t.{json_col}) = 'object'
+    ),
+    ordered_keys AS (
+        SELECT
+            k
+            ,MAX(idx) idx
+            ,COUNT(idx) freq
+        FROM keys
+        GROUP BY k
+    )
+SELECT k
+FROM ordered_keys
+ORDER BY idx, freq DESC
+""",
+                )
+                .format(source_table=source_table, json_col=self.identifier)
+                .as_string(),
+            )
+            props = [prop[0] for prop in cur.fetchall()]
+
+        prop_count = len(props)
+        ctx.scan_progress.total += prop_count
+        ctx.scan_progress.refresh()
+        ctx.scan_progress.update(1)
+
+        for prop in props:
+            with ctx.conn.cursor() as cur:
+                cur.execute(
+                    sql.SQL(
+                        """
+WITH
+    values AS (
+        SELECT {json_col}->$1 as ld_value
+        FROM {table}
     ),
     value_and_types AS (
         SELECT
-            prop
-            ,ldlite_system.jtype_of(ld_value) AS json_type
+            ldlite_system.jtype_of(ld_value) AS json_type
             ,ld_value
         FROM values
         WHERE NOT ldlite_system.jis_null(ld_value)
     ),
     array_values AS (
         SELECT
-            v.prop
-            ,ldlite_system.jtype_of(a.ld_value) AS json_type
-            ,v.ld_value
-        FROM value_and_types v, ldlite_system.jexplode(v.ld_value) a
+            ldlite_system.jtype_of(a.ld_value) AS json_type
+            ,a.ld_value
+        FROM value_and_types v
+        CROSS JOIN LATERAL (
+            SELECT s.ld_value
+            FROM ldlite_system.jexplode(v.ld_value) AS s
+            WHERE NOT ldlite_system.jis_null(s.ld_value)
+            LIMIT 3
+        ) a
         WHERE v.json_type = 'array'
     ),
     all_values AS (
         SELECT
-            prop
-            ,json_type
+            json_type
             ,ld_value
             ,FALSE AS is_array
         FROM value_and_types
         WHERE json_type <> 'array'
         UNION
         SELECT
-            prop
-            ,json_type
+            json_type
             ,ld_value
             ,TRUE AS is_array
         FROM array_values
         WHERE NOT ldlite_system.jis_null(ld_value)
     )
 SELECT
-    prop
-    ,STRING_AGG(DISTINCT json_type, '|') AS json_type
-    ,bool_and(is_array) AS is_array
-    ,bool_and(ldlite_system.jis_uuid(ld_value)) AS is_uuid
-    ,bool_and(ldlite_system.jis_datetime(ld_value)) AS is_datetime
-    ,bool_and(ldlite_system.jis_float(ld_value)) AS is_float
-FROM all_values
-GROUP BY prop
+    (SELECT STRING_AGG(DISTINCT json_type, '|') FROM all_values) AS json_type
+    ,(SELECT BOOL_AND(is_array) FROM all_values) AS is_array
+    ,NOT EXISTS
+    (
+        SELECT 1 FROM all_values
+        WHERE json_type = 'string' AND NOT ldlite_system.jis_uuid(ld_value)
+    ) AS is_uuid
+    ,NOT EXISTS
+    (
+        SELECT 1 FROM all_values
+        WHERE json_type = 'string' AND NOT ldlite_system.jis_datetime(ld_value)
+    ) AS is_datetime
+    ,NOT EXISTS
+    (
+        SELECT 1 FROM all_values
+        WHERE json_type = 'number' AND NOT ldlite_system.jis_float(ld_value)
+    ) AS is_float
 """,
+                    )
+                    .format(
+                        table=source_table,
+                        json_col=self.identifier,
+                        sample=sql.Literal(min(100, floor((100000 / total) * 100))),
+                    )
+                    .as_string(),
+                    (prop,),
                 )
-                .format(table=source_table, json_col=self.identifier)
-                .as_string(),
-            )
+                if (row := cur.fetchone()) is not None and all(
+                    c is not None for c in row
+                ):
+                    meta = Metadata(prop, *row)
+                    create_columns.append(
+                        meta.select_column(self.identifier, self.add(meta)),
+                    )
+                    if meta.is_object:
+                        ctx.scan_progress.total += 1
+                        ctx.scan_progress.refresh()
 
-            create_columns.extend(
-                [
-                    row.select_column(self.identifier, self.add(row))
-                    for row in [Metadata(*r) for r in cur.fetchall()]
-                ],
-            )
+                ctx.scan_progress.update(1)
 
-        with conn.cursor() as cur:
+        with ctx.conn.cursor() as cur:
             cur.execute(
                 sql.SQL(
                     """
@@ -210,22 +271,26 @@ CREATE TEMP TABLE {dest_table} ON COMMIT DROP AS
                     + """
 SELECT
     {cols}
-FROM ld_source;
+FROM ld_source
+WHERE NOT ldlite_system.jis_null({json_col})
 """,
                 )
                 .format(
                     source_table=source_table,
                     dest_table=dest_table,
+                    json_col=self.identifier,
                     cols=sql.SQL("\n    ,").join(create_columns),
                 )
                 .as_string(),
             )
 
+        return True
+
     def _carryover(self) -> Iterator[str]:
         for n in self.root.descendents:
-            if isinstance(n, ObjectNode) and not n.unnested:
+            if isinstance(n, ObjectNode) and not n.unnested and n.name != "jsonb":
                 yield n.name
-            else:
+            if isinstance(n, ArrayNode):
                 yield n.name
             yield from n.values
 
@@ -264,7 +329,7 @@ class ArrayNode(ExpansionNode):
             o_col = self.name + "__o"
             create_columns: list[sql.Composable] = [
                 sql.SQL(
-                    "(ROW_NUMBER() OVER (ORDER BY (SELECT NULL)))::integer AS __id"
+                    "(ROW_NUMBER() OVER (ORDER BY (SELECT NULL)))::integer AS __id",
                 ),
                 *[sql.Identifier(v) for v in self.carryover],
                 sql.SQL(
@@ -306,7 +371,7 @@ WHERE NOT ldlite_system.jis_null({json_col})
 
     def _carryover(self) -> Iterator[str]:
         for n in reversed(self.parents):
-            yield from [v for v in n.values if v != "__id"]
+            yield from [v for v in n.values if v not in ("__id", "jsonb")]
 
     @property
     def carryover(self) -> list[str]:

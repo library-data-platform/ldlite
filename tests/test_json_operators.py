@@ -27,95 +27,16 @@ class JsonTC:
     assertion_params: tuple[Any, ...]
 
 
-@parametrize(
-    p=[
-        ("str", '"str_val"'),
-        ("str_empty", "null"),
-        ("num", "12"),
-        ("float", "16.3"),
-        ("bool", "true"),
-        ("obj", '{"k1":"v1","k2":"v2"}'),
-        ("obj_some", '{"k1":"v1","k2":null}'),
-        ("obj_empty", "null"),
-        ("arr_zero", "null"),
-        ("na", "null"),
-        ("na_str1", "null"),
-        ("na_str2", "null"),
-    ],
-)
-def case_jextract(p: tuple[Any, ...]) -> JsonTC:
-    return JsonTC(
-        """SELECT ldlite_system.jextract(jc, $1){assertion} FROM j;""",
-        p[:1],
-        """= $2::{jtype}""",
-        p[1:],
-    )
-
-
-# Duckdb through 1.3 and 1.4 have different json comparison behavior here
-# Whitespace matters in 1.4 and not 1.3
-# This makes the arrays text and compares the values as a workaround
-@parametrize(
-    p=[
-        ("arr_str", '["s1", "s2", "s3"]'),
-        ("arr_str_some", '["s1", "s2"]'),
-        ("arr_obj_some", '[{"k1":"v1"}]'),
-    ],
-)
-def case_jextract_duckdb(p: tuple[Any, ...]) -> JsonTC:
-    return JsonTC(
-        """SELECT ldlite_system.jextract(jc, $1){assertion} FROM j;""",
-        p[:1],
-        """::text[] = $2::JSON::text[]""",
-        p[1:],
-    )
-
-
-# The differences betweeen postgres/duckdb here only matters for tests
-# This can all be rectified when duckdb 1.4 is the minimum version
-@parametrize(
-    p=[
-        ("arr_str", '["s1", "s2", "s3"]'),
-        ("arr_str_some", '["s1", "s2"]'),
-        ("arr_obj_some", '[{"k1":"v1"}]'),
-    ],
-)
-def case_jextract_postgres(p: tuple[Any, ...]) -> JsonTC:
-    return JsonTC(
-        """SELECT ldlite_system.jextract(jc, $1){assertion} FROM j;""",
-        p[:1],
-        """ = $2::JSONB""",
-        p[1:],
-    )
-
-
-@parametrize(
-    p=[
-        ("str", "str_val"),
-        ("num", "12"),
-        ("float", "16.3"),
-        ("bool", "true"),
-        ("na",),
-        ("na_str1",),
-        ("na_str2",),
-    ],
-)
-def case_jextract_string(p: tuple[Any, ...]) -> JsonTC:
-    return JsonTC(
-        """SELECT ldlite_system.jextract_string(jc, $1){assertion} FROM j;""",
-        p[:1],
-        """ = $2""" if len(p) == 2 else """ IS NULL""",
-        p[1:],
-    )
-
-
 def case_jobject_keys() -> JsonTC:
     return JsonTC(
         """
 {assertion}
 (SELECT e.jkey, a.jkey
 FROM (SELECT 'k1' jkey UNION SELECT 'k2' jkey) as e
-FULL OUTER JOIN (SELECT ldlite_system.jobject_keys(jc->'obj') jkey FROM j) as a
+FULL OUTER JOIN (
+    SELECT k.ld_key as jkey
+    FROM j, ldlite_system.jobject_keys(j.jc->'obj') k
+) as a
     USING (jkey)
 WHERE e.jkey IS NULL or a.jkey IS NULL) as q;""",
         (),
@@ -177,7 +98,6 @@ def case_jexplode(p: tuple[Any, ...]) -> JsonTC:
         ("str", False),
         ("str_empty", False),
         ("num", False),
-        ("na", False),
         ("na_str1", False),
         ("na_str2", False),
         ("uuid_nof", False),
@@ -198,10 +118,10 @@ FROM j;""",
 @parametrize(
     p=[
         ("na", True),
-        ("obj_empty", False),
-        ("arr_zero", False),
-        ("na_str1", False),
-        ("na_str2", False),
+        ("obj_empty", True),
+        ("arr_zero", True),
+        ("na_str1", True),
+        ("na_str2", True),
     ],
 )
 def case_jis_null(p: tuple[Any, ...]) -> JsonTC:
@@ -218,7 +138,6 @@ def case_jis_null(p: tuple[Any, ...]) -> JsonTC:
         ("str", False),
         ("str_empty", False),
         ("num", False),
-        ("na", False),
         ("na_str1", False),
         ("na_str2", False),
         ("uuid_nof", False),
@@ -239,15 +158,6 @@ FROM j;""",
 
 @parametrize(
     p=[
-        ("str", False),
-        ("str_empty", False),
-        ("num", False),
-        ("na", False),
-        ("na_str1", False),
-        ("na_str2", False),
-        ("uuid_nof", False),
-        ("uuid", False),
-        ("dt", False),
         ("num", False),
         ("float", True),
     ],

@@ -54,7 +54,14 @@ class Database(ABC):
         """Ingests a stream of records dowloaded from FOLIO to the raw table."""
 
     @abstractmethod
-    def expand_prefix(self, prefix: str, json_depth: int, keep_raw: bool) -> list[str]:
+    def expand_prefix(
+        self,
+        prefix: str,
+        json_depth: int,
+        keep_raw: bool,
+        scan_progress: tqdm[NoReturn] | None = None,
+        transform_progress: tqdm[NoReturn] | None = None,
+    ) -> list[str]:
         """Unnests and explodes the raw data at the given prefix."""
 
     @abstractmethod

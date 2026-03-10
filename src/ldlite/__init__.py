@@ -336,6 +336,7 @@ class LDLite:
                 tqdm(
                     records,
                     desc="downloading",
+                    leave=False,
                     total=total_records,
                     mininterval=5,
                     disable=self._quiet,
@@ -350,12 +351,40 @@ class LDLite:
 
         transform_started = datetime.now(timezone.utc)
         if not use_legacy_transform:
-            newtables = self._database.expand_prefix(table, json_depth, keep_raw)
+            no_iters_format = (
+                "{l_bar}{bar}| {n_fmt}/{total_fmt} [{elapsed}<{remaining}]"
+            )
+            with (
+                tqdm(
+                    desc="scanning",
+                    leave=False,
+                    disable=self._quiet,
+                    bar_format=no_iters_format,
+                ) as scan_progress,
+                tqdm(
+                    desc="transforming",
+                    leave=False,
+                    disable=self._quiet,
+                    bar_format=no_iters_format,
+                ) as transform_progress,
+            ):
+                newtables = self._database.expand_prefix(
+                    table,
+                    json_depth,
+                    keep_raw,
+                    scan_progress,
+                    transform_progress,
+                )
             if keep_raw:
                 newtables = [table, *newtables]
             transform_elapsed = datetime.now(timezone.utc) - transform_started
 
-            with tqdm(desc="indexing", disable=self._quiet) as progress:
+            with tqdm(
+                desc="indexing",
+                leave=False,
+                disable=self._quiet,
+                bar_format=no_iters_format,
+            ) as progress:
                 index_started = datetime.now(timezone.utc)
                 self._database.index_prefix(table, progress)
 

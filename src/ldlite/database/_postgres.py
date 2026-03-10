@@ -41,59 +41,7 @@ LANGUAGE sql
 IMMUTABLE
 PARALLEL SAFE;
 
-CREATE OR REPLACE FUNCTION ldlite_system.jextract(j JSONB, p TEXT) RETURNS JSONB AS $$
-WITH jp AS (
-    -- This is somewhat of a hack.
-    -- There isn't a really good way to get the element unchanged
-    -- which works for duckdb and postgres AND CRUCIALLY
-    -- has a similar syntax to everything else so that we don't
-    -- have to have special cases for exploding the array and it
-    -- can share all the same type checking / statement generation code.
-    -- We're pretending that postgres supports -> '$' style syntax like duckdb.
-    SELECT
-    CASE
-        WHEN p = '$' THEN j #> '{}'
-        ELSE j->p
-    END AS val
-    ,CASE
-        WHEN p = '$' THEN j #>> '{}'
-        ELSE j->>p
-    END AS str
-)
-SELECT
-    CASE
-        WHEN ldlite_system.jtype_of(jp.val) = 'string' THEN
-            CASE
-                WHEN lower(jp.str) = 'null' THEN 'null'::JSONB
-                WHEN length(jp.str) = 0 THEN 'null'::JSONB
-                ELSE jp.val
-            END
-        WHEN ldlite_system.jtype_of(jp.val) = 'array' THEN
-            CASE
-                WHEN jsonb_array_length(jsonb_path_query_array(jp.val, '$[*] ? (@ != null)')) = 0 THEN 'null'::JSONB
-                ELSE jsonb_path_query_array(jp.val, '$[*] ? (@ != null)')
-            END
-        WHEN ldlite_system.jtype_of(jp.val) = 'object' THEN
-            CASE
-                WHEN jp.str = '{}' THEN 'null'::JSONB
-                ELSE jp.val
-            END
-        ELSE jp.val
-    END
-FROM jp;
-$$
-LANGUAGE sql
-IMMUTABLE
-PARALLEL SAFE;
-
-CREATE OR REPLACE FUNCTION ldlite_system.jextract_string(j JSONB, p TEXT) RETURNS TEXT AS $$
-SELECT ldlite_system.jextract(j, p) #>> '{}'
-$$
-LANGUAGE sql
-IMMUTABLE
-PARALLEL SAFE;
-
-CREATE OR REPLACE FUNCTION ldlite_system.jobject_keys(j JSONB) RETURNS SETOF TEXT AS $$
+CREATE OR REPLACE FUNCTION ldlite_system.jobject_keys(j JSONB) RETURNS TABLE (ld_key TEXT) AS $$
 SELECT jsonb_object_keys(j);
 $$
 LANGUAGE sql
@@ -101,40 +49,31 @@ IMMUTABLE
 PARALLEL SAFE;
 
 CREATE OR REPLACE FUNCTION ldlite_system.jis_uuid(j JSONB) RETURNS BOOLEAN AS $$
-SELECT
-    CASE
-        WHEN ldlite_system.jtype_of(j) = 'string' THEN j->>0 ~ '^[a-fA-F0-9]{8}-[a-fA-F0-9]{4}-[1-5][a-fA-F0-9]{3}-[89abAB][a-fA-F0-9]{3}-[a-fA-F0-9]{12}$'
-        ELSE FALSE
-    END;
+SELECT j::text ~* '^"[a-f0-9]{8}-[a-f0-9]{4}-[1-5][a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}"$';
 $$
 LANGUAGE sql
 IMMUTABLE
-PARALLEL SAFE;
+PARALLEL SAFE
+STRICT;
 
 CREATE OR REPLACE FUNCTION ldlite_system.jis_datetime(j JSONB) RETURNS BOOLEAN AS $$
-SELECT
-    CASE
-        WHEN ldlite_system.jtype_of(j) = 'string' THEN j->>0 ~ '^\d{4}-[01]\d-[0123]\dT[012]\d:[012345]\d:[012345]\d\.\d{3}(\+\d{2}:\d{2})?$'
-        ELSE FALSE
-    END;
+SELECT j::text ~ '^"\d{4}-[01]\d-[0123]\dT[012]\d:[012345]\d:[012345]\d\.\d{3}(\+\d{2}:\d{2})?"$'
 $$
 LANGUAGE sql
 IMMUTABLE
-PARALLEL SAFE;
+PARALLEL SAFE
+STRICT;
 
 CREATE OR REPLACE FUNCTION ldlite_system.jis_float(j JSONB) RETURNS BOOLEAN AS $$
-SELECT
-    CASE
-        WHEN ldlite_system.jtype_of(j) = 'number' THEN j->>0 LIKE '%.%'
-        ELSE FALSE
-    END;
+SELECT SCALE((j)::numeric) > 0
 $$
 LANGUAGE sql
 IMMUTABLE
-PARALLEL SAFE;
+PARALLEL SAFE
+STRICT;
 
 CREATE OR REPLACE FUNCTION ldlite_system.jis_null(j JSONB) RETURNS BOOLEAN AS $$
-SELECT j IS NULL OR j = 'null'::JSONB;
+SELECT j IS NULL OR j = 'null'::jsonb OR j #>> '{}' IN ('NULL', 'null', '', '{}', '[]')
 $$
 LANGUAGE sql
 IMMUTABLE
@@ -142,6 +81,14 @@ PARALLEL SAFE;
 
 CREATE OR REPLACE FUNCTION ldlite_system.jexplode(j JSONB) RETURNS TABLE (ld_value JSONB) AS $$
 SELECT * FROM jsonb_array_elements(j);
+$$
+LANGUAGE sql
+IMMUTABLE
+PARALLEL SAFE;
+
+
+CREATE OR REPLACE FUNCTION ldlite_system.jself_string(j JSONB) RETURNS TEXT AS $$
+SELECT j #>> '{}'
 $$
 LANGUAGE sql
 IMMUTABLE

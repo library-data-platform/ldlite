@@ -7,4 +7,4 @@ dependencies:
   - python>=3.10,<3.11
   - pdm==2.26.6
   - precious==0.10.2
-  - libpq>=13.0
+  - libpq>=14.0

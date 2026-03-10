@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from collections import deque
-from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
 from psycopg import sql
@@ -9,46 +8,7 @@ from psycopg import sql
 from .nodes import ArrayNode, ObjectNode
 
 if TYPE_CHECKING:
-    from collections.abc import Callable
-
-    import duckdb
-    import psycopg
-
-
-@dataclass
-class ExpandContext:
-    conn: duckdb.DuckDBPyConnection | psycopg.Connection
-    source_table: sql.Identifier
-    json_depth: int
-    get_transform_table: Callable[[int], sql.Identifier]
-    get_output_table: Callable[[str], tuple[str, sql.Identifier]]
-    # This is necessary for Analyzing the table in pg before querying it
-    # I don't love how this is implemented
-    preprocess: Callable[
-        [
-            duckdb.DuckDBPyConnection | psycopg.Connection,
-            sql.Identifier,
-            list[sql.Identifier],
-        ],
-        None,
-    ]
-    # source_cte will go away when DuckDB implements CTAS RETURNING
-    source_cte: Callable[[bool], str]
-
-    def array_context(
-        self,
-        new_source_table: sql.Identifier,
-        new_json_depth: int,
-    ) -> ExpandContext:
-        return ExpandContext(
-            self.conn,
-            new_source_table,
-            new_json_depth,
-            self.get_transform_table,
-            self.get_output_table,
-            self.preprocess,
-            self.source_cte,
-        )
+    from .context import ExpandContext
 
 
 def expand_nonmarc(
@@ -69,18 +29,28 @@ def _expand_nonmarc(
     count: int,
     ctx: ExpandContext,
 ) -> tuple[int, list[str]]:
+    ctx.scan_progress.total = (ctx.scan_progress.total or 0) + 1
+    ctx.scan_progress.refresh()
+    ctx.transform_progress.total = (ctx.transform_progress.total or 0) + 1
+    ctx.transform_progress.refresh()
     initial_count = count
     ctx.preprocess(ctx.conn, ctx.source_table, [root.identifier])
-    root.unnest(
-        ctx.conn,
+    has_rows = root.unnest(
+        ctx,
         ctx.source_table,
         ctx.get_transform_table(count),
         ctx.source_cte(False),
     )
+    ctx.transform_progress.update(1)
+    if not has_rows:
+        return (0, [])
 
     expand_children_of = deque([root])
     while expand_children_of:
         on = expand_children_of.popleft()
+        if ctx.transform_progress:
+            ctx.transform_progress.total += len(on.object_children)
+            ctx.transform_progress.refresh()
         for c in on.object_children:
             if len(c.parents) >= ctx.json_depth:
                 if c.parent is not None:
@@ -88,18 +58,21 @@ def _expand_nonmarc(
                 continue
             ctx.preprocess(ctx.conn, ctx.get_transform_table(count), [c.identifier])
             c.unnest(
-                ctx.conn,
+                ctx,
                 ctx.get_transform_table(count),
                 ctx.get_transform_table(count + 1),
                 ctx.source_cte(False),
             )
             expand_children_of.append(c)
             count += 1
+            ctx.transform_progress.update(1)
 
     created_tables = []
 
     new_source_table = ctx.get_transform_table(count)
     arrays = root.descendents_oftype(ArrayNode)
+    ctx.transform_progress.total += len(arrays)
+    ctx.transform_progress.refresh()
     ctx.preprocess(ctx.conn, new_source_table, [a.identifier for a in arrays])
     for an in arrays:
         if len(an.parents) >= ctx.json_depth:
@@ -111,6 +84,7 @@ def _expand_nonmarc(
             ctx.source_cte(True),
         )
         count += 1
+        ctx.transform_progress.update(1)
 
         if an.meta.is_object:
             (sub_index, array_tables) = _expand_nonmarc(

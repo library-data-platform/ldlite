@@ -9,16 +9,18 @@ from uuid import uuid4
 
 import psycopg
 from psycopg import sql
+from tqdm import tqdm
 
 from . import Database, LoadHistory
-from ._expansion import ExpandContext, expand_nonmarc
+from ._expansion import expand_nonmarc
+from ._expansion.context import ExpandContext
 from ._prefix import Prefix
 
 if TYPE_CHECKING:
     from collections.abc import Callable, Sequence
+    from typing import NoReturn
 
     import duckdb
-    from tqdm import tqdm
 
 
 DB = TypeVar("DB", bound="duckdb.DuckDBPyConnection | psycopg.Connection")
@@ -134,7 +136,7 @@ WHERE table_schema = $1 and table_name IN ($2, $3);""",
             for (et,) in tables:
                 cur.execute(
                     sql.SQL("DROP TABLE IF EXISTS {table};")
-                    .format(table=sql.Identifier(cast("str", et)))
+                    .format(table=sql.Identifier(*cast("str", et).split(".")))
                     .as_string(),
                 )
             cur.execute(
@@ -184,7 +186,14 @@ WHERE table_schema = $1 and table_name IN ($2, $3);""",
     @abstractmethod
     def source_table_cte_stmt(self, keep_source: bool) -> str: ...
 
-    def expand_prefix(self, prefix: str, json_depth: int, keep_raw: bool) -> list[str]:
+    def expand_prefix(
+        self,
+        prefix: str,
+        json_depth: int,
+        keep_raw: bool,
+        scan_progress: tqdm[NoReturn] | None = None,
+        transform_progress: tqdm[NoReturn] | None = None,
+    ) -> list[str]:
         pfx = Prefix(prefix)
         with closing(self._conn_factory()) as conn:
             self._drop_extracted_tables(conn, pfx)
@@ -224,6 +233,10 @@ SELECT * from ld_source;
                     pfx.output_table,
                     self.preprocess_source_table,  # type: ignore [arg-type]
                     self.source_table_cte_stmt,
+                    scan_progress if scan_progress is not None else tqdm(disable=True),
+                    transform_progress
+                    if transform_progress is not None
+                    else tqdm(disable=True),
                 ),
             )
 
@@ -239,14 +252,15 @@ CREATE TABLE {catalog_table} (
                     .format(catalog_table=pfx.catalog_table.id)
                     .as_string(),
                 )
-                cur.executemany(
-                    sql.SQL("INSERT INTO {catalog_table} VALUES ($1)")
-                    .format(
-                        catalog_table=pfx.catalog_table.id,
+                if len(created_tables) > 0:
+                    cur.executemany(
+                        sql.SQL("INSERT INTO {catalog_table} VALUES ($1)")
+                        .format(
+                            catalog_table=pfx.catalog_table.id,
+                        )
+                        .as_string(),
+                        [(pfx.catalog_table_row(t),) for t in created_tables],
                     )
-                    .as_string(),
-                    [(pfx.catalog_table_row(t),) for t in created_tables],
-                )
 
             conn.commit()
 
@@ -272,10 +286,10 @@ WHERE table_schema = $1 and table_name = $2;""",
                 cur.execute(
                     sql.SQL(
                         r"""
-SELECT TABLE_NAME, COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS
+SELECT TABLE_SCHEMA, TABLE_NAME, COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS
 WHERE
     TABLE_SCHEMA = $1 AND
-    TABLE_NAME IN (SELECT TABLE_NAME FROM {catalog}) AND
+    TABLE_NAME IN (SELECT SPLIT_PART(TABLE_NAME, '.', -1) FROM {catalog}) AND
     (
         DATA_TYPE IN ('UUID', 'uuid') OR
         COLUMN_NAME = 'id' OR
@@ -299,8 +313,8 @@ WHERE
                         sql.SQL("CREATE INDEX {name} ON {table} ({column});")
                         .format(
                             name=sql.Identifier(str(uuid4()).split("-")[0]),
-                            table=sql.Identifier(*index[0].split(".")),
-                            column=sql.Identifier(index[1]),
+                            table=sql.Identifier(index[0], index[1]),
+                            column=sql.Identifier(index[2]),
                         )
                         .as_string(),
                     )
