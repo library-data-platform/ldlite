@@ -91,6 +91,66 @@ WHERE TABLE_NAME = 'prefix__t' AND COLUMN_NAME = '{a[0]}'
     )
 
 
+def case_jagged_json() -> ExpansionTC:
+    return ExpansionTC(
+        records=[
+            b"""
+{
+    "id": "id1",
+    "both": { "id": "both_id1" },
+    "first_only": { "id": "first_id1" }
+}
+""",
+            b"""
+{
+    "id": "id2",
+    "both": { "id": "both_id2" },
+    "second_only": { "id": "second_id2" }
+}
+""",
+            b"""
+{
+    "id": "id3",
+    "both": { "id": "both_id3" },
+    "first_only": { "id": "first_id3" }
+}
+""",
+        ],
+        assertions=[
+            Assertion(
+                """
+SELECT COUNT(*)
+FROM INFORMATION_SCHEMA.COLUMNS
+WHERE TABLE_NAME = 'prefix__t'
+""",
+                expect=5,
+            ),
+            Assertion(
+                """
+SELECT COUNT(*)
+FROM tests.prefix__t
+""",
+                expect=3,
+            ),
+            Assertion(
+                """
+SELECT COLUMN_NAME
+FROM INFORMATION_SCHEMA.COLUMNS
+WHERE TABLE_NAME = 'prefix__t'
+ORDER BY COLUMN_NAME COLLATE "C";
+""",
+                expect=[
+                    ("__id",),
+                    ("both__id",),
+                    ("first_only__id",),
+                    ("id",),
+                    ("second_only__id",),
+                ],
+            ),
+        ],
+    )
+
+
 @parametrize(
     "assertion",
     [

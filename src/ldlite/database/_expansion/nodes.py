@@ -277,7 +277,6 @@ CREATE TEMP TABLE {dest_table} ON COMMIT DROP AS
 SELECT
     {cols}
 FROM ld_source
-WHERE NOT ldlite_system.jis_null({json_col})
 """,
                 )
                 .format(
