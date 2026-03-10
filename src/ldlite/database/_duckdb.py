@@ -1,4 +1,5 @@
 from collections.abc import Iterator
+from datetime import datetime, timezone
 from itertools import count
 from typing import TYPE_CHECKING, Any, cast
 
@@ -89,6 +90,7 @@ CREATE OR REPLACE FUNCTION ldlite_system.jself_string(j) AS
         records: Iterator[bytes],
     ) -> int:
         pfx = Prefix(prefix)
+        download_started = datetime.now(timezone.utc)
         pkey = count(1)
         with self._conn_factory() as conn:
             self._prepare_raw_table(conn, pfx)
@@ -102,9 +104,12 @@ CREATE OR REPLACE FUNCTION ldlite_system.jself_string(j) AS
             with conn.begin() as tx, tx.cursor() as cur:
                 for r in records:
                     cur.execute(insert_sql, (next(pkey), r.decode()))
+
+                total = next(pkey) - 1
+                self._download_complete(conn, pfx, total, download_started)
                 tx.commit()
 
-        return next(pkey) - 1
+        return total
 
     def source_table_cte_stmt(self, keep_source: bool) -> str:  # noqa: ARG002
         return "WITH ld_source AS (SELECT * FROM {source_table})"
