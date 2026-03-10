@@ -125,17 +125,17 @@ dependencies = []
 
 [[packages]]
 name = "duckdb"
-version = "1.4.4"
-requires-python = ">=3.9.0"
-sdist = {name = "duckdb-1.4.4.tar.gz", url = "https://files.pythonhosted.org/packages/36/9d/ab66a06e416d71b7bdcb9904cdf8d4db3379ef632bb8e9495646702d9718/duckdb-1.4.4.tar.gz", hashes = {sha256 = "8bba52fd2acb67668a4615ee17ee51814124223de836d9e2fdcbc4c9021b3d3c"}}
+version = "1.5.0"
+requires-python = ">=3.10.0"
+sdist = {name = "duckdb-1.5.0.tar.gz", url = "https://files.pythonhosted.org/packages/ee/11/e05a7eb73a373d523e45d83c261025e02bc31ebf868e6282c30c4d02cc59/duckdb-1.5.0.tar.gz", hashes = {sha256 = "f974b61b1c375888ee62bc3125c60ac11c4e45e4457dd1bb31a8f8d3cf277edd"}}
 wheels = [
-    {name = "duckdb-1.4.4-cp314-cp314-macosx_10_15_universal2.whl",url = "https://files.pythonhosted.org/packages/97/a6/f19e2864e651b0bd8e4db2b0c455e7e0d71e0d4cd2cd9cc052f518e43eb3/duckdb-1.4.4-cp314-cp314-macosx_10_15_universal2.whl",hashes = {sha256 = "25874f8b1355e96178079e37312c3ba6d61a2354f51319dae860cf21335c3a20"}},
-    {name = "duckdb-1.4.4-cp314-cp314-macosx_10_15_x86_64.whl",url = "https://files.pythonhosted.org/packages/0e/93/8a24e932c67414fd2c45bed83218e62b73348996bf859eda020c224774b2/duckdb-1.4.4-cp314-cp314-macosx_10_15_x86_64.whl",hashes = {sha256 = "452c5b5d6c349dc5d1154eb2062ee547296fcbd0c20e9df1ed00b5e1809089da"}},
-    {name = "duckdb-1.4.4-cp314-cp314-macosx_11_0_arm64.whl",url = "https://files.pythonhosted.org/packages/62/13/e5378ff5bb1d4397655d840b34b642b1b23cdd82ae19599e62dc4b9461c9/duckdb-1.4.4-cp314-cp314-macosx_11_0_arm64.whl",hashes = {sha256 = "8e5c2d8a0452df55e092959c0bfc8ab8897ac3ea0f754cb3b0ab3e165cd79aff"}},
-    {name = "duckdb-1.4.4-cp314-cp314-manylinux_2_26_aarch64.manylinux_2_28_aarch64.whl",url = "https://files.pythonhosted.org/packages/2d/94/24364da564b27aeebe44481f15bd0197a0b535ec93f188a6b1b98c22f082/duckdb-1.4.4-cp314-cp314-manylinux_2_26_aarch64.manylinux_2_28_aarch64.whl",hashes = {sha256 = "1af6e76fe8bd24875dc56dd8e38300d64dc708cd2e772f67b9fbc635cc3066a3"}},
-    {name = "duckdb-1.4.4-cp314-cp314-manylinux_2_26_x86_64.manylinux_2_28_x86_64.whl",url = "https://files.pythonhosted.org/packages/26/0a/6ae31b2914b4dc34243279b2301554bcbc5f1a09ccc82600486c49ab71d1/duckdb-1.4.4-cp314-cp314-manylinux_2_26_x86_64.manylinux_2_28_x86_64.whl",hashes = {sha256 = "d0440f59e0cd9936a9ebfcf7a13312eda480c79214ffed3878d75947fc3b7d6d"}},
-    {name = "duckdb-1.4.4-cp314-cp314-win_amd64.whl",url = "https://files.pythonhosted.org/packages/d2/b1/fd5c37c53d45efe979f67e9bd49aaceef640147bb18f0699a19edd1874d6/duckdb-1.4.4-cp314-cp314-win_amd64.whl",hashes = {sha256 = "59c8d76016dde854beab844935b1ec31de358d4053e792988108e995b18c08e7"}},
-    {name = "duckdb-1.4.4-cp314-cp314-win_arm64.whl",url = "https://files.pythonhosted.org/packages/dd/2d/13e6024e613679d8a489dd922f199ef4b1d08a456a58eadd96dc2f05171f/duckdb-1.4.4-cp314-cp314-win_arm64.whl",hashes = {sha256 = "53cd6423136ab44383ec9955aefe7599b3fb3dd1fe006161e6396d8167e0e0d4"}},
+    {name = "duckdb-1.5.0-cp314-cp314-macosx_10_15_universal2.whl",url = "https://files.pythonhosted.org/packages/66/9f/dd806d4e8ecd99006eb240068f34e1054533da1857ad06ac726305cd102d/duckdb-1.5.0-cp314-cp314-macosx_10_15_universal2.whl",hashes = {sha256 = "d4b618de670cd2271dd7b3397508c7b3c62d8ea70c592c755643211a6f9154fa"}},
+    {name = "duckdb-1.5.0-cp314-cp314-macosx_10_15_x86_64.whl",url = "https://files.pythonhosted.org/packages/79/c2/7b7b8a5c65d5535c88a513e267b5e6d7a55ab3e9b67e4ddd474454653268/duckdb-1.5.0-cp314-cp314-macosx_10_15_x86_64.whl",hashes = {sha256 = "065ae50cb185bac4b904287df72e6b4801b3bee2ad85679576dd712b8ba07021"}},
+    {name = "duckdb-1.5.0-cp314-cp314-macosx_11_0_arm64.whl",url = "https://files.pythonhosted.org/packages/23/c5/9a52a2cdb228b8d8d191a603254364d929274d9cc7d285beada8f7daa712/duckdb-1.5.0-cp314-cp314-macosx_11_0_arm64.whl",hashes = {sha256 = "6be5e48e287a24d98306ce9dd55093c3b105a8fbd8a2e7a45e13df34bf081985"}},
+    {name = "duckdb-1.5.0-cp314-cp314-manylinux_2_26_aarch64.manylinux_2_28_aarch64.whl",url = "https://files.pythonhosted.org/packages/b8/68/646045cb97982702a8a143dc2e45f3bdcb79fbe2d559a98d74b8c160e5e2/duckdb-1.5.0-cp314-cp314-manylinux_2_26_aarch64.manylinux_2_28_aarch64.whl",hashes = {sha256 = "a5ee41a0bf793882f02192ce105b9a113c3e8c505a27c7ef9437d7b756317113"}},
+    {name = "duckdb-1.5.0-cp314-cp314-manylinux_2_26_x86_64.manylinux_2_28_x86_64.whl",url = "https://files.pythonhosted.org/packages/15/1b/5abf0c7f38febb3b4a231c784223fceccfd3f2bfd957699d786f46e41ce6/duckdb-1.5.0-cp314-cp314-manylinux_2_26_x86_64.manylinux_2_28_x86_64.whl",hashes = {sha256 = "f8e42aaf3cd217417c5dc9ff522dc3939d18b25a6fe5f846348277e831e6f59c"}},
+    {name = "duckdb-1.5.0-cp314-cp314-win_amd64.whl",url = "https://files.pythonhosted.org/packages/93/a4/a90f2901cc0a1ce7ca4f0564b8492b9dbfe048a6395b27933d46ae9be473/duckdb-1.5.0-cp314-cp314-win_amd64.whl",hashes = {sha256 = "11ae50aaeda2145b50294ee0247e4f11fb9448b3cc3d2aea1cfc456637dfb977"}},
+    {name = "duckdb-1.5.0-cp314-cp314-win_arm64.whl",url = "https://files.pythonhosted.org/packages/64/aa/f14dd5e241ec80d9f9d82196ca65e0c53badfc8a7a619d5497c5626657ad/duckdb-1.5.0-cp314-cp314-win_arm64.whl",hashes = {sha256 = "d6d2858c734d1a7e7a1b6e9b8403b3fce26dfefb4e0a2479c420fba6cd36db36"}},
 ]
 marker = "python_version >= \"3.14\" and \"default\" in dependency_groups"
 
@@ -224,10 +224,10 @@ dependencies = [
 
 [[packages]]
 name = "pytest-cases"
-version = "3.9.1"
-sdist = {name = "pytest_cases-3.9.1.tar.gz", url = "https://files.pythonhosted.org/packages/c1/69/8b41e074e9e1a9fa85c3765971f213e1b8d4a2f648b457af32dea792bdb8/pytest_cases-3.9.1.tar.gz", hashes = {sha256 = "c4e181f1b525c931a318d4812fa8de656c2c8fb77fccf1571ecf0cc5fe8e7f8f"}}
+version = "3.10.1"
+sdist = {name = "pytest_cases-3.10.1.tar.gz", url = "https://files.pythonhosted.org/packages/c1/a2/c7abc3b606125cf3732e8e613092b0e2549365e824b5f37972125c22806b/pytest_cases-3.10.1.tar.gz", hashes = {sha256 = "451f9e3ecd5d2d81a4362c10c441126f5b3d1ae3a7efaf59f60b1fb930df2d69"}}
 wheels = [
-    {name = "pytest_cases-3.9.1-py2.py3-none-any.whl",url = "https://files.pythonhosted.org/packages/92/82/db006f1d06e5d31805ac47f9ce979937e3d026292f2759543b744f8040be/pytest_cases-3.9.1-py2.py3-none-any.whl",hashes = {sha256 = "60507716650c5ed1ce4a36a3c137f1c3ec58f4fef1ee8678404be074612fcd21"}},
+    {name = "pytest_cases-3.10.1-py2.py3-none-any.whl",url = "https://files.pythonhosted.org/packages/61/f2/7a29fb0571562034b05c38dceabba48dcc622be5d6c5448db80779e55de7/pytest_cases-3.10.1-py2.py3-none-any.whl",hashes = {sha256 = "0deb8a85b6132e44adbc1cfc57897c6a624ec23f48ab445a43c7d56a6b9315a4"}},
 ]
 marker = "python_version >= \"3.14\" and \"test\" in dependency_groups"
 
@@ -238,6 +238,18 @@ dependencies = [
     "packaging",
     "pytest",
 ]
+
+[[packages]]
+name = "pytz"
+version = "2026.1.post1"
+sdist = {name = "pytz-2026.1.post1.tar.gz", url = "https://files.pythonhosted.org/packages/56/db/b8721d71d945e6a8ac63c0fc900b2067181dbb50805958d4d4661cf7d277/pytz-2026.1.post1.tar.gz", hashes = {sha256 = "3378dde6a0c3d26719182142c56e60c7f9af7e968076f31aae569d72a0358ee1"}}
+wheels = [
+    {name = "pytz-2026.1.post1-py2.py3-none-any.whl",url = "https://files.pythonhosted.org/packages/10/99/781fe0c827be2742bcc775efefccb3b048a3a9c6ce9aec0cbf4a101677e5/pytz-2026.1.post1-py2.py3-none-any.whl",hashes = {sha256 = "f2fd16142fda348286a75e1a524be810bb05d444e5a081f37f7affc635035f7a"}},
+]
+marker = "python_version >= \"3.14\" and \"default\" in dependency_groups"
+
+[packages.tool.pdm]
+dependencies = []
 
 [[packages]]
 name = "tqdm"
@@ -257,11 +269,11 @@ dependencies = [
 
 [[packages]]
 name = "types-tqdm"
-version = "4.67.3.20260205"
-requires-python = ">=3.9"
-sdist = {name = "types_tqdm-4.67.3.20260205.tar.gz", url = "https://files.pythonhosted.org/packages/53/46/790b9872523a48163bdda87d47849b4466017640e5259d06eed539340afd/types_tqdm-4.67.3.20260205.tar.gz", hashes = {sha256 = "f3023682d4aa3bbbf908c8c6bb35f35692d319460d9bbd3e646e8852f3dd9f85"}}
+version = "4.67.3.20260303"
+requires-python = ">=3.10"
+sdist = {name = "types_tqdm-4.67.3.20260303.tar.gz", url = "https://files.pythonhosted.org/packages/e1/64/3e7cb0f40c4bf9578098b6873df33a96f7e0de90f3a039e614d22bfde40a/types_tqdm-4.67.3.20260303.tar.gz", hashes = {sha256 = "7bfddb506a75aedb4030fabf4f05c5638c9a3bbdf900d54ec6c82be9034bfb96"}}
 wheels = [
-    {name = "types_tqdm-4.67.3.20260205-py3-none-any.whl",url = "https://files.pythonhosted.org/packages/cc/da/7f761868dbaa328392356fab30c18ab90d14cce86b269e7e63328f29d4a3/types_tqdm-4.67.3.20260205-py3-none-any.whl",hashes = {sha256 = "85c31731e81dc3c5cecc34c6c8b2e5166fafa722468f58840c2b5ac6a8c5c173"}},
+    {name = "types_tqdm-4.67.3.20260303-py3-none-any.whl",url = "https://files.pythonhosted.org/packages/37/32/e4a1fce59155c74082f1a42d0ffafa59652bfb8cff35b04d56333877748e/types_tqdm-4.67.3.20260303-py3-none-any.whl",hashes = {sha256 = "459decf677e4b05cef36f9012ef8d6e20578edefb6b78c15bd0b546247eda62d"}},
 ]
 marker = "python_version >= \"3.14\" and \"types\" in dependency_groups"
 
@@ -564,7 +576,7 @@ marker = "sys_platform == \"win32\" and python_version >= \"3.14\" and \"default
 dependencies = []
 
 [tool.pdm]
-hashes = {sha256 = "fc3d3c9728a89b11648ffab29807d5c42006e80d65c41b735dac8d12d3dd8f1d"}
+hashes = {sha256 = "b3cf474c257071e375683a8f88215a2f04a2a1983dea8fae923264a6b0c3b3be"}
 strategy = ["inherit_metadata", "static_urls"]
 
 [[tool.pdm.targets]]

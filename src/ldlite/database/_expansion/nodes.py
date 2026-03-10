@@ -233,11 +233,16 @@ SELECT
         SELECT 1 FROM all_values
         WHERE json_type = 'string' AND NOT ldlite_system.jis_datetime(ld_value)
     ) AS is_datetime
-    ,NOT EXISTS
+    ,EXISTS
     (
         SELECT 1 FROM all_values
-        WHERE json_type = 'number' AND NOT ldlite_system.jis_float(ld_value)
+        WHERE json_type = 'number' AND ldlite_system.jis_float(ld_value)
     ) AS is_float
+    ,EXISTS
+    (
+        SELECT 1 FROM all_values
+        WHERE json_type = 'number' AND ldlite_system.jis_bigint(ld_value)
+    ) AS is_bigint
 """,
                     )
                     .format(
@@ -310,12 +315,13 @@ class ArrayNode(ExpansionNode):
     ):
         super().__init__(name, path, parent, values)
         self.meta = Metadata(
-            "$",
+            None,
             meta.json_type,
             False,
             meta.is_uuid,
             meta.is_datetime,
             meta.is_float,
+            meta.is_bigint,
         )
 
     def explode(

@@ -72,6 +72,14 @@ IMMUTABLE
 PARALLEL SAFE
 STRICT;
 
+CREATE OR REPLACE FUNCTION ldlite_system.jis_bigint(j JSONB) RETURNS BOOLEAN AS $$
+SELECT (j)::numeric > 2147483647
+$$
+LANGUAGE sql
+IMMUTABLE
+PARALLEL SAFE
+STRICT;
+
 CREATE OR REPLACE FUNCTION ldlite_system.jis_null(j JSONB) RETURNS BOOLEAN AS $$
 SELECT j IS NULL OR j = 'null'::jsonb OR j #>> '{}' IN ('NULL', 'null', '', '{}', '[]')
 $$
