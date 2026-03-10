@@ -336,6 +336,7 @@ class LDLite:
                 tqdm(
                     records,
                     desc="downloading",
+                    leave=False,
                     total=total_records,
                     mininterval=5,
                     disable=self._quiet,
@@ -356,11 +357,13 @@ class LDLite:
             with (
                 tqdm(
                     desc="scanning",
+                    leave=False,
                     disable=self._quiet,
                     bar_format=no_iters_format,
                 ) as scan_progress,
                 tqdm(
                     desc="transforming",
+                    leave=False,
                     disable=self._quiet,
                     bar_format=no_iters_format,
                 ) as transform_progress,
@@ -378,6 +381,7 @@ class LDLite:
 
             with tqdm(
                 desc="indexing",
+                leave=False,
                 disable=self._quiet,
                 bar_format=no_iters_format,
             ) as progress:
