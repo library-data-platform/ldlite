@@ -31,7 +31,7 @@ class QueryTC(MockedResponseTestCase):
 def case_one_table(json_depth: int) -> QueryTC:
     return QueryTC(
         Call(
-            "prefix",
+            "tests.prefix",
             json_depth=json_depth,
             returns={
                 "purchaseOrders": [
@@ -48,7 +48,7 @@ def case_one_table(json_depth: int) -> QueryTC:
                 ["id", "value"],
                 [("b096504a-3d54-4664-9bf5-1b872466fd66", "value")],
             ),
-            "prefix__tcatalog": (["table_name"], [("prefix__t",)]),
+            "prefix__tcatalog": (["table_name"], [("tests.prefix__t",)]),
         },
         expected_indexes=[
             ("prefix__t", "id"),
@@ -60,7 +60,7 @@ def case_one_table(json_depth: int) -> QueryTC:
 def case_two_tables(json_depth: int) -> QueryTC:
     return QueryTC(
         Call(
-            "prefix",
+            "tests.prefix",
             json_depth=json_depth,
             returns={
                 "purchaseOrders": [
@@ -109,7 +109,7 @@ def case_two_tables(json_depth: int) -> QueryTC:
             ),
             "prefix__tcatalog": (
                 ["table_name"],
-                [("prefix__t",), ("prefix__t__sub_objects",)],
+                [("tests.prefix__t",), ("tests.prefix__t__sub_objects",)],
             ),
         },
         expected_indexes=[
@@ -124,7 +124,7 @@ def case_two_tables(json_depth: int) -> QueryTC:
 def case_table_no_expansion(json_depth: int) -> QueryTC:
     return QueryTC(
         Call(
-            "prefix",
+            "tests.prefix",
             json_depth=json_depth,
             returns={
                 "purchaseOrders": [
@@ -149,7 +149,7 @@ def case_table_no_expansion(json_depth: int) -> QueryTC:
 def case_table_underexpansion() -> QueryTC:
     return QueryTC(
         Call(
-            "prefix",
+            "tests.prefix",
             json_depth=2,
             returns={
                 "purchaseOrders": [
@@ -194,7 +194,7 @@ def case_table_underexpansion() -> QueryTC:
             ),
             "prefix__tcatalog": (
                 ["table_name"],
-                [("prefix__t",), ("prefix__t__sub_objects",)],
+                [("tests.prefix__t",), ("tests.prefix__t__sub_objects",)],
             ),
         },
     )
@@ -204,7 +204,7 @@ def case_table_underexpansion() -> QueryTC:
 def case_three_tables(json_depth: int) -> QueryTC:
     return QueryTC(
         Call(
-            "prefix",
+            "tests.prefix",
             json_depth=json_depth,
             returns={
                 "purchaseOrders": [
@@ -254,9 +254,9 @@ def case_three_tables(json_depth: int) -> QueryTC:
             "prefix__tcatalog": (
                 ["table_name"],
                 [
-                    ("prefix__t",),
-                    ("prefix__t__sub_objects",),
-                    ("prefix__t__sub_objects__sub_sub_objects",),
+                    ("tests.prefix__t",),
+                    ("tests.prefix__t__sub_objects",),
+                    ("tests.prefix__t__sub_objects__sub_sub_objects",),
                 ],
             ),
         },
@@ -277,7 +277,7 @@ def case_three_tables(json_depth: int) -> QueryTC:
 def case_nested_object() -> QueryTC:
     return QueryTC(
         Call(
-            "prefix",
+            "tests.prefix",
             json_depth=2,
             returns={
                 "purchaseOrders": [
@@ -307,7 +307,7 @@ def case_nested_object() -> QueryTC:
             ),
             "prefix__tcatalog": (
                 ["table_name"],
-                [("prefix__t",)],
+                [("tests.prefix__t",)],
             ),
         },
         expected_indexes=[
@@ -320,7 +320,7 @@ def case_nested_object() -> QueryTC:
 def case_doubly_nested_object() -> QueryTC:
     return QueryTC(
         Call(
-            "prefix",
+            "tests.prefix",
             json_depth=3,
             returns={
                 "purchaseOrders": [
@@ -361,7 +361,7 @@ def case_doubly_nested_object() -> QueryTC:
             ),
             "prefix__tcatalog": (
                 ["table_name"],
-                [("prefix__t",)],
+                [("tests.prefix__t",)],
             ),
         },
         expected_indexes=[
@@ -375,7 +375,7 @@ def case_doubly_nested_object() -> QueryTC:
 def case_nested_object_underexpansion() -> QueryTC:
     return QueryTC(
         Call(
-            "prefix",
+            "tests.prefix",
             json_depth=1,
             returns={
                 "purchaseOrders": [
@@ -405,7 +405,7 @@ def case_nested_object_underexpansion() -> QueryTC:
             ),
             "prefix__tcatalog": (
                 ["table_name"],
-                [("prefix__t",)],
+                [("tests.prefix__t",)],
             ),
         },
     )
@@ -414,7 +414,7 @@ def case_nested_object_underexpansion() -> QueryTC:
 def case_tables_and_lists() -> QueryTC:
     return QueryTC(
         Call(
-            "prefix",
+            "tests.prefix",
             json_depth=3,
             returns={
                 "purchaseOrders": [
@@ -502,9 +502,9 @@ def case_tables_and_lists() -> QueryTC:
             "prefix__tcatalog": (
                 ["table_name"],
                 [
-                    ("prefix__t",),
-                    ("prefix__t__sub_object__sub_objects",),
-                    ("prefix__t__sub_objects",),
+                    ("tests.prefix__t",),
+                    ("tests.prefix__t__sub_object__sub_objects",),
+                    ("tests.prefix__t__sub_objects",),
                 ],
             ),
         },
@@ -518,7 +518,7 @@ def case_tables_and_lists() -> QueryTC:
 def case_id_generation() -> QueryTC:
     return QueryTC(
         Call(
-            "prefix",
+            "tests.prefix",
             json_depth=4,
             returns={
                 "purchaseOrders": [
@@ -591,7 +591,7 @@ def case_id_generation() -> QueryTC:
 def case_indexing_id_like() -> QueryTC:
     return QueryTC(
         Call(
-            "prefix",
+            "tests.prefix",
             json_depth=4,
             returns={
                 "purchaseOrders": [
@@ -623,7 +623,7 @@ def case_indexing_id_like() -> QueryTC:
 def case_drop_raw(json_depth: int) -> QueryTC:
     return QueryTC(
         Call(
-            "prefix",
+            "tests.prefix",
             json_depth=json_depth,
             keep_raw=False,
             returns={
@@ -641,7 +641,7 @@ def case_drop_raw(json_depth: int) -> QueryTC:
                 ["id", "value"],
                 [("b096504a-3d54-4664-9bf5-1b872466fd66", "value")],
             ),
-            "prefix__tcatalog": (["table_name"], [("prefix__t",)]),
+            "prefix__tcatalog": (["table_name"], [("tests.prefix__t",)]),
         },
         expected_indexes=[
             ("prefix__t", "id"),
@@ -654,7 +654,7 @@ def case_drop_raw(json_depth: int) -> QueryTC:
 def case_null_records() -> QueryTC:
     return QueryTC(
         Call(
-            "prefix",
+            "tests.prefix",
             json_depth=1,
             returns={
                 "purchaseOrders": [
@@ -677,7 +677,7 @@ def case_null_records() -> QueryTC:
 def case_erm_keys() -> QueryTC:
     return QueryTC(
         Call(
-            "prefix",
+            "tests.prefix",
             json_depth=3,
             returns={
                 "pageSize": 30,
@@ -699,7 +699,7 @@ def case_erm_keys() -> QueryTC:
                 ["id", "value"],
                 [("b096504a-3d54-4664-9bf5-1b872466fd66", "value")],
             ),
-            "prefix__tcatalog": (["table_name"], [("prefix__t",)]),
+            "prefix__tcatalog": (["table_name"], [("tests.prefix__t",)]),
         },
         expected_indexes=[
             ("prefix__t", "id"),
@@ -732,7 +732,6 @@ def _act(uut: "ldlite.LDLite", tc: QueryTC) -> None:
 
 def _assert(
     conn: "dbapi.DBAPIConnection",
-    res_schema: str,  # TODO: have schema be part of tc
     tc: QueryTC,
 ) -> None:
     with closing(conn.cursor()) as cur:
@@ -740,9 +739,8 @@ def _assert(
             """
                 SELECT table_name
                 FROM information_schema.tables
-                WHERE table_schema=$1
+                WHERE table_schema='tests'
                 """,
-            (res_schema,),
         )
         assert sorted([r[0] for r in cur.fetchall()]) == sorted(tc.expected_tables)
 
@@ -758,7 +756,7 @@ def _assert(
                             for c in cols
                         ],
                     ),
-                    table=sql.Identifier(table),
+                    table=sql.Identifier("tests", table),
                 )
                 .as_string(),
             )
@@ -820,7 +818,7 @@ def test_duckdb(
     _act(uut, tc)
 
     with duckdb.connect(dsn) as conn:
-        _assert(cast("dbapi.DBAPIConnection", conn), "main", tc)
+        _assert(cast("dbapi.DBAPIConnection", conn), tc)
 
 
 @mock.patch("httpx_folio.auth.httpx.post")
@@ -842,4 +840,4 @@ def test_postgres(
     _act(uut, tc)
 
     with psycopg.connect(dsn, cursor_factory=psycopg.RawCursor) as conn:
-        _assert(cast("dbapi.DBAPIConnection", conn), "public", tc)
+        _assert(cast("dbapi.DBAPIConnection", conn), tc)

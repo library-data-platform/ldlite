@@ -286,10 +286,10 @@ WHERE table_schema = $1 and table_name = $2;""",
                 cur.execute(
                     sql.SQL(
                         r"""
-SELECT TABLE_NAME, COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS
+SELECT TABLE_SCHEMA, TABLE_NAME, COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS
 WHERE
     TABLE_SCHEMA = $1 AND
-    TABLE_NAME IN (SELECT TABLE_NAME FROM {catalog}) AND
+    TABLE_NAME IN (SELECT SPLIT_PART(TABLE_NAME, '.', -1) FROM {catalog}) AND
     (
         DATA_TYPE IN ('UUID', 'uuid') OR
         COLUMN_NAME = 'id' OR
@@ -313,8 +313,8 @@ WHERE
                         sql.SQL("CREATE INDEX {name} ON {table} ({column});")
                         .format(
                             name=sql.Identifier(str(uuid4()).split("-")[0]),
-                            table=sql.Identifier(*index[0].split(".")),
-                            column=sql.Identifier(index[1]),
+                            table=sql.Identifier(index[0], index[1]),
+                            column=sql.Identifier(index[2]),
                         )
                         .as_string(),
                     )
