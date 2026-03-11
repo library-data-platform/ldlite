@@ -33,12 +33,16 @@ class Metadata:
     @property
     def snake(self) -> str:
         if self.prop is None:
-            # this doesn't realy come up in practice
+            # this doesn't really come up in practice
             return "$"
 
-        return "".join("_" + c.lower() if c.isupper() else c for c in self.prop).lstrip(
-            "_",
-        )
+        snake = "".join("_" + c.lower() if c.isupper() else c for c in self.prop)
+
+        # there's also sorts of weird edge cases here that don't come up in practice
+        if (naked := self.prop.lstrip("_")) and len(naked) > 0 and naked[0].isupper():
+            snake = snake.removeprefix("_")
+
+        return snake
 
     def select_column(
         self,

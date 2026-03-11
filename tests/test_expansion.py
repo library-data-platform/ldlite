@@ -91,6 +91,41 @@ WHERE TABLE_NAME = 'prefix__t' AND COLUMN_NAME = '{a[0]}'
     )
 
 
+def case_camel() -> ExpansionTC:
+    return ExpansionTC(
+        records=[
+            b"""
+{
+    "camelCase": 1,
+    "_camelCase": 1,
+    "__camelCase": 1,
+    "PascalCase": 1,
+    "_PascalCase": 1,
+    "__PascalCase": 1
+}
+""",
+        ],
+        assertions=[
+            Assertion(
+                """
+SELECT COLUMN_NAME
+FROM INFORMATION_SCHEMA.COLUMNS
+WHERE TABLE_NAME = 'prefix__t' AND COLUMN_NAME <> '__id'
+ORDER BY COLUMN_NAME COLLATE "C";
+""",
+                expect=[
+                    ("__camel_case",),
+                    ("__pascal_case",),
+                    ("_camel_case",),
+                    ("_pascal_case",),
+                    ("camel_case",),
+                    ("pascal_case",),
+                ],
+            ),
+        ],
+    )
+
+
 def case_jagged_json() -> ExpansionTC:
     return ExpansionTC(
         records=[
