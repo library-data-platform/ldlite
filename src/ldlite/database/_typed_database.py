@@ -34,20 +34,22 @@ class TypedDatabase(Database, Generic[DB]):
                 cur.execute('CREATE SCHEMA IF NOT EXISTS "ldlite_system";')
                 cur.execute("""
 CREATE TABLE IF NOT EXISTS "ldlite_system"."load_history_v1" (
-    "table_name" TEXT UNIQUE
-    ,"path" TEXT
-    ,"query" TEXT
+    "table_prefix" TEXT UNIQUE
+    ,"folio_path" TEXT -- 1
+    ,"query_text" TEXT -- 2
+    ,"load_start" TIMESTAMPTZ -- 3
 
-    ,"rowcount" INTEGER
-    ,"download_complete" TIMESTAMPTZ
+    ,"rowcount" INTEGER -- 4
+    ,"download_complete" TIMESTAMPTZ -- 5
 
-    ,"final_rowcount" INTEGER
-    ,"transform_complete" TIMESTAMPTZ
-    ,"data_refreshed" TIMESTAMPTZ
+    ,"final_rowcount" INTEGER -- 6
+    ,"transform_complete" TIMESTAMPTZ -- 7
+    ,"data_refresh_start" TIMESTAMPTZ -- 8
+    ,"data_refresh_end" TIMESTAMPTZ -- 9
 
-    ,"download_time" INTERVAL
-    ,"transform_time" INTERVAL
-    ,"index_time" INTERVAL
+    ,"download_time" INTERVAL -- 10
+    ,"transform_time" INTERVAL -- 11
+    ,"index_time" INTERVAL -- 12
 );""")
 
             self._setup_jfuncs(conn)
@@ -70,7 +72,10 @@ CREATE TABLE IF NOT EXISTS "ldlite_system"."load_history_v1" (
             self._drop_extracted_tables(conn, pfx)
             self._drop_raw_table(conn, pfx)
             conn.execute(
-                'DELETE FROM "ldlite_system"."load_history_v1" WHERE "table_name" = $1',
+                """
+DELETE FROM "ldlite_system"."load_history_v1"
+WHERE "table_prefix" = $1;
+""",
                 (pfx.load_history_key,),
             )
             conn.commit()
@@ -351,19 +356,22 @@ WHERE
                 """
 INSERT INTO "ldlite_system"."load_history_v1"
 (
-    "table_name"
-    ,"path"
-    ,"query"
+    "table_prefix"
+    ,"folio_path"
+    ,"query_text"
+    ,"load_start"
 )
-VALUES($1,$2,$3)
-ON CONFLICT ("table_name") DO UPDATE SET
-    "path" = EXCLUDED."path"
-    ,"query" = EXCLUDED."query"
+VALUES($1,$2,$3,$4)
+ON CONFLICT ("table_prefix") DO UPDATE SET
+    "folio_path" = EXCLUDED."folio_path"
+    ,"query_text" = EXCLUDED."query_text"
+    ,"load_start" = EXCLUDED."load_start"
 """,
                 (
                     Prefix(prefix).load_history_key,
                     path,
                     query,
+                    datetime.now(timezone.utc),
                 ),
             )
             conn.commit()
@@ -382,7 +390,7 @@ UPDATE "ldlite_system"."load_history_v1" SET
     "rowcount" = $2
     ,"download_complete" = $3
     ,"download_time" = $4
-WHERE "table_name" = $1;
+WHERE "table_prefix" = $1;
 """,
                 (
                     pfx.load_history_key,
@@ -405,9 +413,10 @@ WHERE "table_name" = $1;
 UPDATE "ldlite_system"."load_history_v1" SET
     "final_rowcount" = $2
     ,"transform_complete" = $3
-    ,"data_refreshed" = "download_complete"
     ,"transform_time" = $4
-WHERE "table_name" = $1
+    ,"data_refresh_start" = "load_start"
+    ,"data_refresh_end" = "download_complete"
+WHERE "table_prefix" = $1
 """,
                 (
                     pfx.load_history_key,
@@ -428,7 +437,7 @@ WHERE "table_name" = $1
                 """
 UPDATE "ldlite_system"."load_history_v1" SET
     "index_time" = $2
-WHERE "table_name" = $1
+WHERE "table_prefix" = $1
 """,
                 (
                     pfx.load_history_key,

@@ -133,24 +133,26 @@ def _assert(
         for tn, (q, t) in tc.expected_loads.items():
             cur.execute(
                 'SELECT * FROM "ldlite_system"."load_history_v1" '
-                'WHERE "table_name" = $1',
+                'WHERE "table_prefix" = $1',
                 (tn,),
             )
             assert (d := cur.fetchone()) is not None
             assert d[1] == "/patched"
             assert d[2] == q
-            assert d[3] == t
+            assert d[4] == t
+            assert d[6] == t
 
-            assert d[6] > d[4]
-            assert d[7] == d[4]
-            assert d[5] == t
+            assert d[7] > d[5]
+            assert d[8] == d[3]
+            assert d[9] == d[5]
+            assert d[9] > d[8]
 
-            assert d[8] > timedelta(microseconds=0)
-            assert d[8] < timedelta(seconds=1)
-            assert d[9] > timedelta(microseconds=0)
-            assert d[9] < timedelta(seconds=1)
             assert d[10] > timedelta(microseconds=0)
             assert d[10] < timedelta(seconds=1)
+            assert d[11] > timedelta(microseconds=0)
+            assert d[11] < timedelta(seconds=1)
+            assert d[12] > timedelta(microseconds=0)
+            assert d[12] < timedelta(seconds=1)
 
 
 @mock.patch("httpx_folio.auth.httpx.post")

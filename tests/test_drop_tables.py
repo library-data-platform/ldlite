@@ -125,7 +125,7 @@ def _assert(
         assert ud[0] == len(tc.calls_list) - 1
         cur.execute(
             'SELECT COUNT(*) FROM "ldlite_system"."load_history_v1" '
-            'WHERE "table_name" = $1',
+            'WHERE "table_prefix" = $1',
             (tc.drop,),
         )
         assert (d := cur.fetchone()) is not None
