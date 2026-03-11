@@ -17,6 +17,26 @@ Please see [MIGRATING.md](./MIGRATING.md) for information on breaking changes.
 
 ### Removed
 
+## [4.0.0] - March 2026
+
+### Added
+* Support for python 3.14 and duckdb 1.15
+* ldlite_system.load_history_v1 table which tracks useful information about the data loads
+* Generated columns are now indexed when using duckdb
+
+### Changed
+* Expanding json now utilizes SQL instead of python
+* [Possibly Breaking] Columns have more accurate types
+  * text -> timestamptz
+  * numeric -> integer or bigint
+
+### Removed
+* [Breaking] Minimum supported versions have been increased
+  * Postgres - 14
+  * Python - 3.10
+  * Duckdb - 1.30
+* [Breaking] experimental_connect_sqlite
+
 ## [3.2.1] - November 2025
 
 ### Fixed
