@@ -13,8 +13,8 @@ provides basic LDP functions without requiring the server to be
 installed.
 
 LDLite supports two modes of usage.
-* Ad-hoc uses a local DuckDB to enable downloading small amounts of data and querying using sql.
-* Server uses a persistent postgres server and managed cron server to download large amounts of data for analytic processing and reporting.
+* Server mode uses a persistent postgres server and managed cron server to download large amounts of data for analytic processing and reporting.
+* Ad-hoc mode uses a local DuckDB database to enable downloading small amounts of data and querying using sql.
 
 ### Usage with a persistent postgres server
 
@@ -27,20 +27,11 @@ It is recommended to install the `psycopg[c]` package for optimal reliability an
 To install LDLite or upgrade to the latest version:
 
 ```bash
-$ python -m pip install --upgrade ldlite
+$ python -m pip install --upgrade psycopg[binary] ldlite
 ```
 (On some systems it might be `python3` rather than `python`.)
 
-If you encounter the error `ImportError: no pq wrapper available.` you can either
-* Run `python -m pip install psycopg[binary]`
-* Ensure the libpq package is installed for your operating system
-
 Check out the [migration guide](./MIGRATING.md) for more information about major version upgrades.
-
-*Optional* If you intend to use the `connect_db_postgres()` method install the binary provider:
-```
-$ python -m pip install --upgrade psycopg[binary]
-```
 
 To extract and transform data:
 
@@ -98,6 +89,59 @@ Features
     * Access to the data using more database tools
     * Storing the data in an existing LDP database if available
 * Runs on Windows, macOS, and Linux.
+
+ldlite_system.load_history_v1
+-------------
+
+Starting with ldlite 4.0 useful information is stored during the loading process.
+This table can be exposed directly to end users but it can be overwhelming.
+A more useful view of this table can be exposed instead.
+```sql
+CREATE VIEW public.load_history_dashboard AS
+SELECT
+  table_prefix
+  ,folio_path
+  ,COALESCE(query_text, 'cql.allRecords=1') AS query_text
+  ,final_rowcount AS rowcount
+  ,pg_size_pretty(SUM(t.table_size)) AS total_size
+  ,TO_CHAR(data_refresh_start AT TIME ZONE 'America/New_York', 'YYYY-MM-DD HH24:MI') AS data_refresh_start
+  ,TO_CHAR(data_refresh_end AT TIME ZONE 'America/New_York', 'YYYY-MM-DD HH24:MI') AS data_refresh_end
+FROM ldlite_system.load_history_v1 h
+CROSS JOIN LATERAL
+(
+  SELECT pg_total_relation_size(t."table_schema" || '.' || t."table_name") AS table_size
+  FROM INFORMATION_SCHEMA.TABLES t
+  WHERE
+  (
+    h.table_prefix LIKE '%.%' AND
+    t.table_schema = SPLIT_PART(h.table_prefix, '.', 1) AND
+    t.table_name LIKE (SPLIT_PART(h.table_prefix, '.', -1) || '%')
+  ) OR
+  (
+    h.table_prefix NOT LIKE '%.%' AND
+    t.table_name LIKE (h.table_prefix || '%')
+  )
+) t
+GROUP BY 1, 2, 3, 4, 6, 7
+```
+
+When a load starts the table_prefix, folio_path, query_text, and load_start columns are set.
+Any existing loads with the same table_prefix will have these values overwritten.
+
+The download will transactionally replace the existing raw table and set the rowcount and download_complete fields.
+
+The transformation will transactionally replace the expanded tables. If it fails the existing tables will be retained.
+At the end of transformation, in the same transaction, the final_rowcount and transform_complete columns are set.
+
+The data_refresh_start and data_refresh_end times require special attention.
+These columns get updated when the transformation transaction is committed and represent when the download started and ended.
+Any changes in FOLIO made before data_refresh_start will be reflected in the expanded tables.
+Any changes in FOLIO made after data_refresh_end will not be reflected in the expanded tables.
+Changes made to FOLIO in between the start and end _may_ be reflected :smile_cat:/:scream_cat:.
+
+Because of the transactional nature, it is very possible to have newer data in the raw table than in the resulting expanded tables.
+This can happen during the transformation stage or if the transformation stage fails.
+This is indicated by having the data_refresh_start and data_refresh_end columns not match the load_start and download_complete columns.
 
 More examples
 -------------

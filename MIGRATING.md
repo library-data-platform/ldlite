@@ -46,39 +46,7 @@ While not a breaking change, there is one new feature to call out in more detail
 You'll find a new `ldlite_system` schema.
 In this schema are some important functions, please do not modify them.
 You'll also find a new table load_history_v1 that records runtime information about each load performed.
-End users can have direct access to this table but at Five Colleges we've created a view in the public schema that makes it a little more friendly
-```sql
-CREATE VIEW public.load_history_dashboard AS
-SELECT
-  table_prefix
-  ,folio_path
-  ,COALESCE(query_text, 'cql.allRecords=1')
-  ,final_rowcount AS rowcount
-  ,pg_size_pretty(SUM(t.table_size)) AS total_size
-  ,TO_CHAR(data_refresh_start AT TIME ZONE 'America/New_York', 'YYYY-MM-DD HH24:MI') AS data_refresh_start
-  ,TO_CHAR(data_refresh_end AT TIME ZONE 'America/New_York', 'YYYY-MM-DD HH24:MI') AS data_refresh_end
-FROM ldlite_system.load_history_v1 h
-CROSS JOIN LATERAL
-(
-  SELECT pg_total_relation_size(t."table_schema" || '.' || t."table_name") AS table_size
-  FROM INFORMATION_SCHEMA.TABLES t
-  WHERE
-  (
-    h.table_prefix LIKE '%.%' AND
-    t.table_schema = SPLIT_PART(h.table_prefix, '.', 1) AND
-    t.table_name LIKE (SPLIT_PART(h.table_prefix, '.', -1) || '%')
-  ) OR
-  (
-    h.table_prefix NOT LIKE '%.%' AND
-    t.table_name LIKE (h.table_prefix || '%')
-  )
-) t
-GROUP BY 1, 2, 3, 4, 6, 7
-```
-The new transformation logic is transactional and will not replace the existing tables until it has completely finished transformation.
-Because it writes to the load_history_v1 table in the same transaction all changes made in FOLIO up to the data_refresh_start are always gaurenteed to be refleced in the database.
-All changes made in FOLIO after the data_refresh_end are gauranteed to not be reflected in the database.
-Changes made in FOLIO between the two dates is a schroedinger's situation as LDLite is downloading data during that time and may or may not have picked up the change.
+Please see the README.md file for more documentation on this new table.
 
 The minimum supported python version is now 3.10, this has been increased from python 3.9 (which became end of life in October 2025).
 LDLite will stop supporting python 3.10 when it becames end of life itself in October 2026.
