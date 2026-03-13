@@ -16,6 +16,8 @@ LDLite supports two modes of usage.
 * Server mode uses a persistent postgres server and managed cron server to download large amounts of data for analytic processing and reporting.
 * Ad-hoc mode uses a local DuckDB database to enable downloading small amounts of data and querying using sql.
 
+Check out the [migration guide](./MIGRATING.md) for more information about major version upgrades.
+
 ### Usage with a persistent postgres server
 
 See the [Five Colleges Setup](https://github.com/Five-Colleges-Incorporated/ldlite-scripts) for an example of automating overnight data loads.
@@ -30,8 +32,6 @@ To install LDLite or upgrade to the latest version:
 $ python -m pip install --upgrade psycopg[binary] ldlite
 ```
 (On some systems it might be `python3` rather than `python`.)
-
-Check out the [migration guide](./MIGRATING.md) for more information about major version upgrades.
 
 To extract and transform data:
 
@@ -104,8 +104,9 @@ SELECT
   ,COALESCE(query_text, 'cql.allRecords=1') AS query_text
   ,final_rowcount AS rowcount
   ,pg_size_pretty(SUM(t.table_size)) AS total_size
-  ,TO_CHAR(data_refresh_start AT TIME ZONE 'America/New_York', 'YYYY-MM-DD HH24:MI') AS data_refresh_start
-  ,TO_CHAR(data_refresh_end AT TIME ZONE 'America/New_York', 'YYYY-MM-DD HH24:MI') AS data_refresh_end
+  ,TO_CHAR(data_refresh_start AT TIME ZONE 'America/New_York', 'YYYY/MM/DD HH:MI AM') AS data_refresh_start
+  ,TO_CHAR(data_refresh_end AT TIME ZONE 'America/New_York', 'YYYY/MM/DD HH:MI AM') AS data_refresh_end
+  ,EXTRACT(EPOCH FROM data_refresh_end) AS refresh_sort
 FROM ldlite_system.load_history_v1 h
 CROSS JOIN LATERAL
 (
@@ -122,22 +123,23 @@ CROSS JOIN LATERAL
     t.table_name LIKE (h.table_prefix || '%')
   )
 ) t
-GROUP BY 1, 2, 3, 4, 6, 7
+GROUP BY 1, 2, 3, 4, 6, 7, 8
+ORDER BY 8 DESC
 ```
 
 When a load starts the table_prefix, folio_path, query_text, and load_start columns are set.
 Any existing loads with the same table_prefix will have these values overwritten.
 
-The download will transactionally replace the existing raw table and set the rowcount and download_complete fields.
+The download will transactionally replace the existing raw table and set the rowcount and download_complete columns.
 
 The transformation will transactionally replace the expanded tables. If it fails the existing tables will be retained.
-At the end of transformation, in the same transaction, the final_rowcount and transform_complete columns are set.
+At the end of transformation the final_rowcount and transform_complete columns are set in the same transaction.
 
 The data_refresh_start and data_refresh_end times require special attention.
 These columns get updated when the transformation transaction is committed and represent when the download started and ended.
-Any changes in FOLIO made before data_refresh_start will be reflected in the expanded tables.
-Any changes in FOLIO made after data_refresh_end will not be reflected in the expanded tables.
-Changes made to FOLIO in between the start and end _may_ be reflected :smile_cat:/:scream_cat:.
+* Any changes in FOLIO made before data_refresh_start will be reflected in the expanded tables.
+* Any changes in FOLIO made after data_refresh_end will not be reflected in the expanded tables.
+* Changes made to FOLIO in between the start and end _may_ be reflected :smile_cat:/:scream_cat:.
 
 Because of the transactional nature, it is very possible to have newer data in the raw table than in the resulting expanded tables.
 This can happen during the transformation stage or if the transformation stage fails.

@@ -21,17 +21,17 @@ It's impossible to convey how excited I am to finally make this release public!
 
 Until now, LDLite expanded the dowloaded JSON row by row using Python.
 This worked well enough for small tables but performance really broke down for the largest tables.
-For example, it took 6 hours each night to transform Five College's Circulation records and over 34 hours over a weekend to transform our Instance records.
+For example, it took 6 hours each night to transform Five College's Circulation records and over 34 hours each weekend to transform our Instance records.
 
 4.0.0 has completely rebuilt the transformation logic to utilize SQL native json processing and set-operations.
-The transform time is on average 80-95% faster, for example Circulation now takes 20 minutes and Instances take.
+The transform time is on average 90% faster, for example Circulation now takes 20 minutes and Instances take.
 While performance is not a "feature" in and of itself this change allows for more frequent loads and fresher data.
 
 Another positive to come from the rebuild is that the transformation code is no longer a scary black box.
 Better data type inference has been a common request which was always "technically" possible but difficult to implement and test.
 The new transformation logic includes more accurate datatype detection and high-performance conversion in SQL.
 In addition to simpler and faster queries, more accurate datatypes massively reduces the size of the resulting database.
-Our database is 40-50% smaller with data stored as the appropriate types.
+Our database is X% smaller with data stored as the appropriate types.
 
 SQLite support had to be removed to make this rebuild possible as it wasn't possible to write SQL compatible with all three of postgres, sqlite, and duckdb.
 
@@ -64,7 +64,7 @@ For the most part, the datatype changes should not be breaking but there are sce
   * `request_queue_size / 5` will need to become `request_queue_size::numeric / 5`
 
 If you were using experimental_connect_sqlite, switch to duckdb and connect_db.
-More recent releases of DuckDB are much more stable than in the past when sqlite was provided an alternative.
+Recent releases of DuckDB are much more stable than in the past when sqlite was provided an alternative.
 
 If you need excel support you can use the [XlsxWriter python library](https://xlsxwriter.readthedocs.io/).
 LDLite can still export csvs using the export_csv method which are openable in excel.
