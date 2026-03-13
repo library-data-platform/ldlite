@@ -263,6 +263,7 @@ CREATE TABLE {catalog_table} (
                     .format(catalog_table=pfx.catalog_table.id)
                     .as_string(),
                 )
+                total = 0
                 if len(created_tables) > 0:
                     cur.executemany(
                         sql.SQL("INSERT INTO {catalog_table} VALUES ($1)")
@@ -273,13 +274,12 @@ CREATE TABLE {catalog_table} (
                         [(pfx.catalog_table_row(t),) for t in created_tables],
                     )
 
-            with conn.cursor() as cur:
-                cur.execute(
-                    sql.SQL("SELECT COUNT(*) FROM {table}")
-                    .format(table=pfx.output_table("").id)
-                    .as_string(),
-                )
-                total = cast("tuple[int]", cur.fetchone())[0]
+                    cur.execute(
+                        sql.SQL("SELECT COUNT(*) FROM {table}")
+                        .format(table=pfx.output_table("").id)
+                        .as_string(),
+                    )
+                    total = cast("tuple[int]", cur.fetchone())[0]
 
             self._transform_complete(conn, pfx, total, transform_started)
             conn.commit()
