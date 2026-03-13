@@ -3,29 +3,12 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from dataclasses import dataclass
 from typing import TYPE_CHECKING, NoReturn
 
 if TYPE_CHECKING:
-    import datetime
     from collections.abc import Iterator
 
     from tqdm import tqdm
-
-
-@dataclass(frozen=True)
-class LoadHistory:
-    """Represents the statistics and history of a single ldlite operation."""
-
-    table_name: str
-    path: str
-    query: str | None
-    total: int
-    download_time: datetime.datetime
-    start_time: datetime.datetime
-    download_interval: datetime.timedelta
-    transform_interval: datetime.timedelta
-    index_interval: datetime.timedelta
 
 
 class Database(ABC):
@@ -69,5 +52,5 @@ class Database(ABC):
         """Finds and indexes all tables at the given prefix."""
 
     @abstractmethod
-    def record_history(self, history: LoadHistory) -> None:
-        """Records the statistics and history of a single ldlite operation."""
+    def prepare_history(self, prefix: str, path: str, query: str | None) -> None:
+        """Creates an entry with the current parameters in the history table."""

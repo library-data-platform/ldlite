@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from abc import abstractmethod
 from contextlib import closing
-from datetime import timezone
+from datetime import datetime, timezone
 from typing import TYPE_CHECKING, Any, Generic, NoReturn, TypeVar, cast
 from uuid import uuid4
 
@@ -11,7 +11,7 @@ import psycopg
 from psycopg import sql
 from tqdm import tqdm
 
-from . import Database, LoadHistory
+from . import Database
 from ._expansion import expand_nonmarc
 from ._expansion.context import ExpandContext
 from ._prefix import Prefix
@@ -34,15 +34,22 @@ class TypedDatabase(Database, Generic[DB]):
                 cur.execute('CREATE SCHEMA IF NOT EXISTS "ldlite_system";')
                 cur.execute("""
 CREATE TABLE IF NOT EXISTS "ldlite_system"."load_history_v1" (
-    "table_name" TEXT UNIQUE
-    ,"path" TEXT
-    ,"query" TEXT
-    ,"row_count" INTEGER
-    ,"download_complete_utc" TIMESTAMP
-    ,"start_utc" TIMESTAMP
-    ,"download_time" INTERVAL
-    ,"transform_time" INTERVAL
-    ,"index_time" INTERVAL
+    "table_prefix" TEXT UNIQUE
+    ,"folio_path" TEXT -- 1
+    ,"query_text" TEXT -- 2
+    ,"load_start" TIMESTAMPTZ -- 3
+
+    ,"rowcount" INTEGER -- 4
+    ,"download_complete" TIMESTAMPTZ -- 5
+
+    ,"final_rowcount" INTEGER -- 6
+    ,"transform_complete" TIMESTAMPTZ -- 7
+    ,"data_refresh_start" TIMESTAMPTZ -- 8
+    ,"data_refresh_end" TIMESTAMPTZ -- 9
+
+    ,"download_time" INTERVAL -- 10
+    ,"transform_time" INTERVAL -- 11
+    ,"index_time" INTERVAL -- 12
 );""")
 
             self._setup_jfuncs(conn)
@@ -65,7 +72,10 @@ CREATE TABLE IF NOT EXISTS "ldlite_system"."load_history_v1" (
             self._drop_extracted_tables(conn, pfx)
             self._drop_raw_table(conn, pfx)
             conn.execute(
-                'DELETE FROM "ldlite_system"."load_history_v1" WHERE "table_name" = $1',
+                """
+DELETE FROM "ldlite_system"."load_history_v1"
+WHERE "table_prefix" = $1;
+""",
                 (pfx.load_history_key,),
             )
             conn.commit()
@@ -195,6 +205,7 @@ WHERE table_schema = $1 and table_name IN ($2, $3);""",
         transform_progress: tqdm[NoReturn] | None = None,
     ) -> list[str]:
         pfx = Prefix(prefix)
+        transform_started = datetime.now(timezone.utc)
         with closing(self._conn_factory()) as conn:
             self._drop_extracted_tables(conn, pfx)
             if json_depth < 1:
@@ -262,12 +273,22 @@ CREATE TABLE {catalog_table} (
                         [(pfx.catalog_table_row(t),) for t in created_tables],
                     )
 
+            with conn.cursor() as cur:
+                cur.execute(
+                    sql.SQL("SELECT COUNT(*) FROM {table}")
+                    .format(table=pfx.output_table("").id)
+                    .as_string(),
+                )
+                total = cast("tuple[int]", cur.fetchone())[0]
+
+            self._transform_complete(conn, pfx, total, transform_started)
             conn.commit()
 
         return created_tables
 
     def index_prefix(self, prefix: str, progress: tqdm[NoReturn] | None = None) -> None:
         pfx = Prefix(prefix)
+        index_started = datetime.now(timezone.utc)
         with closing(self._conn_factory()) as conn:
             with closing(conn.cursor()) as cur:
                 cur.execute(
@@ -321,33 +342,105 @@ WHERE
                 if progress is not None:
                     progress.update(1)
 
+            self._index_complete(conn, pfx, index_started)
             conn.commit()
 
-    def record_history(self, history: LoadHistory) -> None:
-        with closing(self._conn_factory()) as conn, conn.cursor() as cur:
+    def prepare_history(
+        self,
+        prefix: str,
+        path: str,
+        query: str | None,
+    ) -> None:
+        with closing(self._conn_factory()) as conn, closing(conn.cursor()) as cur:
             cur.execute(
                 """
-INSERT INTO "ldlite_system"."load_history_v1" VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9)
-ON CONFLICT ("table_name") DO UPDATE SET
-    "path" = EXCLUDED."path"
-    ,"query" = EXCLUDED."query"
-    ,"row_count" = EXCLUDED."row_count"
-    ,"download_complete_utc" = EXCLUDED."download_complete_utc"
-    ,"start_utc" = EXCLUDED."start_utc"
-    ,"download_time" = EXCLUDED."download_time"
-    ,"transform_time" = EXCLUDED."transform_time"
-    ,"index_time" = EXCLUDED."index_time"
+INSERT INTO "ldlite_system"."load_history_v1"
+(
+    "table_prefix"
+    ,"folio_path"
+    ,"query_text"
+    ,"load_start"
+)
+VALUES($1,$2,$3,$4)
+ON CONFLICT ("table_prefix") DO UPDATE SET
+    "folio_path" = EXCLUDED."folio_path"
+    ,"query_text" = EXCLUDED."query_text"
+    ,"load_start" = EXCLUDED."load_start"
 """,
                 (
-                    Prefix(history.table_name).load_history_key,
-                    history.path,
-                    history.query,
-                    history.total,
-                    history.download_time.astimezone(timezone.utc),
-                    history.start_time.astimezone(timezone.utc),
-                    history.download_interval,
-                    history.transform_interval,
-                    history.index_interval,
+                    Prefix(prefix).load_history_key,
+                    path,
+                    query,
+                    datetime.now(timezone.utc),
                 ),
             )
             conn.commit()
+
+    def _download_complete(
+        self,
+        conn: DB,
+        pfx: Prefix,
+        rowcount: int,
+        download_start: datetime,
+    ) -> None:
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+UPDATE "ldlite_system"."load_history_v1" SET
+    "rowcount" = $2
+    ,"download_complete" = $3
+    ,"download_time" = $4
+WHERE "table_prefix" = $1;
+""",
+                (
+                    pfx.load_history_key,
+                    rowcount,
+                    datetime.now(timezone.utc),
+                    datetime.now(timezone.utc) - download_start,
+                ),
+            )
+
+    def _transform_complete(
+        self,
+        conn: DB,
+        pfx: Prefix,
+        final_rowcount: int,
+        transform_start: datetime,
+    ) -> None:
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+UPDATE "ldlite_system"."load_history_v1" SET
+    "final_rowcount" = $2
+    ,"transform_complete" = $3
+    ,"transform_time" = $4
+    ,"data_refresh_start" = "load_start"
+    ,"data_refresh_end" = "download_complete"
+WHERE "table_prefix" = $1
+""",
+                (
+                    pfx.load_history_key,
+                    final_rowcount,
+                    datetime.now(timezone.utc),
+                    datetime.now(timezone.utc) - transform_start,
+                ),
+            )
+
+    def _index_complete(
+        self,
+        conn: DB,
+        pfx: Prefix,
+        index_start: datetime,
+    ) -> None:
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+UPDATE "ldlite_system"."load_history_v1" SET
+    "index_time" = $2
+WHERE "table_prefix" = $1
+""",
+                (
+                    pfx.load_history_key,
+                    datetime.now(timezone.utc) - index_start,
+                ),
+            )

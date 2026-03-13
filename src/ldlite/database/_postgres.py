@@ -1,4 +1,5 @@
 from collections.abc import Iterator
+from datetime import datetime, timezone
 from itertools import count
 
 import psycopg
@@ -120,6 +121,7 @@ PARALLEL SAFE;
         records: Iterator[bytes],
     ) -> int:
         pfx = Prefix(prefix)
+        download_started = datetime.now(timezone.utc)
         pkey = count(1)
         with self._conn_factory() as conn:
             self._prepare_raw_table(conn, pfx)
@@ -141,7 +143,10 @@ PARALLEL SAFE;
                     rb.extend(r)
                     copy.write_row((next(pkey).to_bytes(4, "big"), rb))
 
+            total = next(pkey) - 1
+            self._download_complete(conn, pfx, total, download_started)
             conn.commit()
+
         return next(pkey) - 1
 
     def preprocess_source_table(

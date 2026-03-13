@@ -35,7 +35,6 @@ Example:
 """
 
 import sys
-from datetime import datetime, timezone
 from typing import TYPE_CHECKING, NoReturn, cast
 
 import duckdb
@@ -53,7 +52,7 @@ from ._sqlx import (
     autocommit,
     sqlid,
 )
-from .database import Database, LoadHistory
+from .database import Database
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
@@ -308,7 +307,12 @@ class LDLite:
         if self.db is None or self._database is None:
             self._check_db()
             return []
-        start = datetime.now(timezone.utc)
+
+        self._database.prepare_history(
+            table,
+            path,
+            query if query and isinstance(query, str) else None,
+        )
         if not self._quiet:
             print("ldlite: querying: " + path, file=sys.stderr)
 
@@ -328,7 +332,6 @@ class LDLite:
                 file=sys.stderr,
             )
 
-        download_started = datetime.now(timezone.utc)
         processed = self._database.ingest_records(
             table,
             cast(
@@ -346,10 +349,7 @@ class LDLite:
                 ),
             ),
         )
-        download = datetime.now(timezone.utc)
-        download_elapsed = datetime.now(timezone.utc) - download_started
 
-        transform_started = datetime.now(timezone.utc)
         if not use_legacy_transform:
             no_iters_format = (
                 "{l_bar}{bar}| {n_fmt}/{total_fmt} [{elapsed}<{remaining}]"
@@ -377,7 +377,6 @@ class LDLite:
                 )
             if keep_raw:
                 newtables = [table, *newtables]
-            transform_elapsed = datetime.now(timezone.utc) - transform_started
 
             with tqdm(
                 desc="indexing",
@@ -385,7 +384,6 @@ class LDLite:
                 disable=self._quiet,
                 bar_format=no_iters_format,
             ) as progress:
-                index_started = datetime.now(timezone.utc)
                 self._database.index_prefix(table, progress)
 
         else:
@@ -424,10 +422,7 @@ class LDLite:
             finally:
                 autocommit(self.db, self.dbtype, True)
 
-            transform_elapsed = datetime.now(timezone.utc) - transform_started
-
             # Create indexes on id columns (for postgres)
-            index_started = datetime.now(timezone.utc)
             if self.dbtype == DBType.POSTGRES:
 
                 class PbarNoop:
@@ -464,20 +459,6 @@ class LDLite:
                     pbar.update(1)
                 pbar.close()
 
-        index_elapsed = datetime.now(timezone.utc) - index_started
-        self._database.record_history(
-            LoadHistory(
-                table,
-                path,
-                query if query and isinstance(query, str) else None,
-                processed,
-                download,
-                start,
-                download_elapsed,
-                transform_elapsed,
-                index_elapsed,
-            ),
-        )
         # Return table names
         if not self._quiet:
             print("ldlite: created tables: " + ", ".join(newtables), file=sys.stderr)
