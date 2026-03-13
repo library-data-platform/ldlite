@@ -33,6 +33,7 @@ Please see [MIGRATING.md](./MIGRATING.md) for information on breaking changes.
 * [Possibly Breaking] Columns have more accurate types
   * text -> timestamptz
   * numeric -> numeric or bigint or integer
+* [Breaking] The connect_db_postgres method now returns a psycopg3 connection
 
 ### Removed
 * [Breaking] Support for dependency versions less than the new minimum
@@ -40,6 +41,7 @@ Please see [MIGRATING.md](./MIGRATING.md) for information on breaking changes.
   * Python - 3.10
   * Duckdb - 1.3
 * [Breaking] experimental_connect_sqlite
+* [Breaking] export_excel and to_xlsx
 
 ## [3.2.1] - November 2025
 

@@ -25,22 +25,15 @@ For example, it took 6 hours each night to transform Five College's Circulation 
 
 4.0.0 has completely rebuilt the transformation logic to utilize SQL native json processing and set-operations.
 The transform time is on average 80-95% faster, for example Circulation now takes 20 minutes and Instances take.
-While performance is not a "feature" in and of itself we're hoping that operating LDLite will be easier and less stressful.
-Personally, the LDLite server has been treated with kid gloves because disruptions can mean a day or week without data.
-Notes on migration:
-* Parallel execution
-* Sizing up Postgres (especially cpu)
-* Sizing down the python server
+While performance is not a "feature" in and of itself this change allows for more frequent loads and fresher data.
 
 Another positive to come from the rebuild is that the transformation code is no longer a scary black box.
 Better data type inference has been a common request which was always "technically" possible but difficult to implement and test.
 The new transformation logic includes more accurate datatype detection and high-performance conversion in SQL.
 In addition to simpler and faster queries, more accurate datatypes massively reduces the size of the resulting database.
 Our database is 40-50% smaller with data stored as the appropriate types.
-Notes on migration:
-* Processing as text
-* Doing casting in certain ways
-* Stuff that is ok to leave in?
+
+SQLite support had to be removed to make this rebuild possible as it wasn't possible to write SQL compatible with all three of postgres, sqlite, and duckdb.
 
 While not a breaking change, there is one new feature to call out in more detail.
 You'll find a new `ldlite_system` schema.
@@ -51,19 +44,30 @@ Please see the README.md file for more documentation on this new table.
 The minimum supported python version is now 3.10, this has been increased from python 3.9 (which became end of life in October 2025).
 LDLite will stop supporting python 3.10 when it becames end of life itself in October 2026.
 
+Lastly, excel export has been removed.
+
 ##### Steps to upgrade from 3.X.X
 Please refer to the [official python docs](https://docs.python.org/release/3.10.20/using/index.html) for guidance on installing at least python 3.10.
 You can use `python3 --version` to check which version you have currently installed.
 
 This new release places more load on the Postgres server and less on the server running python.
-One "trick" used to speed up processing was to start multiple ldlite processes in parallel.
-This is no longer necessary and may place too much load on the Postgres server.
+One "trick" previously used to speed up transformation was to start multiple ldlite processes in parallel.
+This is no longer necessary and will place too much load on the Postgres server.
 Only one LDLite process should be running at a time.
+If you have the ability, reallocating resources (especially cpu) to the Postgres server is recommended.
 
 For the most part, the datatype changes should not be breaking but there are scenarios where it can be
 * Using `TO_TIMESTAMP(metadata_updated_date, 'YYYY-MM-DDTHH24:MI:SS.MS+OF')` instead of `metadata_updated_date::timestamptz`
-* Filtering dates as if they were text i.e. `WHERE metadata_updated_date LIKE '2026%'`
-* Dividing numeric columns
+* Filtering dates as if they were text
+  * `WHERE metadata_updated_date LIKE '2026%'` will need to become `WHERE EXTRACT(YEAR FROM metadata_updated_date) = 2026`
+* Dividing integer columns by integers
+  * `request_queue_size / 5` will need to become `request_queue_size::numeric / 5`
+
+If you were using experimental_connect_sqlite, switch to duckdb and connect_db.
+More recent releases of DuckDB are much more stable than in the past when sqlite was provided an alternative.
+
+If you need excel support you can use the [XlsxWriter python library](https://xlsxwriter.readthedocs.io/).
+LDLite can still export csvs using the export_csv method which are openable in excel.
 
 ## Previous Major Releases
 
