@@ -86,7 +86,7 @@ def _expand_nonmarc(
         count += 1
         ctx.transform_progress.update(1)
 
-        if an.meta.is_object:
+        if an.is_object:
             (sub_index, array_tables) = _expand_nonmarc(
                 ObjectNode(
                     an.name,

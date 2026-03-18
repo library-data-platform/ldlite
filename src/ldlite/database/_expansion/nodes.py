@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from collections import deque
-from typing import TYPE_CHECKING, TypeVar
+from typing import TYPE_CHECKING, TypeVar, cast
 
 from psycopg import sql
 
@@ -13,7 +13,16 @@ if TYPE_CHECKING:
 
     from .context import ExpandContext
 
-from .metadata import Metadata
+from .metadata import (
+    ArrayMeta,
+    Metadata,
+    MixedArrayMeta,
+    MixedMeta,
+    ObjectArrayMeta,
+    ObjectMeta,
+    TypedArrayMeta,
+    TypedMeta,
+)
 
 TNode = TypeVar("TNode", bound="ExpansionNode")
 
@@ -37,9 +46,9 @@ class ExpansionNode:
         snake = meta.snake
         prefixed_name = self.prefix + snake
 
-        if meta.is_array:
+        if isinstance(meta, ArrayMeta):
             self.children.append(ArrayNode(prefixed_name, snake, self, meta))
-        elif meta.is_object:
+        elif isinstance(meta, ObjectMeta):
             self.children.append(ObjectNode(prefixed_name, snake, self))
         else:
             prefixed_name = self.prefix + snake
@@ -156,79 +165,132 @@ ORDER BY MAX(k.ordinality), COUNT(k.ordinality)
             )
             props = [prop[0] for prop in cur.fetchall()]
 
-        prop_count = len(props)
-        ctx.scan_progress.total += prop_count
+        ctx.scan_progress.total += len(props) * 3
         ctx.scan_progress.refresh()
         ctx.scan_progress.update(1)
 
+        metadata: list[Metadata] = []
         for prop in props:
             with ctx.conn.cursor() as cur:
                 cur.execute(
                     sql.SQL(
                         """
-WITH
-    values AS (
-        SELECT {json_col}->$1 as ld_value
-        FROM {table}
-    ),
-    value_and_types AS (
-        SELECT
-            ldlite_system.jtype_of(ld_value) AS json_type
-            ,ld_value
-        FROM values
-        WHERE NOT ldlite_system.jis_null(ld_value)
-    ),
-    array_values AS (
-        SELECT
-            ldlite_system.jtype_of(a.ld_value) AS json_type
-            ,a.ld_value
-        FROM value_and_types v
-        CROSS JOIN LATERAL (
-            SELECT s.ld_value
-            FROM ldlite_system.jexplode(v.ld_value) AS s
-            WHERE NOT ldlite_system.jis_null(s.ld_value)
-            LIMIT 3
-        ) a
-        WHERE v.json_type = 'array'
-    ),
-    all_values AS (
-        SELECT
-            json_type
-            ,ld_value
-            ,FALSE AS is_array
-        FROM value_and_types
-        WHERE json_type <> 'array'
-        UNION
-        SELECT
-            json_type
-            ,ld_value
-            ,TRUE AS is_array
-        FROM array_values
-        WHERE NOT ldlite_system.jis_null(ld_value)
-    )
 SELECT
-    (SELECT STRING_AGG(DISTINCT json_type, '|') FROM all_values) AS json_type
-    ,(SELECT BOOL_AND(is_array) FROM all_values) AS is_array
-    ,NOT EXISTS
+    BOOL_AND(json_type = 'array') AS only_array
+    ,BOOL_OR(json_type = 'array') AS some_array
+    ,BOOL_AND(json_type = 'object') AS only_object
+    ,BOOL_OR(json_type = 'object') AS some_object
+FROM
+(
+    SELECT ldlite_system.jtype_of(t.{json_col}->$1) AS json_type
+    FROM {table} t
+) AS json_types
+WHERE json_type <> 'null'
+""",
+                    )
+                    .format(
+                        table=source_table,
+                        json_col=self.identifier,
+                    )
+                    .as_string(),
+                    (prop,),
+                )
+                (only_array, some_array, only_object, some_object) = cast(
+                    "tuple[bool, bool, bool, bool]",
+                    cur.fetchone(),
+                )
+
+                if (some_array and not only_array) or (some_object and not only_object):
+                    metadata.append(MixedMeta(prop))
+                    ctx.scan_progress.update(3)
+                    continue
+
+                if only_object:
+                    metadata.append(ObjectMeta(prop))
+                    ctx.scan_progress.total += 1
+                    ctx.scan_progress.update(3)
+                    continue
+
+                if only_array:
+                    ctx.scan_progress.update(1)
+                    cur.execute(
+                        sql.SQL(
+                            """
+SELECT
+    -- Technically arrays could be nested but I haven't seen any
+    BOOL_AND(json_type = 'object') AS only_object
+    ,BOOL_OR(json_type = 'object') AS some_object
+FROM
+(
+    SELECT ldlite_system.jtype_of(a.ld_value) AS json_type
+    FROM {table} t
+    CROSS JOIN LATERAL
     (
-        SELECT 1 FROM all_values
-        WHERE json_type = 'string' AND NOT ldlite_system.jis_uuid(ld_value)
-    ) AS is_uuid
-    ,NOT EXISTS
-    (
-        SELECT 1 FROM all_values
-        WHERE json_type = 'string' AND NOT ldlite_system.jis_datetime(ld_value)
-    ) AS is_datetime
-    ,EXISTS
-    (
-        SELECT 1 FROM all_values
-        WHERE json_type = 'number' AND ldlite_system.jis_float(ld_value)
-    ) AS is_float
-    ,EXISTS
-    (
-        SELECT 1 FROM all_values
-        WHERE json_type = 'number' AND ldlite_system.jis_bigint(ld_value)
-    ) AS is_bigint
+        SELECT ld_value FROM ldlite_system.jexplode(t.{json_col}->$1)
+        WHERE ldlite_system.jtype_of(t.{json_col}->$1) = 'array'
+    ) a
+) AS json_types
+WHERE json_type <> 'null'
+""",
+                        )
+                        .format(
+                            table=source_table,
+                            json_col=self.identifier,
+                        )
+                        .as_string(),
+                        (prop,),
+                    )
+                    (inner_only_object, inner_some_object) = cast(
+                        "tuple[bool, bool]",
+                        cur.fetchone(),
+                    )
+
+                    if inner_some_object and not inner_only_object:
+                        metadata.append(MixedArrayMeta(prop))
+                        ctx.scan_progress.update(2)
+                        continue
+
+                    if inner_only_object:
+                        metadata.append(ObjectArrayMeta(prop))
+                        ctx.scan_progress.total += 1
+                        ctx.scan_progress.update(2)
+                        continue
+
+                    ctx.scan_progress.update(1)
+                    typed_from_sql = """
+FROM {table} t
+CROSS JOIN LATERAL
+(
+    SELECT *
+    FROM ldlite_system.jexplode(t.{json_col}->$1)
+    WHERE ldlite_system.jtype_of(t.{json_col}->$1) = 'array'
+    LIMIT 3
+) a"""
+                else:
+                    ctx.scan_progress.update(2)
+                    typed_from_sql = """
+FROM (SELECT t.{json_col}->$1 AS ld_value FROM {table} t) AS t
+"""
+            with ctx.conn.cursor() as cur:
+                cur.execute(
+                    sql.SQL(
+                        """
+SELECT
+    MIN(json_type) AS json_type
+    ,MAX(json_type) AS other_json_type
+    ,BOOL_AND(CASE WHEN json_type = 'string' THEN ldlite_system.jis_uuid(ld_value) ELSE FALSE END) AS is_uuid
+    ,BOOL_AND(CASE WHEN json_type = 'string' THEN ldlite_system.jis_datetime(ld_value) ELSE FALSE END) AS is_datetime
+    ,BOOL_OR(CASE WHEN json_type = 'number' THEN ldlite_system.jis_float(ld_value) ELSE FALSE END) AS is_float
+    ,BOOL_OR(CASE WHEN json_type = 'number' THEN ldlite_system.jis_bigint(ld_value) ELSE FALSE END) AS is_bigint
+FROM
+(
+    SELECT
+        ld_value
+        ,ldlite_system.jtype_of(ld_value) json_type """  # noqa: E501
+                        + typed_from_sql
+                        + """
+) type_info
+WHERE ld_value IS NOT NULL AND json_type <> 'null'
 """,
                     )
                     .format(
@@ -241,15 +303,16 @@ SELECT
                 if (row := cur.fetchone()) is not None and all(
                     c is not None for c in row
                 ):
-                    meta = Metadata(prop, *row)
-                    create_columns.append(
-                        meta.select_column(self.identifier, self.add(meta)),
+                    metadata.append(
+                        TypedArrayMeta(prop, *row)
+                        if only_array
+                        else TypedMeta(prop, *row),
                     )
-                    if meta.is_object:
-                        ctx.scan_progress.total += 1
-                        ctx.scan_progress.refresh()
-
                 ctx.scan_progress.update(1)
+
+        create_columns.extend(
+            [meta.select_column(self.identifier, self.add(meta)) for meta in metadata],
+        )
 
         with ctx.conn.cursor() as cur:
             cur.execute(
@@ -294,19 +357,15 @@ class ArrayNode(ExpansionNode):
         name: str,
         path: str,
         parent: ExpansionNode | None,
-        meta: Metadata,
+        meta: ArrayMeta,
         values: list[str] | None = None,
     ):
         super().__init__(name, path, parent, values)
-        self.meta = Metadata(
-            None,
-            meta.json_type,
-            False,
-            meta.is_uuid,
-            meta.is_datetime,
-            meta.is_float,
-            meta.is_bigint,
-        )
+        self.meta = meta.unwrap()
+
+    @property
+    def is_object(self) -> bool:
+        return isinstance(self.meta, ObjectMeta)
 
     def explode(
         self,
