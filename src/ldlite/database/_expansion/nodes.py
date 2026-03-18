@@ -382,7 +382,7 @@ class ArrayNode(ExpansionNode):
                 ),
                 *[sql.Identifier(v) for v in self.carryover],
                 sql.SQL(
-                    "(ROW_NUMBER() OVER (PARTITION BY s.__id))::smallint AS {id_alias}",
+                    """a."ordinality"::smallint AS {id_alias}""",
                 ).format(
                     id_alias=sql.Identifier(o_col),
                 ),
@@ -403,7 +403,7 @@ SELECT
     {cols}
 FROM
     ld_source s
-    ,ldlite_system.jexplode({json_col}) a
+    ,ldlite_system.jexplode({json_col}) WITH ORDINALITY a
 WHERE NOT ldlite_system.jis_null({json_col})
 """,
                 )

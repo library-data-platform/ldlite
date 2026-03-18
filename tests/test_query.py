@@ -561,15 +561,13 @@ def case_id_generation() -> QueryTC:
         ],
         expected_values={
             "prefix__t__sub_objects": (
-                ["__id", "id", "sub_objects__o"],
+                ["id", "sub_objects__o"],
                 [
                     (
-                        "1",
                         "b096504a-3d54-4664-9bf5-1b872466fd66",
                         "1",
                     ),
                     (
-                        "2",
                         "b096504a-3d54-4664-9bf5-1b872466fd66",
                         "2",
                     ),
