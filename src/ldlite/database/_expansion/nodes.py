@@ -1,8 +1,7 @@
 from __future__ import annotations
 
 from collections import deque
-from math import floor
-from typing import TYPE_CHECKING, TypeVar, cast
+from typing import TYPE_CHECKING, TypeVar
 
 from psycopg import sql
 
@@ -132,12 +131,11 @@ class ObjectNode(ExpansionNode):
 
         with ctx.conn.cursor() as cur:
             cur.execute(
-                sql.SQL("SELECT COUNT(*) FROM {table}")
+                sql.SQL("SELECT 1 FROM {table} LIMIT 1;")
                 .format(table=source_table)
                 .as_string(),
             )
-            total = cast("tuple[int]", cur.fetchone())[0]
-            if total == 0:
+            if not cur.fetchone():
                 return False
 
         with ctx.conn.cursor() as cur:
@@ -248,7 +246,6 @@ SELECT
                     .format(
                         table=source_table,
                         json_col=self.identifier,
-                        sample=sql.Literal(min(100, floor((100000 / total) * 100))),
                     )
                     .as_string(),
                     (prop,),
