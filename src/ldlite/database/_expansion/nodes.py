@@ -142,25 +142,13 @@ class ObjectNode(ExpansionNode):
             cur.execute(
                 sql.SQL(
                     """
-WITH
-    keys AS (
-        SELECT
-            keys.ld_key AS k
-            ,ROW_NUMBER() OVER (PARTITION BY t.__id) AS idx
-        FROM {source_table} t, ldlite_system.jobject_keys(t.{json_col}) keys
-        WHERE {json_col} IS NOT NULL AND ldlite_system.jtype_of(t.{json_col}) = 'object'
-    ),
-    ordered_keys AS (
-        SELECT
-            k
-            ,MAX(idx) idx
-            ,COUNT(idx) freq
-        FROM keys
-        GROUP BY k
-    )
-SELECT k
-FROM ordered_keys
-ORDER BY idx, freq DESC
+SELECT k.ld_key
+FROM
+    {source_table} t
+    ,ldlite_system.jobject_keys(t.{json_col}) WITH ORDINALITY k
+WHERE t.{json_col} IS NOT NULL AND ldlite_system.jtype_of(t.{json_col}) = 'object'
+GROUP BY k.ld_key
+ORDER BY MAX(k.ordinality), COUNT(k.ordinality)
 """,
                 )
                 .format(source_table=source_table, json_col=self.identifier)
