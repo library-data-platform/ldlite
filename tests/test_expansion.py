@@ -661,7 +661,7 @@ FROM tests.prefix__t__depth2_arr
             ),
             Assertion(
                 """
-SELECT COUNT(DISTINCT DATA_TYPE), ANY_VALUE(DATA_TYPE)
+SELECT COUNT(DISTINCT DATA_TYPE), MIN(DATA_TYPE)
 FROM INFORMATION_SCHEMA.COLUMNS
 WHERE COLUMN_NAME IN (
     'depth2_obj__depth3_obj__depth4_obj'
