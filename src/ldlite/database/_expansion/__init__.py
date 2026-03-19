@@ -24,7 +24,7 @@ def expand_nonmarc(
     return created_tables
 
 
-def _expand_nonmarc(
+def _expand_nonmarc(  # noqa: PLR0915
     root: ObjectNode,
     count: int,
     ctx: ExpandContext,
@@ -45,6 +45,13 @@ def _expand_nonmarc(
     if not has_rows:
         return (0, [])
 
+    with ctx.conn.cursor() as cur:
+        cur.execute(
+            sql.SQL("DROP TABLE {previous_table}")
+            .format(previous_table=ctx.source_table)
+            .as_string(),
+        )
+
     expand_children_of = deque([root])
     while expand_children_of:
         on = expand_children_of.popleft()
@@ -63,6 +70,12 @@ def _expand_nonmarc(
                 ctx.get_transform_table(count + 1),
                 ctx.source_cte(False),
             )
+            with ctx.conn.cursor() as cur:
+                cur.execute(
+                    sql.SQL("DROP TABLE {previous_table}")
+                    .format(previous_table=ctx.get_transform_table(count))
+                    .as_string(),
+                )
             expand_children_of.append(c)
             count += 1
             ctx.transform_progress.update(1)
