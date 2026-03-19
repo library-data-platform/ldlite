@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 from abc import abstractmethod
-from contextlib import closing
+from contextlib import closing, contextmanager
 from datetime import datetime, timezone
 from typing import TYPE_CHECKING, Any, Generic, NoReturn, TypeVar, cast
 from uuid import uuid4
@@ -17,7 +17,7 @@ from ._expansion.context import ExpandContext
 from ._prefix import Prefix
 
 if TYPE_CHECKING:
-    from collections.abc import Callable, Sequence
+    from collections.abc import Callable, Iterator, Sequence
     from typing import NoReturn
 
     import duckdb
@@ -62,6 +62,10 @@ CREATE TABLE IF NOT EXISTS "ldlite_system"."load_history_v1" (
     @property
     @abstractmethod
     def _default_schema(self) -> str: ...
+
+    @contextmanager
+    def _begin(self, conn: DB) -> Iterator[None]:  # noqa: ARG002
+        yield
 
     def drop_prefix(
         self,
@@ -206,10 +210,9 @@ WHERE table_schema = $1 and table_name IN ($2, $3);""",
     ) -> list[str]:
         pfx = Prefix(prefix)
         transform_started = datetime.now(timezone.utc)
-        with closing(self._conn_factory(True)) as conn:
+        with closing(self._conn_factory(False)) as conn, self._begin(conn):
             self._drop_extracted_tables(conn, pfx)
             if json_depth < 1:
-                conn.commit()
                 return []
 
             with conn.cursor() as cur:
@@ -282,7 +285,6 @@ CREATE TABLE {catalog_table} (
                     total = cast("tuple[int]", cur.fetchone())[0]
 
             self._transform_complete(conn, pfx, total, transform_started)
-            conn.commit()
 
         return created_tables
 

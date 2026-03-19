@@ -1,12 +1,18 @@
-from collections.abc import Iterator
+from __future__ import annotations
+
+from contextlib import contextmanager
 from datetime import datetime, timezone
 from itertools import count
+from typing import TYPE_CHECKING
 
 import psycopg
 from psycopg import sql
 
 from ._prefix import Prefix
 from ._typed_database import TypedDatabase
+
+if TYPE_CHECKING:
+    from collections.abc import Iterator
 
 
 class PostgresDatabase(TypedDatabase[psycopg.Connection]):
@@ -115,6 +121,11 @@ PARALLEL SAFE;
         return sql.SQL(
             "CREATE TABLE IF NOT EXISTS {table} (__id integer, jsonb jsonb);",
         )
+
+    @contextmanager
+    def _begin(self, conn: psycopg.Connection) -> Iterator[None]:
+        with conn.transaction():
+            yield
 
     def ingest_records(
         self,
