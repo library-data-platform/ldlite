@@ -210,16 +210,17 @@ WHERE table_schema = $1 and table_name IN ($2, $3);""",
     ) -> list[str]:
         pfx = Prefix(prefix)
         transform_started = datetime.now(timezone.utc)
-        with closing(self._conn_factory(False)) as conn, self._begin(conn):
-            self._drop_extracted_tables(conn, pfx)
+        with closing(self._conn_factory(False)) as conn:
             if json_depth < 1:
-                return []
+                with self._begin(conn):
+                    self._drop_extracted_tables(conn, pfx)
+                    return []
 
             with conn.cursor() as cur:
                 cur.execute(
                     sql.SQL(
                         """
-CREATE TEMP TABLE {dest_table} ON COMMIT DROP AS
+CREATE TEMP TABLE {dest_table} AS
 """
                         + self.source_table_cte_stmt(keep_source=keep_raw)
                         + """
@@ -236,7 +237,7 @@ SELECT * from ld_source;
             if not keep_raw:
                 self._drop_raw_table(conn, pfx)
 
-            created_tables = expand_nonmarc(
+            tables_to_create = expand_nonmarc(
                 "jsonb",
                 ["__id"],
                 ExpandContext(
@@ -254,39 +255,45 @@ SELECT * from ld_source;
                 ),
             )
 
-            with conn.cursor() as cur:
-                cur.execute(
-                    sql.SQL(
-                        """
+            with self._begin(conn):
+                self._drop_extracted_tables(conn, pfx)
+                with conn.cursor() as cur:
+                    for table in tables_to_create:
+                        cur.execute(table[1].as_string())
+
+                with conn.cursor() as cur:
+                    cur.execute(
+                        sql.SQL(
+                            """
 CREATE TABLE {catalog_table} (
     table_name text
 )
 """,
-                    )
-                    .format(catalog_table=pfx.catalog_table.id)
-                    .as_string(),
-                )
-                total = 0
-                if len(created_tables) > 0:
-                    cur.executemany(
-                        sql.SQL("INSERT INTO {catalog_table} VALUES ($1)")
-                        .format(
-                            catalog_table=pfx.catalog_table.id,
                         )
-                        .as_string(),
-                        [(pfx.catalog_table_row(t),) for t in created_tables],
-                    )
-
-                    cur.execute(
-                        sql.SQL("SELECT COUNT(*) FROM {table}")
-                        .format(table=pfx.output_table("").id)
+                        .format(catalog_table=pfx.catalog_table.id)
                         .as_string(),
                     )
-                    total = cast("tuple[int]", cur.fetchone())[0]
+                    total = 0
+                    if len(tables_to_create) > 0:
+                        cur.executemany(
+                            sql.SQL("INSERT INTO {catalog_table} VALUES ($1)")
+                            .format(
+                                catalog_table=pfx.catalog_table.id,
+                            )
+                            .as_string(),
+                            [(pfx.catalog_table_row(t[0]),) for t in tables_to_create],
+                        )
 
-            self._transform_complete(conn, pfx, total, transform_started)
+                        cur.execute(
+                            sql.SQL("SELECT COUNT(*) FROM {table}")
+                            .format(table=pfx.output_table("").id)
+                            .as_string(),
+                        )
+                        total = cast("tuple[int]", cur.fetchone())[0]
 
-        return created_tables
+                self._transform_complete(conn, pfx, total, transform_started)
+
+        return [t[0] for t in tables_to_create]
 
     def index_prefix(self, prefix: str, progress: tqdm[NoReturn] | None = None) -> None:
         pfx = Prefix(prefix)

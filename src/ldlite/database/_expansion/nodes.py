@@ -318,7 +318,7 @@ WHERE ld_value IS NOT NULL AND json_type <> 'null'
             cur.execute(
                 sql.SQL(
                     """
-CREATE TEMP TABLE {dest_table} ON COMMIT DROP AS
+CREATE TEMP TABLE {dest_table} AS
 """
                     + source_cte
                     + """
@@ -395,7 +395,7 @@ class ArrayNode(ExpansionNode):
             cur.execute(
                 sql.SQL(
                     """
-CREATE TEMP TABLE {dest_table} ON COMMIT DROP AS
+CREATE TEMP TABLE {dest_table} AS
 """
                     + source_cte
                     + """
