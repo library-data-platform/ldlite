@@ -88,20 +88,12 @@ IMMUTABLE
 PARALLEL SAFE
 STRICT;
 
-CREATE OR REPLACE FUNCTION ldlite_system.jis_null(j JSONB) RETURNS BOOLEAN AS $$
-SELECT j IS NULL OR j = 'null'::jsonb OR j #>> '{}' IN ('NULL', 'null', '', '{}', '[]')
-$$
-LANGUAGE sql
-IMMUTABLE
-PARALLEL SAFE;
-
 CREATE OR REPLACE FUNCTION ldlite_system.jexplode(j JSONB) RETURNS TABLE (ld_value JSONB) AS $$
 SELECT * FROM jsonb_array_elements(j);
 $$
 LANGUAGE sql
 IMMUTABLE
 PARALLEL SAFE;
-
 
 CREATE OR REPLACE FUNCTION ldlite_system.jself_string(j JSONB) RETURNS TEXT AS $$
 SELECT j #>> '{}'

@@ -403,15 +403,15 @@ SELECT
     {cols}
 FROM
     ld_source s
-    ,ldlite_system.jexplode({json_col}) WITH ORDINALITY a
-WHERE NOT ldlite_system.jis_null({json_col})
+    ,ldlite_system.jexplode(s.{json_col}) WITH ORDINALITY a
+WHERE ldlite_system.jtype_of(s.{json_col}) = 'array'
 """,
                 )
                 .format(
                     source_table=source_table,
                     dest_table=dest_table,
                     cols=sql.SQL("\n    ,").join(create_columns),
-                    json_col=sql.Identifier("s", self.name),
+                    json_col=sql.Identifier(self.name),
                 )
                 .as_string(),
             )

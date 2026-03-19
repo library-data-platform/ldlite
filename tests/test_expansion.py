@@ -220,7 +220,7 @@ def case_null(assertion: tuple[str, str | None, str | None]) -> ExpansionTC:
     "all_null": null,
     "nullable_integer": 7,
     "nullable_numeric": 5.5,
-    "nullable_uuid": null,
+    "nullable_uuid": "null",
     "nullable_bool": false,
     "nullable_object": { "id": 5 },
     "nullable_array": null,
