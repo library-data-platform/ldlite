@@ -17,7 +17,7 @@ class DuckDbDatabase(TypedDatabase[duckdb.DuckDBPyConnection]):
     def __init__(self, db: duckdb.DuckDBPyConnection) -> None:
         # See the notes below for why we're monkey patching DuckDB
         super().__init__(
-            lambda: cast(
+            lambda _: cast(
                 "duckdb.DuckDBPyConnection",
                 _MonkeyDBPyConnection(db.cursor()),
             ),
@@ -92,7 +92,7 @@ CREATE OR REPLACE FUNCTION ldlite_system.jself_string(j) AS
         pfx = Prefix(prefix)
         download_started = datetime.now(timezone.utc)
         pkey = count(1)
-        with self._conn_factory() as conn:
+        with self._conn_factory(False) as conn:
             self._prepare_raw_table(conn, pfx)
 
             insert_sql = (

@@ -27,9 +27,9 @@ DB = TypeVar("DB", bound="duckdb.DuckDBPyConnection | psycopg.Connection")
 
 
 class TypedDatabase(Database, Generic[DB]):
-    def __init__(self, conn_factory: Callable[[], DB]):
+    def __init__(self, conn_factory: Callable[[bool], DB]):
         self._conn_factory = conn_factory
-        with closing(self._conn_factory()) as conn:
+        with closing(self._conn_factory(True)) as conn:
             with conn.cursor() as cur:
                 cur.execute('CREATE SCHEMA IF NOT EXISTS "ldlite_system";')
                 cur.execute("""
@@ -68,7 +68,7 @@ CREATE TABLE IF NOT EXISTS "ldlite_system"."load_history_v1" (
         prefix: str,
     ) -> None:
         pfx = Prefix(prefix)
-        with closing(self._conn_factory()) as conn:
+        with closing(self._conn_factory(True)) as conn:
             self._drop_extracted_tables(conn, pfx)
             self._drop_raw_table(conn, pfx)
             conn.execute(
@@ -84,7 +84,7 @@ WHERE "table_prefix" = $1;
         self,
         prefix: str,
     ) -> None:
-        with closing(self._conn_factory()) as conn:
+        with closing(self._conn_factory(True)) as conn:
             self._drop_raw_table(conn, Prefix(prefix))
             conn.commit()
 
@@ -104,7 +104,7 @@ WHERE "table_prefix" = $1;
         self,
         prefix: str,
     ) -> None:
-        with closing(self._conn_factory()) as conn:
+        with closing(self._conn_factory(True)) as conn:
             self._drop_extracted_tables(conn, Prefix(prefix))
             conn.commit()
 
@@ -206,7 +206,7 @@ WHERE table_schema = $1 and table_name IN ($2, $3);""",
     ) -> list[str]:
         pfx = Prefix(prefix)
         transform_started = datetime.now(timezone.utc)
-        with closing(self._conn_factory()) as conn:
+        with closing(self._conn_factory(True)) as conn:
             self._drop_extracted_tables(conn, pfx)
             if json_depth < 1:
                 conn.commit()
@@ -289,7 +289,7 @@ CREATE TABLE {catalog_table} (
     def index_prefix(self, prefix: str, progress: tqdm[NoReturn] | None = None) -> None:
         pfx = Prefix(prefix)
         index_started = datetime.now(timezone.utc)
-        with closing(self._conn_factory()) as conn:
+        with closing(self._conn_factory(False)) as conn:
             with closing(conn.cursor()) as cur:
                 cur.execute(
                     """
@@ -351,7 +351,7 @@ WHERE
         path: str,
         query: str | None,
     ) -> None:
-        with closing(self._conn_factory()) as conn, closing(conn.cursor()) as cur:
+        with closing(self._conn_factory(True)) as conn, closing(conn.cursor()) as cur:
             cur.execute(
                 """
 INSERT INTO "ldlite_system"."load_history_v1"

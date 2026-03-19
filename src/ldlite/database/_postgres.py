@@ -15,9 +15,10 @@ class PostgresDatabase(TypedDatabase[psycopg.Connection]):
             # RawCursor lets us use $1, $2, etc to use the
             # same sql between duckdb and postgres
             super().__init__(
-                lambda: psycopg.connect(
+                lambda transact: psycopg.connect(
                     dsn,
                     cursor_factory=psycopg.RawCursor,
+                    autocommit=not transact,
                 ),
             )
         except psycopg.errors.UniqueViolation:
@@ -123,7 +124,7 @@ PARALLEL SAFE;
         pfx = Prefix(prefix)
         download_started = datetime.now(timezone.utc)
         pkey = count(1)
-        with self._conn_factory() as conn:
+        with self._conn_factory(True) as conn:
             self._prepare_raw_table(conn, pfx)
 
             with (
