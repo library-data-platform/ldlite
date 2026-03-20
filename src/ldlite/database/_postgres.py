@@ -42,20 +42,6 @@ class PostgresDatabase(TypedDatabase[psycopg.Connection]):
         with conn.cursor() as cur:
             cur.execute(
                 r"""
-CREATE OR REPLACE FUNCTION ldlite_system.jtype_of(j JSONB) RETURNS TEXT AS $$
-SELECT jsonb_typeof(j);
-$$
-LANGUAGE sql
-IMMUTABLE
-PARALLEL SAFE;
-
-CREATE OR REPLACE FUNCTION ldlite_system.jobject_keys(j JSONB) RETURNS TABLE (ld_key TEXT) AS $$
-SELECT jsonb_object_keys(j);
-$$
-LANGUAGE sql
-IMMUTABLE
-PARALLEL SAFE;
-
 CREATE OR REPLACE FUNCTION ldlite_system.jis_uuid(j JSONB) RETURNS BOOLEAN AS $$
 SELECT j::text ~* '^"[a-f0-9]{8}-[a-f0-9]{4}-[1-5][a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}"$';
 $$
@@ -87,13 +73,6 @@ LANGUAGE sql
 IMMUTABLE
 PARALLEL SAFE
 STRICT;
-
-CREATE OR REPLACE FUNCTION ldlite_system.jexplode(j JSONB) RETURNS TABLE (ld_value JSONB) AS $$
-SELECT * FROM jsonb_array_elements(j);
-$$
-LANGUAGE sql
-IMMUTABLE
-PARALLEL SAFE;
 
 CREATE OR REPLACE FUNCTION ldlite_system.jself_string(j JSONB) RETURNS TEXT AS $$
 SELECT j #>> '{}'

@@ -28,7 +28,8 @@ class DuckDbDatabase(TypedDatabase[duckdb.DuckDBPyConnection]):
         with conn.cursor() as cur:
             cur.execute(
                 r"""
-CREATE OR REPLACE FUNCTION ldlite_system.jtype_of(j) AS
+-- The first three are shims to be able to use the postgres native operations.
+CREATE OR REPLACE FUNCTION jsonb_typeof(j) AS
     CASE coalesce(main.json_type(j), 'NULL')
         WHEN 'VARCHAR' THEN 'string'
         WHEN 'BIGINT' THEN 'number'
@@ -42,10 +43,15 @@ CREATE OR REPLACE FUNCTION ldlite_system.jtype_of(j) AS
     END
 ;
 
-CREATE OR REPLACE FUNCTION ldlite_system.jobject_keys(j) AS TABLE
+CREATE OR REPLACE FUNCTION jsonb_object_keys(j) AS TABLE
     SELECT je.key as ld_key, id as "ordinality" FROM json_each(j) je ORDER BY je.id
 ;
 
+CREATE OR REPLACE FUNCTION jsonb_array_elements(j) AS TABLE (
+    SELECT value as ld_value, rowid + 1 AS "ordinality" FROM main.json_each(j)
+);
+
+-- The rest are shims to abstract the differences between postgres and duckdb
 CREATE OR REPLACE FUNCTION ldlite_system.jis_uuid(j) AS
     regexp_full_match(main.json_extract_string(j, '$'), '(?i)^[a-f0-9]{8}-[a-f0-9]{4}-[1-5][a-f0-9]{3}-[89abAB][a-f0-9]{3}-[a-f0-9]{12}$')
 ;
@@ -62,9 +68,6 @@ CREATE OR REPLACE FUNCTION ldlite_system.jis_bigint(j) AS
     COALESCE(TRY_CAST(j AS NUMERIC), 0) > 2147483647
 ;
 
-CREATE OR REPLACE FUNCTION ldlite_system.jexplode(j) AS TABLE (
-    SELECT value as ld_value, rowid + 1 AS "ordinality" FROM main.json_each(j)
-);
 
 CREATE OR REPLACE FUNCTION ldlite_system.jself_string(j) AS
     main.json_extract_string(j, '$')
@@ -122,13 +125,13 @@ class _MonkeyDBPyCursor:
     def close(self) -> None:
         return None
 
-    """
+    #"""
     # This exists to quickly print out any sql executed during tests
     # Uncomment in production at your own peril
     def execute(self, *args, **kwargs) -> duckdb.DuckDBPyConnection:
         print(args[0])
         return self._cur.execute(*args, **kwargs)
-    """
+    #"""
 
     def __enter__(self) -> "Self":
         return self

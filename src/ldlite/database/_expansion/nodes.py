@@ -154,8 +154,8 @@ class ObjectNode(ExpansionNode):
 SELECT k.ld_key
 FROM
     {source_table} t
-    ,ldlite_system.jobject_keys(t.{json_col}) WITH ORDINALITY k
-WHERE t.{json_col} IS NOT NULL AND ldlite_system.jtype_of(t.{json_col}) = 'object'
+    ,jsonb_object_keys(t.{json_col}) WITH ORDINALITY k(ld_key, "ordinality")
+WHERE t.{json_col} IS NOT NULL AND jsonb_typeof(t.{json_col}) = 'object'
 GROUP BY k.ld_key
 ORDER BY MAX(k.ordinality), COUNT(k.ordinality)
 """,
@@ -182,9 +182,9 @@ SELECT
     ,BOOL_OR(json_type = 'object') AS some_object
 FROM
 (
-    SELECT ldlite_system.jtype_of(t.{json_col}->$1) AS json_type
+    SELECT jsonb_typeof(t.{json_col}->$1) AS json_type
     FROM {table} t
-) AS json_types
+) j
 WHERE json_type <> 'null'
 """,
                     )
@@ -222,14 +222,15 @@ SELECT
     ,BOOL_OR(json_type = 'object') AS some_object
 FROM
 (
-    SELECT ldlite_system.jtype_of(a.ld_value) AS json_type
+    SELECT a.json_type
     FROM {table} t
     CROSS JOIN LATERAL
     (
-        SELECT ld_value FROM ldlite_system.jexplode(t.{json_col}->$1)
-        WHERE ldlite_system.jtype_of(t.{json_col}->$1) = 'array'
+        SELECT jsonb_typeof(ld_value) AS json_type
+        FROM jsonb_array_elements(t.{json_col}->$1) a(ld_value)
+        WHERE jsonb_typeof(t.{json_col}->$1) = 'array'
     ) a
-) AS json_types
+) j
 WHERE json_type <> 'null'
 """,
                         )
@@ -262,14 +263,14 @@ FROM {table} t
 CROSS JOIN LATERAL
 (
     SELECT *
-    FROM ldlite_system.jexplode(t.{json_col}->$1)
-    WHERE ldlite_system.jtype_of(t.{json_col}->$1) = 'array'
+    FROM jsonb_array_elements(t.{json_col}->$1) a(ld_value)
+    WHERE jsonb_typeof(t.{json_col}->$1) = 'array'
     LIMIT 3
-) a"""
+) j"""
                 else:
                     ctx.scan_progress.update(2)
                     typed_from_sql = """
-FROM (SELECT t.{json_col}->$1 AS ld_value FROM {table} t) AS t
+FROM (SELECT t.{json_col}->$1 AS ld_value FROM {table} t) j
 """
             with ctx.conn.cursor() as cur:
                 cur.execute(
@@ -286,11 +287,18 @@ FROM
 (
     SELECT
         ld_value
-        ,ldlite_system.jtype_of(ld_value) json_type """  # noqa: E501
+        ,jsonb_typeof(ld_value) json_type """  # noqa: E501
                         + typed_from_sql
                         + """
-) type_info
-WHERE ld_value IS NOT NULL AND json_type <> 'null'
+        WHERE ld_value IS NOT NULL
+) i
+WHERE
+    ld_value IS NOT NULL AND
+    json_type <> 'null' AND
+    (
+        json_type <> 'string' OR
+        (json_type = 'string' AND ld_value::text NOT IN ('"null"', '""'))
+    )
 """,
                     )
                     .format(
@@ -403,8 +411,8 @@ SELECT
     {cols}
 FROM
     ld_source s
-    ,ldlite_system.jexplode(s.{json_col}) WITH ORDINALITY a
-WHERE ldlite_system.jtype_of(s.{json_col}) = 'array'
+    ,jsonb_array_elements(s.{json_col}) WITH ORDINALITY a(ld_value, "ordinality")
+WHERE jsonb_typeof(s.{json_col}) = 'array'
 """,
                 )
                 .format(

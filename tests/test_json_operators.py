@@ -27,7 +27,7 @@ class JsonTC:
     assertion_params: tuple[Any, ...]
 
 
-def case_jobject_keys() -> JsonTC:
+def case_jsonb_object_keys() -> JsonTC:
     return JsonTC(
         """
 {assertion}
@@ -35,7 +35,7 @@ def case_jobject_keys() -> JsonTC:
 FROM (SELECT 'k1' jkey UNION SELECT 'k2' jkey) as e
 FULL OUTER JOIN (
     SELECT k.ld_key as jkey
-    FROM j, ldlite_system.jobject_keys(j.jc->'obj') k
+    FROM j, jsonb_object_keys(j.jc->'obj') k(ld_key)
 ) as a
     USING (jkey)
 WHERE e.jkey IS NULL or a.jkey IS NULL) as q;""",
@@ -59,10 +59,10 @@ WHERE e.jkey IS NULL or a.jkey IS NULL) as q;""",
         ("na", "null"),
     ],
 )
-def case_jtype_of(p: tuple[Any, ...]) -> JsonTC:
+def case_jsonb_typeof(p: tuple[Any, ...]) -> JsonTC:
     return JsonTC(
         """
-SELECT ldlite_system.jtype_of(jc->$1){assertion}
+SELECT jsonb_typeof(jc->$1){assertion}
 FROM j;""",
         p[:1],
         """ = $2""",
@@ -77,16 +77,16 @@ FROM j;""",
         ("arr_num", [1, 2, 3]),
     ],
 )
-def case_jexplode(p: tuple[Any, ...]) -> JsonTC:
+def case_jsonb_array_elements(p: tuple[Any, ...]) -> JsonTC:
     return JsonTC(
         """
 {assertion}
 (
-    SELECT a.ld_value FROM j, ldlite_system.jexplode(j.jc->$1) AS a
+    SELECT a.ld_value FROM j, jsonb_array_elements(j.jc->$1) AS a(ld_value)
     EXCEPT SELECT value::{jtype} FROM unnest($2::text[]) AS expect(value)
     UNION ALL
     SELECT value::{jtype} FROM unnest($2::text[]) AS expect(value)
-    EXCEPT SELECT a.ld_value FROM j, ldlite_system.jexplode(j.jc->$1) AS a
+    EXCEPT SELECT a.ld_value FROM j, jsonb_array_elements(j.jc->$1) AS a(ld_value)
 ) act
 """,
         p,
