@@ -210,12 +210,17 @@ WHERE table_schema = $1 and table_name IN ($2, $3);""",
     ) -> list[str]:
         pfx = Prefix(prefix)
         transform_started = datetime.now(timezone.utc)
-        with closing(self._conn_factory(False)) as conn:
-            if json_depth < 1:
-                with self._begin(conn):
-                    self._drop_extracted_tables(conn, pfx)
-                    return []
+        if json_depth < 1:
+            with closing(self._conn_factory(True)) as conn:
+                self._drop_extracted_tables(conn, pfx)
+                if not keep_raw:
+                    self._drop_raw_table(conn, pfx)
+                self._transform_complete(conn, pfx, 0, transform_started)
 
+                conn.commit()
+                return []
+
+        with closing(self._conn_factory(False)) as conn:
             with conn.cursor() as cur:
                 cur.execute(
                     sql.SQL(
@@ -233,9 +238,6 @@ SELECT * from ld_source;
                     )
                     .as_string(),
                 )
-
-            if not keep_raw:
-                self._drop_raw_table(conn, pfx)
 
             tables_to_create = expand_nonmarc(
                 "jsonb",
@@ -257,6 +259,8 @@ SELECT * from ld_source;
 
             with self._begin(conn):
                 self._drop_extracted_tables(conn, pfx)
+                if not keep_raw:
+                    self._drop_raw_table(conn, pfx)
                 with conn.cursor() as cur:
                     for table in tables_to_create:
                         cur.execute(table[1].as_string())
