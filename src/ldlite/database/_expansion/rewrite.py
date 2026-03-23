@@ -180,19 +180,7 @@ class OrdinalNode(FixedValueNode):
 
     @property
     def stmt(self) -> sql.Composed:
-        return sql.SQL('"ordinality" AS {alias}').format(alias=self.alias)
-
-
-class ArrayIdentityNode(FixedValueNode):
-    @property
-    def alias(self) -> str:
-        return "__id"
-
-    @property
-    def stmt(self) -> sql.Composed:
-        return sql.SQL("ROW_NUMBER() OVER (ORDER BY (SELECT NULL)) AS __id").format(
-            alias=self.alias,
-        )
+        return sql.SQL('"ordinality"::smallint AS {alias}').format(alias=self.alias)
 
 
 TNode = TypeVar("TNode", bound="Node")
