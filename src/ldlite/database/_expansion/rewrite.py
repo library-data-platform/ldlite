@@ -1,27 +1,44 @@
 from __future__ import annotations
 
 from abc import abstractmethod
+from collections import deque
 from dataclasses import dataclass
-from typing import Literal, TypeAlias
+from typing import TYPE_CHECKING, Literal, TypeAlias, TypeVar, cast
 
 import duckdb
 import psycopg
 from psycopg import sql
 
+if TYPE_CHECKING:
+    from collections.abc import Iterator
+
 Conn: TypeAlias = duckdb.DuckDBPyConnection | psycopg.Connection
+JsonType: TypeAlias = Literal["array", "object", "string", "number", "boolean"]
 
 
-@dataclass(frozen=True)
+@dataclass
 class NodeContext:
     source: sql.Identifier
     column: sql.Identifier
-    prefixes: frozenset[str]
+    prefixes: list[str]
     prop: str | None
+
+    def sub_prefix(self, prefix: str | None, prop: str | None) -> NodeContext:
+        return NodeContext(
+            self.source,
+            self.column,
+            [*self.prefixes, *([prefix] if prefix is not None else [])],
+            prop,
+        )
 
 
 class Node:
     def __init__(self, ctx: NodeContext):
         self.ctx = ctx
+
+    @property
+    def path(self) -> sql.Composed:
+        return sql.SQL("->").join([sql.Literal(p) for p in self.ctx.prefixes])
 
 
 class FixedValueNode(Node):
@@ -38,15 +55,13 @@ class TypedNode(FixedValueNode):
     def __init__(
         self,
         ctx: NodeContext,
-        json_type: Literal["string", "number", "boolean"],
-        other_json_type: Literal["string", "number", "boolean"],
+        json_type: JsonType,
+        other_json_type: JsonType,
     ):
         super().__init__(ctx)
 
         self.is_mixed = json_type = other_json_type
-        self.json_type: Literal["string", "number", "boolean", "null"] = (
-            "string" if self.is_mixed else json_type
-        )
+        self.json_type: JsonType = "string" if self.is_mixed else json_type
         self.is_uuid = False
         self.is_datetime = False
         self.is_float = False
@@ -60,15 +75,14 @@ class TypedNode(FixedValueNode):
 
     @property
     def str_extract(self) -> sql.Composed:
-        path = sql.SQL("->").join([sql.Literal(p) for p in self.ctx.prefixes])
         if self.ctx.prop is None:
             str_extract = (
                 sql.SQL("""TRIM(BOTH '"' FROM ({json_col}""").format(self.ctx.column)
-                + path
+                + self.path
                 + sql.SQL(")::text)")
             )
         else:
-            str_extract = path + sql.SQL("->>{prop}").format(self.ctx.prop)
+            str_extract = self.path + sql.SQL("->>{prop}").format(self.ctx.prop)
 
         return sql.Composed(
             [
@@ -181,10 +195,81 @@ class ArrayIdentityNode(FixedValueNode):
         )
 
 
-class RecursiveNode(Node): ...
+TNode = TypeVar("TNode", bound="Node")
+TRode = TypeVar("TRode", bound="RecursiveNode")
 
 
-class ObjectNode(RecursiveNode): ...
+class RecursiveNode(Node):
+    def __init__(self, ctx: NodeContext, parent: RecursiveNode | None):
+        super().__init__(ctx)
+
+        self.parent = parent
+        self._children: list[Node] = []
+
+    def _direct(self, cls: type[TNode]) -> Iterator[TNode]:
+        yield from [n for n in self._children if isinstance(n, cls)]
+
+    def direct(self, cls: type[TNode]) -> list[TNode]:
+        return list(self._direct(cls))
+
+    def _descendents(self, cls: type[TRode]) -> Iterator[TRode]:
+        to_visit = deque([self])
+        while to_visit:
+            n = to_visit.pop()
+            if isinstance(n, cls):
+                yield n
+
+            to_visit.extend(n.direct(RecursiveNode))
+
+    def descendents(self, cls: type[TRode]) -> list[TRode]:
+        return list(self._descendents(cls))
+
+
+class ObjectNode(RecursiveNode):
+    def load_columns(self, conn: Conn) -> None:
+        with conn.cursor() as cur:
+            key_discovery = (
+                sql.SQL("""
+SELECT
+    j.json_key
+    ,MIN(j.json_type) AS json_type
+    ,MAX(j.json_type) AS other_json_type
+FROM
+(
+    SELECT
+      json_key
+      ,jsonb_typeof(json_value) AS json_type
+      ,ord
+    FROM {table} t
+    CROSS JOIN LATERAL jsonb_each(t.{column}""").format(
+                    table=self.ctx.source,
+                    json_column=self.ctx.column,
+                )
+                + self.path
+                + (
+                    sql.SQL("->{prop})").format(prop=self.ctx.prop)
+                    if self.ctx.prop is not None
+                    else sql.SQL(")")
+                )
+                + sql.Composed(""" WITH ORDINALITY k(json_key, json_value, ord)
+) j
+WHERE json_type <> 'null'
+GROUP BY json_key
+ORDER BY MAX(j.ord), COUNT(*)
+                        """)
+            )
+            cur.execute(key_discovery.as_string())
+            for row in cur.fetchall():
+                (key, jt, ojt) = cast("tuple[str, JsonType, JsonType]", row)
+                if jt == "array" and ojt == "array":
+                    anode = ArrayNode(self.ctx.sub_prefix(self.ctx.prop, key), self)
+                    self._children.append(anode)
+                elif jt == "object" and ojt == "object":
+                    onode = ObjectNode(self.ctx.sub_prefix(self.ctx.prop, key), self)
+                    self._children.append(onode)
+                else:
+                    tnode = TypedNode(self.ctx.sub_prefix(self.ctx.prop, key), jt, ojt)
+                    self._children.append(tnode)
 
 
 class RootNode(ObjectNode): ...
