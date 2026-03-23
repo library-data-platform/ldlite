@@ -37,52 +37,6 @@ class PostgresDatabase(TypedDatabase[psycopg.Connection]):
             if str(e) != "tuple concurrently updated":
                 raise
 
-    @staticmethod
-    def _setup_jfuncs(conn: psycopg.Connection) -> None:
-        with conn.cursor() as cur:
-            cur.execute(
-                r"""
-CREATE OR REPLACE FUNCTION ldlite_system.jis_uuid(j JSONB) RETURNS BOOLEAN AS $$
-SELECT j::text ~* '^"[a-f0-9]{8}-[a-f0-9]{4}-[1-5][a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}"$';
-$$
-LANGUAGE sql
-IMMUTABLE
-PARALLEL SAFE
-STRICT;
-
-CREATE OR REPLACE FUNCTION ldlite_system.jis_datetime(j JSONB) RETURNS BOOLEAN AS $$
-SELECT j::text ~ '^"\d{4}-[01]\d-[0123]\dT[012]\d:[012345]\d:[012345]\d\.\d{3}(\+\d{2}:\d{2})?"$'
-$$
-LANGUAGE sql
-IMMUTABLE
-PARALLEL SAFE
-STRICT;
-
-CREATE OR REPLACE FUNCTION ldlite_system.jis_float(j JSONB) RETURNS BOOLEAN AS $$
-SELECT SCALE((j)::numeric) > 0
-$$
-LANGUAGE sql
-IMMUTABLE
-PARALLEL SAFE
-STRICT;
-
-CREATE OR REPLACE FUNCTION ldlite_system.jis_bigint(j JSONB) RETURNS BOOLEAN AS $$
-SELECT (j)::numeric > 2147483647
-$$
-LANGUAGE sql
-IMMUTABLE
-PARALLEL SAFE
-STRICT;
-
-CREATE OR REPLACE FUNCTION ldlite_system.jself_string(j JSONB) RETURNS TEXT AS $$
-SELECT j #>> '{}'
-$$
-LANGUAGE sql
-IMMUTABLE
-PARALLEL SAFE;
-""",  # noqa: E501
-            )
-
     @property
     def _default_schema(self) -> str:
         return "public"

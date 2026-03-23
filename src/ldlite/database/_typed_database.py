@@ -52,12 +52,7 @@ CREATE TABLE IF NOT EXISTS "ldlite_system"."load_history_v1" (
     ,"index_time" INTERVAL -- 12
 );""")
 
-            self._setup_jfuncs(conn)
             conn.commit()
-
-    @staticmethod
-    @abstractmethod
-    def _setup_jfuncs(conn: DB) -> None: ...
 
     @property
     @abstractmethod

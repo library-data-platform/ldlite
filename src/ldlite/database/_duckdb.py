@@ -23,12 +23,10 @@ class DuckDbDatabase(TypedDatabase[duckdb.DuckDBPyConnection]):
             ),
         )
 
-    @staticmethod
-    def _setup_jfuncs(conn: duckdb.DuckDBPyConnection) -> None:
-        with conn.cursor() as cur:
+        with self._conn_factory(True) as cur:
             cur.execute(
                 r"""
--- The first three are shims to be able to use the postgres native operations.
+-- These are shims to be able to use the postgres native operations.
 CREATE OR REPLACE FUNCTION jsonb_typeof(j) AS
     CASE coalesce(main.json_type(j), 'NULL')
         WHEN 'VARCHAR' THEN 'string'
@@ -50,29 +48,7 @@ CREATE OR REPLACE FUNCTION jsonb_object_keys(j) AS TABLE
 CREATE OR REPLACE FUNCTION jsonb_array_elements(j) AS TABLE (
     SELECT value as ld_value, rowid + 1 AS "ordinality" FROM main.json_each(j)
 );
-
--- The rest are shims to abstract the differences between postgres and duckdb
-CREATE OR REPLACE FUNCTION ldlite_system.jis_uuid(j) AS
-    regexp_full_match(main.json_extract_string(j, '$'), '(?i)^[a-f0-9]{8}-[a-f0-9]{4}-[1-5][a-f0-9]{3}-[89abAB][a-f0-9]{3}-[a-f0-9]{12}$')
-;
-
-CREATE OR REPLACE FUNCTION ldlite_system.jis_datetime(j) AS
-    regexp_full_match(main.json_extract_string(j, '$'), '^\d{4}-[01]\d-[0123]\dT[012]\d:[012345]\d:[012345]\d\.\d{3}(\+\d{2}:\d{2})?$')
-;
-
-CREATE OR REPLACE FUNCTION ldlite_system.jis_float(j) AS
-    main.json_type(j) == 'DOUBLE'
-;
-
-CREATE OR REPLACE FUNCTION ldlite_system.jis_bigint(j) AS
-    COALESCE(TRY_CAST(j AS NUMERIC), 0) > 2147483647
-;
-
-
-CREATE OR REPLACE FUNCTION ldlite_system.jself_string(j) AS
-    main.json_extract_string(j, '$')
-;
-""",  # noqa: E501
+""",
             )
 
     @property
@@ -125,13 +101,14 @@ class _MonkeyDBPyCursor:
     def close(self) -> None:
         return None
 
-    #"""
+    """
     # This exists to quickly print out any sql executed during tests
     # Uncomment in production at your own peril
     def execute(self, *args, **kwargs) -> duckdb.DuckDBPyConnection:
         print(args[0])
         return self._cur.execute(*args, **kwargs)
-    #"""
+
+    """
 
     def __enter__(self) -> "Self":
         return self

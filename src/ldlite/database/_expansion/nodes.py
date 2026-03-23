@@ -279,10 +279,10 @@ FROM (SELECT t.{json_col}->$1 AS ld_value FROM {table} t) j
 SELECT
     MIN(json_type) AS json_type
     ,MAX(json_type) AS other_json_type
-    ,BOOL_AND(CASE WHEN json_type = 'string' THEN ldlite_system.jis_uuid(ld_value) ELSE FALSE END) AS is_uuid
-    ,BOOL_AND(CASE WHEN json_type = 'string' THEN ldlite_system.jis_datetime(ld_value) ELSE FALSE END) AS is_datetime
-    ,BOOL_OR(CASE WHEN json_type = 'number' THEN ldlite_system.jis_float(ld_value) ELSE FALSE END) AS is_float
-    ,BOOL_OR(CASE WHEN json_type = 'number' THEN ldlite_system.jis_bigint(ld_value) ELSE FALSE END) AS is_bigint
+    ,BOOL_AND(CASE WHEN json_type = 'string' THEN (ld_value)::text LIKE '"________-____-____-____-____________"' ELSE FALSE END) AS is_uuid
+    ,BOOL_AND(CASE WHEN json_type = 'string' THEN (ld_value)::text LIKE '"____-__-__T__:__:__.___%"' ELSE FALSE END) AS is_datetime
+    ,BOOL_OR(CASE WHEN json_type = 'number' THEN (ld_value)::numeric % 1 <> 0 ELSE FALSE END) AS is_float
+    ,BOOL_OR(CASE WHEN json_type = 'number' THEN (ld_value)::numeric > 2147483647 ELSE FALSE END) AS is_bigint
 FROM
 (
     SELECT

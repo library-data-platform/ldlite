@@ -82,24 +82,24 @@ class TypedMeta(Metadata):
         str_extract = (
             "{json_col}->>{prop}"
             if self.prop is not None
-            else "ldlite_system.jself_string({json_col})"
+            else """TRIM(BOTH '"' FROM ({json_col})::text)"""
         )
-        nullable_str_extract = f"NULLIF(NULLIF({str_extract}, ''), 'null')"
+        str_extract = f"NULLIF(NULLIF({str_extract}, ''), 'null')"
 
         if self.json_type == "number" and self.is_float:
-            return f"({str_extract})::numeric"
+            return f"{str_extract}::numeric"
         if self.json_type == "number" and self.is_bigint:
-            return f"({str_extract})::bigint"
+            return f"{str_extract}::bigint"
         if self.json_type == "number":
-            return f"({str_extract})::integer"
+            return f"{str_extract}::integer"
         if self.json_type == "boolean":
-            return f"({nullable_str_extract})::bool"
+            return f"{str_extract}::bool"
         if self.json_type == "string" and self.is_uuid:
-            return f"({nullable_str_extract})::uuid"
+            return f"{str_extract}::uuid"
         if self.json_type == "string" and self.is_datetime:
-            return f"({nullable_str_extract})::timestamptz"
+            return f"{str_extract}::timestamptz"
 
-        return nullable_str_extract
+        return str_extract
 
 
 class MixedMeta(TypedMeta):

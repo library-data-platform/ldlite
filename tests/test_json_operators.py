@@ -95,89 +95,6 @@ def case_jsonb_array_elements(p: tuple[Any, ...]) -> JsonTC:
     )
 
 
-@parametrize(
-    p=[
-        ("str", False),
-        ("str_empty", False),
-        ("num", False),
-        ("na_str1", False),
-        ("na_str2", False),
-        ("uuid_nof", False),
-        ("uuid", True),
-    ],
-)
-def case_jis_uuid(p: tuple[Any, ...]) -> JsonTC:
-    return JsonTC(
-        """
-SELECT {assertion}ldlite_system.jis_uuid(jc->$1)
-FROM j;""",
-        p[:1],
-        "" if (p[1]) else """ NOT """,
-        (),
-    )
-
-
-@parametrize(
-    p=[
-        ("str", False),
-        ("str_empty", False),
-        ("num", False),
-        ("na_str1", False),
-        ("na_str2", False),
-        ("uuid_nof", False),
-        ("uuid", False),
-        ("dt", True),
-    ],
-)
-def case_jis_datetime(p: tuple[Any, ...]) -> JsonTC:
-    return JsonTC(
-        """
-SELECT {assertion}ldlite_system.jis_datetime(jc->$1)
-FROM j;""",
-        p[:1],
-        "" if (p[1]) else """ NOT """,
-        (),
-    )
-
-
-@parametrize(
-    p=[
-        ("num", False),
-        ("float", True),
-        ("bigfloat", True),
-        ("bigint", False),
-    ],
-)
-def case_jis_float(p: tuple[Any, ...]) -> JsonTC:
-    return JsonTC(
-        """
-SELECT {assertion}ldlite_system.jis_float(jc->$1)
-FROM j;""",
-        p[:1],
-        "" if (p[1]) else """ NOT """,
-        (),
-    )
-
-
-@parametrize(
-    p=[
-        ("num", False),
-        ("float", False),
-        ("bigfloat", True),
-        ("bigint", True),
-    ],
-)
-def case_jis_bigint(p: tuple[Any, ...]) -> JsonTC:
-    return JsonTC(
-        """
-SELECT {assertion}ldlite_system.jis_bigint(jc->$1)
-FROM j;""",
-        p[:1],
-        "" if (p[1]) else """ NOT """,
-        (),
-    )
-
-
 def _assert(conn: "dbapi.DBAPIConnection", jtype: str, tc: JsonTC) -> None:
     with closing(conn.cursor()) as cur:
         query = tc.query.format(assertion="", jtype=jtype)
@@ -208,27 +125,16 @@ def _arrange(conn: "dbapi.DBAPIConnection") -> None:
 INSERT INTO j VALUES (
 '{
     "str": "str_val",
-    "str_empty": "",
     "num": 12,
     "float": 16.3,
     "bigint": 2147483648,
     "bigfloat": 2147483648.1,
     "bool": true,
-    "uuid": "5b285d03-5490-1111-8888-52b2003b475c",
-    "uuid_nof": "5b285d03-5490-FFFF-0000-52b2003b475c",
     "obj": {"k1": "v1", "k2": "v2"},
-    "obj_some": {"k1": "v1", "k2": null},
-    "obj_empty": {},
-    "arr_zero": [],
     "arr_str": ["s1", "s2", "s3"],
-    "arr_str_some": ["s1", "s2", null],
     "arr_obj": [{"k1": "v1"}, {"k2": "v2"}],
-    "arr_obj_some": [{"k1": "v1"}, null],
     "arr_num": [1, 2, 3],
-    "dt": "2022-04-21T18:47:33.581+00:00",
-    "na": null,
-    "na_str1": "null",
-    "na_str2": "NULL"
+    "na": null
 }')""",
         )
 
