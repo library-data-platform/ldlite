@@ -1,12 +1,18 @@
-from collections.abc import Iterator
+from __future__ import annotations
+
+from contextlib import contextmanager
 from datetime import datetime, timezone
 from itertools import count
+from typing import TYPE_CHECKING
 
 import psycopg
 from psycopg import sql
 
 from ._prefix import Prefix
 from ._typed_database import TypedDatabase
+
+if TYPE_CHECKING:
+    from collections.abc import Iterator
 
 
 class PostgresDatabase(TypedDatabase[psycopg.Connection]):
@@ -15,9 +21,10 @@ class PostgresDatabase(TypedDatabase[psycopg.Connection]):
             # RawCursor lets us use $1, $2, etc to use the
             # same sql between duckdb and postgres
             super().__init__(
-                lambda: psycopg.connect(
+                lambda transact: psycopg.connect(
                     dsn,
                     cursor_factory=psycopg.RawCursor,
+                    autocommit=not transact,
                 ),
             )
         except psycopg.errors.UniqueViolation:
@@ -30,81 +37,6 @@ class PostgresDatabase(TypedDatabase[psycopg.Connection]):
             if str(e) != "tuple concurrently updated":
                 raise
 
-    @staticmethod
-    def _setup_jfuncs(conn: psycopg.Connection) -> None:
-        with conn.cursor() as cur:
-            cur.execute(
-                r"""
-CREATE OR REPLACE FUNCTION ldlite_system.jtype_of(j JSONB) RETURNS TEXT AS $$
-SELECT jsonb_typeof(j);
-$$
-LANGUAGE sql
-IMMUTABLE
-PARALLEL SAFE;
-
-CREATE OR REPLACE FUNCTION ldlite_system.jobject_keys(j JSONB) RETURNS TABLE (ld_key TEXT) AS $$
-SELECT jsonb_object_keys(j);
-$$
-LANGUAGE sql
-IMMUTABLE
-PARALLEL SAFE;
-
-CREATE OR REPLACE FUNCTION ldlite_system.jis_uuid(j JSONB) RETURNS BOOLEAN AS $$
-SELECT j::text ~* '^"[a-f0-9]{8}-[a-f0-9]{4}-[1-5][a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}"$';
-$$
-LANGUAGE sql
-IMMUTABLE
-PARALLEL SAFE
-STRICT;
-
-CREATE OR REPLACE FUNCTION ldlite_system.jis_datetime(j JSONB) RETURNS BOOLEAN AS $$
-SELECT j::text ~ '^"\d{4}-[01]\d-[0123]\dT[012]\d:[012345]\d:[012345]\d\.\d{3}(\+\d{2}:\d{2})?"$'
-$$
-LANGUAGE sql
-IMMUTABLE
-PARALLEL SAFE
-STRICT;
-
-CREATE OR REPLACE FUNCTION ldlite_system.jis_float(j JSONB) RETURNS BOOLEAN AS $$
-SELECT SCALE((j)::numeric) > 0
-$$
-LANGUAGE sql
-IMMUTABLE
-PARALLEL SAFE
-STRICT;
-
-CREATE OR REPLACE FUNCTION ldlite_system.jis_bigint(j JSONB) RETURNS BOOLEAN AS $$
-SELECT (j)::numeric > 2147483647
-$$
-LANGUAGE sql
-IMMUTABLE
-PARALLEL SAFE
-STRICT;
-
-CREATE OR REPLACE FUNCTION ldlite_system.jis_null(j JSONB) RETURNS BOOLEAN AS $$
-SELECT j IS NULL OR j = 'null'::jsonb OR j #>> '{}' IN ('NULL', 'null', '', '{}', '[]')
-$$
-LANGUAGE sql
-IMMUTABLE
-PARALLEL SAFE;
-
-CREATE OR REPLACE FUNCTION ldlite_system.jexplode(j JSONB) RETURNS TABLE (ld_value JSONB) AS $$
-SELECT * FROM jsonb_array_elements(j);
-$$
-LANGUAGE sql
-IMMUTABLE
-PARALLEL SAFE;
-
-
-CREATE OR REPLACE FUNCTION ldlite_system.jself_string(j JSONB) RETURNS TEXT AS $$
-SELECT j #>> '{}'
-$$
-LANGUAGE sql
-IMMUTABLE
-PARALLEL SAFE;
-""",  # noqa: E501
-            )
-
     @property
     def _default_schema(self) -> str:
         return "public"
@@ -115,6 +47,11 @@ PARALLEL SAFE;
             "CREATE TABLE IF NOT EXISTS {table} (__id integer, jsonb jsonb);",
         )
 
+    @contextmanager
+    def _begin(self, conn: psycopg.Connection) -> Iterator[None]:
+        with conn.transaction():
+            yield
+
     def ingest_records(
         self,
         prefix: str,
@@ -123,7 +60,7 @@ PARALLEL SAFE;
         pfx = Prefix(prefix)
         download_started = datetime.now(timezone.utc)
         pkey = count(1)
-        with self._conn_factory() as conn:
+        with self._conn_factory(True) as conn:
             self._prepare_raw_table(conn, pfx)
 
             with (

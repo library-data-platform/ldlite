@@ -27,7 +27,7 @@ class JsonTC:
     assertion_params: tuple[Any, ...]
 
 
-def case_jobject_keys() -> JsonTC:
+def case_jsonb_object_keys() -> JsonTC:
     return JsonTC(
         """
 {assertion}
@@ -35,7 +35,7 @@ def case_jobject_keys() -> JsonTC:
 FROM (SELECT 'k1' jkey UNION SELECT 'k2' jkey) as e
 FULL OUTER JOIN (
     SELECT k.ld_key as jkey
-    FROM j, ldlite_system.jobject_keys(j.jc->'obj') k
+    FROM j, jsonb_object_keys(j.jc->'obj') k(ld_key)
 ) as a
     USING (jkey)
 WHERE e.jkey IS NULL or a.jkey IS NULL) as q;""",
@@ -59,10 +59,10 @@ WHERE e.jkey IS NULL or a.jkey IS NULL) as q;""",
         ("na", "null"),
     ],
 )
-def case_jtype_of(p: tuple[Any, ...]) -> JsonTC:
+def case_jsonb_typeof(p: tuple[Any, ...]) -> JsonTC:
     return JsonTC(
         """
-SELECT ldlite_system.jtype_of(jc->$1){assertion}
+SELECT jsonb_typeof(jc->$1){assertion}
 FROM j;""",
         p[:1],
         """ = $2""",
@@ -77,121 +77,20 @@ FROM j;""",
         ("arr_num", [1, 2, 3]),
     ],
 )
-def case_jexplode(p: tuple[Any, ...]) -> JsonTC:
+def case_jsonb_array_elements(p: tuple[Any, ...]) -> JsonTC:
     return JsonTC(
         """
 {assertion}
 (
-    SELECT a.ld_value FROM j, ldlite_system.jexplode(j.jc->$1) a
+    SELECT a.ld_value FROM j, jsonb_array_elements(j.jc->$1) AS a(ld_value)
     EXCEPT SELECT value::{jtype} FROM unnest($2::text[]) AS expect(value)
     UNION ALL
     SELECT value::{jtype} FROM unnest($2::text[]) AS expect(value)
-    EXCEPT SELECT a.ld_value FROM j, ldlite_system.jexplode(j.jc->$1) a
-)
+    EXCEPT SELECT a.ld_value FROM j, jsonb_array_elements(j.jc->$1) AS a(ld_value)
+) act
 """,
         p,
         """SELECT COUNT(1) = 0 FROM""",
-        (),
-    )
-
-
-@parametrize(
-    p=[
-        ("str", False),
-        ("str_empty", False),
-        ("num", False),
-        ("na_str1", False),
-        ("na_str2", False),
-        ("uuid_nof", False),
-        ("uuid", True),
-    ],
-)
-def case_jis_uuid(p: tuple[Any, ...]) -> JsonTC:
-    return JsonTC(
-        """
-SELECT {assertion}ldlite_system.jis_uuid(jc->$1)
-FROM j;""",
-        p[:1],
-        "" if (p[1]) else """ NOT """,
-        (),
-    )
-
-
-@parametrize(
-    p=[
-        ("na", True),
-        ("obj_empty", True),
-        ("arr_zero", True),
-        ("na_str1", True),
-        ("na_str2", True),
-    ],
-)
-def case_jis_null(p: tuple[Any, ...]) -> JsonTC:
-    return JsonTC(
-        """SELECT ldlite_system.jis_null(jc->$1){assertion} FROM j;""",
-        p[:1],
-        """= $2""",
-        p[1:],
-    )
-
-
-@parametrize(
-    p=[
-        ("str", False),
-        ("str_empty", False),
-        ("num", False),
-        ("na_str1", False),
-        ("na_str2", False),
-        ("uuid_nof", False),
-        ("uuid", False),
-        ("dt", True),
-    ],
-)
-def case_jis_datetime(p: tuple[Any, ...]) -> JsonTC:
-    return JsonTC(
-        """
-SELECT {assertion}ldlite_system.jis_datetime(jc->$1)
-FROM j;""",
-        p[:1],
-        "" if (p[1]) else """ NOT """,
-        (),
-    )
-
-
-@parametrize(
-    p=[
-        ("num", False),
-        ("float", True),
-        ("bigfloat", True),
-        ("bigint", False),
-    ],
-)
-def case_jis_float(p: tuple[Any, ...]) -> JsonTC:
-    return JsonTC(
-        """
-SELECT {assertion}ldlite_system.jis_float(jc->$1)
-FROM j;""",
-        p[:1],
-        "" if (p[1]) else """ NOT """,
-        (),
-    )
-
-
-@parametrize(
-    p=[
-        ("num", False),
-        ("float", False),
-        ("bigfloat", True),
-        ("bigint", True),
-    ],
-)
-def case_jis_bigint(p: tuple[Any, ...]) -> JsonTC:
-    return JsonTC(
-        """
-SELECT {assertion}ldlite_system.jis_bigint(jc->$1)
-FROM j;""",
-        p[:1],
-        "" if (p[1]) else """ NOT """,
         (),
     )
 
@@ -226,27 +125,16 @@ def _arrange(conn: "dbapi.DBAPIConnection") -> None:
 INSERT INTO j VALUES (
 '{
     "str": "str_val",
-    "str_empty": "",
     "num": 12,
     "float": 16.3,
     "bigint": 2147483648,
     "bigfloat": 2147483648.1,
     "bool": true,
-    "uuid": "5b285d03-5490-1111-8888-52b2003b475c",
-    "uuid_nof": "5b285d03-5490-FFFF-0000-52b2003b475c",
     "obj": {"k1": "v1", "k2": "v2"},
-    "obj_some": {"k1": "v1", "k2": null},
-    "obj_empty": {},
-    "arr_zero": [],
     "arr_str": ["s1", "s2", "s3"],
-    "arr_str_some": ["s1", "s2", null],
     "arr_obj": [{"k1": "v1"}, {"k2": "v2"}],
-    "arr_obj_some": [{"k1": "v1"}, null],
     "arr_num": [1, 2, 3],
-    "dt": "2022-04-21T18:47:33.581+00:00",
-    "na": null,
-    "na_str1": "null",
-    "na_str2": "NULL"
+    "na": null
 }')""",
         )
 

@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 from abc import abstractmethod
-from contextlib import closing
+from contextlib import closing, contextmanager
 from datetime import datetime, timezone
 from typing import TYPE_CHECKING, Any, Generic, NoReturn, TypeVar, cast
 from uuid import uuid4
@@ -17,7 +17,7 @@ from ._expansion.context import ExpandContext
 from ._prefix import Prefix
 
 if TYPE_CHECKING:
-    from collections.abc import Callable, Sequence
+    from collections.abc import Callable, Iterator, Sequence
     from typing import NoReturn
 
     import duckdb
@@ -27,9 +27,9 @@ DB = TypeVar("DB", bound="duckdb.DuckDBPyConnection | psycopg.Connection")
 
 
 class TypedDatabase(Database, Generic[DB]):
-    def __init__(self, conn_factory: Callable[[], DB]):
+    def __init__(self, conn_factory: Callable[[bool], DB]):
         self._conn_factory = conn_factory
-        with closing(self._conn_factory()) as conn:
+        with closing(self._conn_factory(True)) as conn:
             with conn.cursor() as cur:
                 cur.execute('CREATE SCHEMA IF NOT EXISTS "ldlite_system";')
                 cur.execute("""
@@ -52,23 +52,22 @@ CREATE TABLE IF NOT EXISTS "ldlite_system"."load_history_v1" (
     ,"index_time" INTERVAL -- 12
 );""")
 
-            self._setup_jfuncs(conn)
             conn.commit()
-
-    @staticmethod
-    @abstractmethod
-    def _setup_jfuncs(conn: DB) -> None: ...
 
     @property
     @abstractmethod
     def _default_schema(self) -> str: ...
+
+    @contextmanager
+    def _begin(self, conn: DB) -> Iterator[None]:  # noqa: ARG002
+        yield
 
     def drop_prefix(
         self,
         prefix: str,
     ) -> None:
         pfx = Prefix(prefix)
-        with closing(self._conn_factory()) as conn:
+        with closing(self._conn_factory(True)) as conn:
             self._drop_extracted_tables(conn, pfx)
             self._drop_raw_table(conn, pfx)
             conn.execute(
@@ -84,7 +83,7 @@ WHERE "table_prefix" = $1;
         self,
         prefix: str,
     ) -> None:
-        with closing(self._conn_factory()) as conn:
+        with closing(self._conn_factory(True)) as conn:
             self._drop_raw_table(conn, Prefix(prefix))
             conn.commit()
 
@@ -104,7 +103,7 @@ WHERE "table_prefix" = $1;
         self,
         prefix: str,
     ) -> None:
-        with closing(self._conn_factory()) as conn:
+        with closing(self._conn_factory(True)) as conn:
             self._drop_extracted_tables(conn, Prefix(prefix))
             conn.commit()
 
@@ -206,17 +205,22 @@ WHERE table_schema = $1 and table_name IN ($2, $3);""",
     ) -> list[str]:
         pfx = Prefix(prefix)
         transform_started = datetime.now(timezone.utc)
-        with closing(self._conn_factory()) as conn:
-            self._drop_extracted_tables(conn, pfx)
-            if json_depth < 1:
+        if json_depth < 1:
+            with closing(self._conn_factory(True)) as conn:
+                self._drop_extracted_tables(conn, pfx)
+                if not keep_raw:
+                    self._drop_raw_table(conn, pfx)
+                self._transform_complete(conn, pfx, 0, transform_started)
+
                 conn.commit()
                 return []
 
+        with closing(self._conn_factory(False)) as conn:
             with conn.cursor() as cur:
                 cur.execute(
                     sql.SQL(
                         """
-CREATE TEMP TABLE {dest_table} ON COMMIT DROP AS
+CREATE TEMP TABLE {dest_table} AS
 """
                         + self.source_table_cte_stmt(keep_source=keep_raw)
                         + """
@@ -230,10 +234,7 @@ SELECT * from ld_source;
                     .as_string(),
                 )
 
-            if not keep_raw:
-                self._drop_raw_table(conn, pfx)
-
-            created_tables = expand_nonmarc(
+            tables_to_create = expand_nonmarc(
                 "jsonb",
                 ["__id"],
                 ExpandContext(
@@ -251,45 +252,52 @@ SELECT * from ld_source;
                 ),
             )
 
-            with conn.cursor() as cur:
-                cur.execute(
-                    sql.SQL(
-                        """
+            with self._begin(conn):
+                self._drop_extracted_tables(conn, pfx)
+                if not keep_raw:
+                    self._drop_raw_table(conn, pfx)
+                with conn.cursor() as cur:
+                    for table in tables_to_create:
+                        cur.execute(table[1].as_string())
+
+                with conn.cursor() as cur:
+                    cur.execute(
+                        sql.SQL(
+                            """
 CREATE TABLE {catalog_table} (
     table_name text
 )
 """,
-                    )
-                    .format(catalog_table=pfx.catalog_table.id)
-                    .as_string(),
-                )
-                if len(created_tables) > 0:
-                    cur.executemany(
-                        sql.SQL("INSERT INTO {catalog_table} VALUES ($1)")
-                        .format(
-                            catalog_table=pfx.catalog_table.id,
                         )
+                        .format(catalog_table=pfx.catalog_table.id)
                         .as_string(),
-                        [(pfx.catalog_table_row(t),) for t in created_tables],
                     )
+                    total = 0
+                    if len(tables_to_create) > 0:
+                        cur.executemany(
+                            sql.SQL("INSERT INTO {catalog_table} VALUES ($1)")
+                            .format(
+                                catalog_table=pfx.catalog_table.id,
+                            )
+                            .as_string(),
+                            [(pfx.catalog_table_row(t[0]),) for t in tables_to_create],
+                        )
 
-            with conn.cursor() as cur:
-                cur.execute(
-                    sql.SQL("SELECT COUNT(*) FROM {table}")
-                    .format(table=pfx.output_table("").id)
-                    .as_string(),
-                )
-                total = cast("tuple[int]", cur.fetchone())[0]
+                        cur.execute(
+                            sql.SQL("SELECT COUNT(*) FROM {table}")
+                            .format(table=pfx.output_table("").id)
+                            .as_string(),
+                        )
+                        total = cast("tuple[int]", cur.fetchone())[0]
 
-            self._transform_complete(conn, pfx, total, transform_started)
-            conn.commit()
+                self._transform_complete(conn, pfx, total, transform_started)
 
-        return created_tables
+        return [t[0] for t in tables_to_create]
 
     def index_prefix(self, prefix: str, progress: tqdm[NoReturn] | None = None) -> None:
         pfx = Prefix(prefix)
         index_started = datetime.now(timezone.utc)
-        with closing(self._conn_factory()) as conn:
+        with closing(self._conn_factory(False)) as conn:
             with closing(conn.cursor()) as cur:
                 cur.execute(
                     """
@@ -351,7 +359,7 @@ WHERE
         path: str,
         query: str | None,
     ) -> None:
-        with closing(self._conn_factory()) as conn, closing(conn.cursor()) as cur:
+        with closing(self._conn_factory(True)) as conn, closing(conn.cursor()) as cur:
             cur.execute(
                 """
 INSERT INTO "ldlite_system"."load_history_v1"

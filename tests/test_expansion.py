@@ -220,7 +220,7 @@ def case_null(assertion: tuple[str, str | None, str | None]) -> ExpansionTC:
     "all_null": null,
     "nullable_integer": 7,
     "nullable_numeric": 5.5,
-    "nullable_uuid": null,
+    "nullable_uuid": "null",
     "nullable_bool": false,
     "nullable_object": { "id": 5 },
     "nullable_array": null,
@@ -661,7 +661,7 @@ FROM tests.prefix__t__depth2_arr
             ),
             Assertion(
                 """
-SELECT COUNT(DISTINCT DATA_TYPE), ANY_VALUE(DATA_TYPE)
+SELECT COUNT(DISTINCT DATA_TYPE), MIN(DATA_TYPE)
 FROM INFORMATION_SCHEMA.COLUMNS
 WHERE COLUMN_NAME IN (
     'depth2_obj__depth3_obj__depth4_obj'

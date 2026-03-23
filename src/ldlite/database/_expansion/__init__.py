@@ -15,20 +15,20 @@ def expand_nonmarc(
     root_name: str,
     root_values: list[str],
     ctx: ExpandContext,
-) -> list[str]:
-    (_, created_tables) = _expand_nonmarc(
+) -> list[tuple[str, sql.Composed]]:
+    (_, tables_to_create) = _expand_nonmarc(
         ObjectNode(root_name, "", None, root_values),
         0,
         ctx,
     )
-    return created_tables
+    return tables_to_create
 
 
-def _expand_nonmarc(
+def _expand_nonmarc(  # noqa: PLR0915
     root: ObjectNode,
     count: int,
     ctx: ExpandContext,
-) -> tuple[int, list[str]]:
+) -> tuple[int, list[tuple[str, sql.Composed]]]:
     ctx.scan_progress.total = (ctx.scan_progress.total or 0) + 1
     ctx.scan_progress.refresh()
     ctx.transform_progress.total = (ctx.transform_progress.total or 0) + 1
@@ -44,6 +44,13 @@ def _expand_nonmarc(
     ctx.transform_progress.update(1)
     if not has_rows:
         return (0, [])
+
+    with ctx.conn.cursor() as cur:
+        cur.execute(
+            sql.SQL("DROP TABLE {previous_table}")
+            .format(previous_table=ctx.source_table)
+            .as_string(),
+        )
 
     expand_children_of = deque([root])
     while expand_children_of:
@@ -63,11 +70,17 @@ def _expand_nonmarc(
                 ctx.get_transform_table(count + 1),
                 ctx.source_cte(False),
             )
+            with ctx.conn.cursor() as cur:
+                cur.execute(
+                    sql.SQL("DROP TABLE {previous_table}")
+                    .format(previous_table=ctx.get_transform_table(count))
+                    .as_string(),
+                )
             expand_children_of.append(c)
             count += 1
             ctx.transform_progress.update(1)
 
-    created_tables = []
+    tables_to_create = []
 
     new_source_table = ctx.get_transform_table(count)
     arrays = root.descendents_oftype(ArrayNode)
@@ -86,7 +99,7 @@ def _expand_nonmarc(
         count += 1
         ctx.transform_progress.update(1)
 
-        if an.meta.is_object:
+        if an.is_object:
             (sub_index, array_tables) = _expand_nonmarc(
                 ObjectNode(
                     an.name,
@@ -101,29 +114,29 @@ def _expand_nonmarc(
                 ),
             )
             count += sub_index
-            created_tables.extend(array_tables)
+            tables_to_create.extend(array_tables)
         else:
             with ctx.conn.cursor() as cur:
                 (tname, tid) = ctx.get_output_table(an.name)
-                created_tables.append(tname)
-                cur.execute(
-                    sql.SQL(
-                        """
+                tables_to_create.append(
+                    (
+                        tname,
+                        sql.SQL(
+                            """
 CREATE TABLE {dest_table} AS
 """
-                        + ctx.source_cte(False)
-                        + """
+                            + ctx.source_cte(False)
+                            + """
 SELECT {cols} FROM ld_source
 """,
-                    )
-                    .format(
-                        dest_table=tid,
-                        source_table=ctx.get_transform_table(count),
-                        cols=sql.SQL("\n    ,").join(
-                            [sql.Identifier(v) for v in [*values, an.name]],
+                        ).format(
+                            dest_table=tid,
+                            source_table=ctx.get_transform_table(count),
+                            cols=sql.SQL("\n    ,").join(
+                                [sql.Identifier(v) for v in [*values, an.name]],
+                            ),
                         ),
-                    )
-                    .as_string(),
+                    ),
                 )
 
     stamped_values = [
@@ -132,23 +145,23 @@ SELECT {cols} FROM ld_source
 
     with ctx.conn.cursor() as cur:
         (tname, tid) = ctx.get_output_table(root.path)
-        created_tables.append(tname)
-        cur.execute(
-            sql.SQL(
-                """
+        tables_to_create.append(
+            (
+                tname,
+                sql.SQL(
+                    """
 CREATE TABLE {dest_table} AS
 """
-                + ctx.source_cte(False)
-                + """
+                    + ctx.source_cte(False)
+                    + """
 SELECT {cols} FROM ld_source
 """,
-            )
-            .format(
-                dest_table=tid,
-                source_table=new_source_table,
-                cols=sql.SQL("\n    ,").join(stamped_values),
-            )
-            .as_string(),
+                ).format(
+                    dest_table=tid,
+                    source_table=new_source_table,
+                    cols=sql.SQL("\n    ,").join(stamped_values),
+                ),
+            ),
         )
 
-    return (count + 1 - initial_count, created_tables)
+    return (count + 1 - initial_count, tables_to_create)

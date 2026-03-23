@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from collections import deque
-from math import floor
 from typing import TYPE_CHECKING, TypeVar, cast
 
 from psycopg import sql
@@ -14,7 +13,16 @@ if TYPE_CHECKING:
 
     from .context import ExpandContext
 
-from .metadata import Metadata
+from .metadata import (
+    ArrayMeta,
+    Metadata,
+    MixedArrayMeta,
+    MixedMeta,
+    ObjectArrayMeta,
+    ObjectMeta,
+    TypedArrayMeta,
+    TypedMeta,
+)
 
 TNode = TypeVar("TNode", bound="ExpansionNode")
 
@@ -38,9 +46,9 @@ class ExpansionNode:
         snake = meta.snake
         prefixed_name = self.prefix + snake
 
-        if meta.is_array:
+        if isinstance(meta, ArrayMeta):
             self.children.append(ArrayNode(prefixed_name, snake, self, meta))
-        elif meta.is_object:
+        elif isinstance(meta, ObjectMeta):
             self.children.append(ObjectNode(prefixed_name, snake, self))
         else:
             prefixed_name = self.prefix + snake
@@ -132,37 +140,24 @@ class ObjectNode(ExpansionNode):
 
         with ctx.conn.cursor() as cur:
             cur.execute(
-                sql.SQL("SELECT COUNT(*) FROM {table}")
+                sql.SQL("SELECT 1 FROM {table} LIMIT 1;")
                 .format(table=source_table)
                 .as_string(),
             )
-            total = cast("tuple[int]", cur.fetchone())[0]
-            if total == 0:
+            if not cur.fetchone():
                 return False
 
         with ctx.conn.cursor() as cur:
             cur.execute(
                 sql.SQL(
                     """
-WITH
-    keys AS (
-        SELECT
-            keys.ld_key AS k
-            ,ROW_NUMBER() OVER (PARTITION BY t.__id) AS idx
-        FROM {source_table} t, ldlite_system.jobject_keys(t.{json_col}) keys
-        WHERE {json_col} IS NOT NULL AND ldlite_system.jtype_of(t.{json_col}) = 'object'
-    ),
-    ordered_keys AS (
-        SELECT
-            k
-            ,MAX(idx) idx
-            ,COUNT(idx) freq
-        FROM keys
-        GROUP BY k
-    )
-SELECT k
-FROM ordered_keys
-ORDER BY idx, freq DESC
+SELECT k.ld_key
+FROM
+    {source_table} t
+    ,jsonb_object_keys(t.{json_col}) WITH ORDINALITY k(ld_key, "ordinality")
+WHERE t.{json_col} IS NOT NULL AND jsonb_typeof(t.{json_col}) = 'object'
+GROUP BY k.ld_key
+ORDER BY MAX(k.ordinality), COUNT(k.ordinality)
 """,
                 )
                 .format(source_table=source_table, json_col=self.identifier)
@@ -170,85 +165,145 @@ ORDER BY idx, freq DESC
             )
             props = [prop[0] for prop in cur.fetchall()]
 
-        prop_count = len(props)
-        ctx.scan_progress.total += prop_count
+        ctx.scan_progress.total += len(props) * 3
         ctx.scan_progress.refresh()
         ctx.scan_progress.update(1)
 
+        metadata: list[Metadata] = []
         for prop in props:
             with ctx.conn.cursor() as cur:
                 cur.execute(
                     sql.SQL(
                         """
-WITH
-    values AS (
-        SELECT {json_col}->$1 as ld_value
-        FROM {table}
-    ),
-    value_and_types AS (
-        SELECT
-            ldlite_system.jtype_of(ld_value) AS json_type
-            ,ld_value
-        FROM values
-        WHERE NOT ldlite_system.jis_null(ld_value)
-    ),
-    array_values AS (
-        SELECT
-            ldlite_system.jtype_of(a.ld_value) AS json_type
-            ,a.ld_value
-        FROM value_and_types v
-        CROSS JOIN LATERAL (
-            SELECT s.ld_value
-            FROM ldlite_system.jexplode(v.ld_value) AS s
-            WHERE NOT ldlite_system.jis_null(s.ld_value)
-            LIMIT 3
-        ) a
-        WHERE v.json_type = 'array'
-    ),
-    all_values AS (
-        SELECT
-            json_type
-            ,ld_value
-            ,FALSE AS is_array
-        FROM value_and_types
-        WHERE json_type <> 'array'
-        UNION
-        SELECT
-            json_type
-            ,ld_value
-            ,TRUE AS is_array
-        FROM array_values
-        WHERE NOT ldlite_system.jis_null(ld_value)
-    )
 SELECT
-    (SELECT STRING_AGG(DISTINCT json_type, '|') FROM all_values) AS json_type
-    ,(SELECT BOOL_AND(is_array) FROM all_values) AS is_array
-    ,NOT EXISTS
-    (
-        SELECT 1 FROM all_values
-        WHERE json_type = 'string' AND NOT ldlite_system.jis_uuid(ld_value)
-    ) AS is_uuid
-    ,NOT EXISTS
-    (
-        SELECT 1 FROM all_values
-        WHERE json_type = 'string' AND NOT ldlite_system.jis_datetime(ld_value)
-    ) AS is_datetime
-    ,EXISTS
-    (
-        SELECT 1 FROM all_values
-        WHERE json_type = 'number' AND ldlite_system.jis_float(ld_value)
-    ) AS is_float
-    ,EXISTS
-    (
-        SELECT 1 FROM all_values
-        WHERE json_type = 'number' AND ldlite_system.jis_bigint(ld_value)
-    ) AS is_bigint
+    BOOL_AND(json_type = 'array') AS only_array
+    ,BOOL_OR(json_type = 'array') AS some_array
+    ,BOOL_AND(json_type = 'object') AS only_object
+    ,BOOL_OR(json_type = 'object') AS some_object
+FROM
+(
+    SELECT jsonb_typeof(t.{json_col}->$1) AS json_type
+    FROM {table} t
+) j
+WHERE json_type <> 'null'
 """,
                     )
                     .format(
                         table=source_table,
                         json_col=self.identifier,
-                        sample=sql.Literal(min(100, floor((100000 / total) * 100))),
+                    )
+                    .as_string(),
+                    (prop,),
+                )
+                (only_array, some_array, only_object, some_object) = cast(
+                    "tuple[bool, bool, bool, bool]",
+                    cur.fetchone(),
+                )
+
+                if (some_array and not only_array) or (some_object and not only_object):
+                    metadata.append(MixedMeta(prop))
+                    ctx.scan_progress.update(3)
+                    continue
+
+                if only_object:
+                    metadata.append(ObjectMeta(prop))
+                    ctx.scan_progress.total += 1
+                    ctx.scan_progress.update(3)
+                    continue
+
+                if only_array:
+                    ctx.scan_progress.update(1)
+                    cur.execute(
+                        sql.SQL(
+                            """
+SELECT
+    -- Technically arrays could be nested but I haven't seen any
+    BOOL_AND(json_type = 'object') AS only_object
+    ,BOOL_OR(json_type = 'object') AS some_object
+FROM
+(
+    SELECT a.json_type
+    FROM {table} t
+    CROSS JOIN LATERAL
+    (
+        SELECT jsonb_typeof(ld_value) AS json_type
+        FROM jsonb_array_elements(t.{json_col}->$1) a(ld_value)
+        WHERE jsonb_typeof(t.{json_col}->$1) = 'array'
+    ) a
+) j
+WHERE json_type <> 'null'
+""",
+                        )
+                        .format(
+                            table=source_table,
+                            json_col=self.identifier,
+                        )
+                        .as_string(),
+                        (prop,),
+                    )
+                    (inner_only_object, inner_some_object) = cast(
+                        "tuple[bool, bool]",
+                        cur.fetchone(),
+                    )
+
+                    if inner_some_object and not inner_only_object:
+                        metadata.append(MixedArrayMeta(prop))
+                        ctx.scan_progress.update(2)
+                        continue
+
+                    if inner_only_object:
+                        metadata.append(ObjectArrayMeta(prop))
+                        ctx.scan_progress.total += 1
+                        ctx.scan_progress.update(2)
+                        continue
+
+                    ctx.scan_progress.update(1)
+                    typed_from_sql = """
+FROM {table} t
+CROSS JOIN LATERAL
+(
+    SELECT *
+    FROM jsonb_array_elements(t.{json_col}->$1) a(ld_value)
+    WHERE jsonb_typeof(t.{json_col}->$1) = 'array'
+    LIMIT 3
+) j"""
+                else:
+                    ctx.scan_progress.update(2)
+                    typed_from_sql = """
+FROM (SELECT t.{json_col}->$1 AS ld_value FROM {table} t) j
+"""
+            with ctx.conn.cursor() as cur:
+                cur.execute(
+                    sql.SQL(
+                        """
+SELECT
+    MIN(json_type) AS json_type
+    ,MAX(json_type) AS other_json_type
+    ,BOOL_AND(CASE WHEN json_type = 'string' THEN (ld_value)::text LIKE '"________-____-____-____-____________"' ELSE FALSE END) AS is_uuid
+    ,BOOL_AND(CASE WHEN json_type = 'string' THEN (ld_value)::text LIKE '"____-__-__T__:__:__.___%"' ELSE FALSE END) AS is_datetime
+    ,BOOL_OR(CASE WHEN json_type = 'number' THEN (ld_value)::numeric % 1 <> 0 ELSE FALSE END) AS is_float
+    ,BOOL_OR(CASE WHEN json_type = 'number' THEN (ld_value)::numeric > 2147483647 ELSE FALSE END) AS is_bigint
+FROM
+(
+    SELECT
+        ld_value
+        ,jsonb_typeof(ld_value) json_type """  # noqa: E501
+                        + typed_from_sql
+                        + """
+        WHERE ld_value IS NOT NULL
+) i
+WHERE
+    ld_value IS NOT NULL AND
+    json_type <> 'null' AND
+    (
+        json_type <> 'string' OR
+        (json_type = 'string' AND ld_value::text NOT IN ('"null"', '""'))
+    )
+""",
+                    )
+                    .format(
+                        table=source_table,
+                        json_col=self.identifier,
                     )
                     .as_string(),
                     (prop,),
@@ -256,21 +311,22 @@ SELECT
                 if (row := cur.fetchone()) is not None and all(
                     c is not None for c in row
                 ):
-                    meta = Metadata(prop, *row)
-                    create_columns.append(
-                        meta.select_column(self.identifier, self.add(meta)),
+                    metadata.append(
+                        TypedArrayMeta(prop, *row)
+                        if only_array
+                        else TypedMeta(prop, *row),
                     )
-                    if meta.is_object:
-                        ctx.scan_progress.total += 1
-                        ctx.scan_progress.refresh()
-
                 ctx.scan_progress.update(1)
+
+        create_columns.extend(
+            [meta.select_column(self.identifier, self.add(meta)) for meta in metadata],
+        )
 
         with ctx.conn.cursor() as cur:
             cur.execute(
                 sql.SQL(
                     """
-CREATE TEMP TABLE {dest_table} ON COMMIT DROP AS
+CREATE TEMP TABLE {dest_table} AS
 """
                     + source_cte
                     + """
@@ -309,19 +365,15 @@ class ArrayNode(ExpansionNode):
         name: str,
         path: str,
         parent: ExpansionNode | None,
-        meta: Metadata,
+        meta: ArrayMeta,
         values: list[str] | None = None,
     ):
         super().__init__(name, path, parent, values)
-        self.meta = Metadata(
-            None,
-            meta.json_type,
-            False,
-            meta.is_uuid,
-            meta.is_datetime,
-            meta.is_float,
-            meta.is_bigint,
-        )
+        self.meta = meta.unwrap()
+
+    @property
+    def is_object(self) -> bool:
+        return isinstance(self.meta, ObjectMeta)
 
     def explode(
         self,
@@ -338,7 +390,7 @@ class ArrayNode(ExpansionNode):
                 ),
                 *[sql.Identifier(v) for v in self.carryover],
                 sql.SQL(
-                    "(ROW_NUMBER() OVER (PARTITION BY s.__id))::smallint AS {id_alias}",
+                    """a."ordinality"::smallint AS {id_alias}""",
                 ).format(
                     id_alias=sql.Identifier(o_col),
                 ),
@@ -351,7 +403,7 @@ class ArrayNode(ExpansionNode):
             cur.execute(
                 sql.SQL(
                     """
-CREATE TEMP TABLE {dest_table} ON COMMIT DROP AS
+CREATE TEMP TABLE {dest_table} AS
 """
                     + source_cte
                     + """
@@ -359,15 +411,15 @@ SELECT
     {cols}
 FROM
     ld_source s
-    ,ldlite_system.jexplode({json_col}) a
-WHERE NOT ldlite_system.jis_null({json_col})
+    ,jsonb_array_elements(s.{json_col}) WITH ORDINALITY a(ld_value, "ordinality")
+WHERE jsonb_typeof(s.{json_col}) = 'array'
 """,
                 )
                 .format(
                     source_table=source_table,
                     dest_table=dest_table,
                     cols=sql.SQL("\n    ,").join(create_columns),
-                    json_col=sql.Identifier("s", self.name),
+                    json_col=sql.Identifier(self.name),
                 )
                 .as_string(),
             )

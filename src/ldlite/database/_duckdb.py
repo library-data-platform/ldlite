@@ -17,18 +17,17 @@ class DuckDbDatabase(TypedDatabase[duckdb.DuckDBPyConnection]):
     def __init__(self, db: duckdb.DuckDBPyConnection) -> None:
         # See the notes below for why we're monkey patching DuckDB
         super().__init__(
-            lambda: cast(
+            lambda _: cast(
                 "duckdb.DuckDBPyConnection",
                 _MonkeyDBPyConnection(db.cursor()),
             ),
         )
 
-    @staticmethod
-    def _setup_jfuncs(conn: duckdb.DuckDBPyConnection) -> None:
-        with conn.cursor() as cur:
+        with self._conn_factory(True) as cur:
             cur.execute(
                 r"""
-CREATE OR REPLACE FUNCTION ldlite_system.jtype_of(j) AS
+-- These are shims to be able to use the postgres native operations.
+CREATE OR REPLACE FUNCTION jsonb_typeof(j) AS
     CASE coalesce(main.json_type(j), 'NULL')
         WHEN 'VARCHAR' THEN 'string'
         WHEN 'BIGINT' THEN 'number'
@@ -42,38 +41,14 @@ CREATE OR REPLACE FUNCTION ldlite_system.jtype_of(j) AS
     END
 ;
 
-CREATE OR REPLACE FUNCTION ldlite_system.jobject_keys(j) AS TABLE
-    SELECT je.key as ld_key FROM json_each(j) je ORDER BY je.id
+CREATE OR REPLACE FUNCTION jsonb_object_keys(j) AS TABLE
+    SELECT je.key as ld_key, id as "ordinality" FROM json_each(j) je ORDER BY je.id
 ;
 
-CREATE OR REPLACE FUNCTION ldlite_system.jis_uuid(j) AS
-    regexp_full_match(main.json_extract_string(j, '$'), '(?i)^[a-f0-9]{8}-[a-f0-9]{4}-[1-5][a-f0-9]{3}-[89abAB][a-f0-9]{3}-[a-f0-9]{12}$')
-;
-
-CREATE OR REPLACE FUNCTION ldlite_system.jis_datetime(j) AS
-    regexp_full_match(main.json_extract_string(j, '$'), '^\d{4}-[01]\d-[0123]\dT[012]\d:[012345]\d:[012345]\d\.\d{3}(\+\d{2}:\d{2})?$')
-;
-
-CREATE OR REPLACE FUNCTION ldlite_system.jis_float(j) AS
-    main.json_type(j) == 'DOUBLE'
-;
-
-CREATE OR REPLACE FUNCTION ldlite_system.jis_bigint(j) AS
-    COALESCE(TRY_CAST(j AS NUMERIC), 0) > 2147483647
-;
-
-CREATE OR REPLACE FUNCTION ldlite_system.jis_null(j) AS
-    j IS NULL OR j == 'null'::JSON OR main.json_extract_string(j, '$') IN ('NULL', 'null', '', '{}', '[]')
-;
-
-CREATE OR REPLACE FUNCTION ldlite_system.jexplode(j) AS TABLE (
-    SELECT value as ld_value FROM main.json_each(j)
+CREATE OR REPLACE FUNCTION jsonb_array_elements(j) AS TABLE (
+    SELECT value as ld_value, rowid + 1 AS "ordinality" FROM main.json_each(j)
 );
-
-CREATE OR REPLACE FUNCTION ldlite_system.jself_string(j) AS
-    main.json_extract_string(j, '$')
-;
-""",  # noqa: E501
+""",
             )
 
     @property
@@ -92,7 +67,7 @@ CREATE OR REPLACE FUNCTION ldlite_system.jself_string(j) AS
         pfx = Prefix(prefix)
         download_started = datetime.now(timezone.utc)
         pkey = count(1)
-        with self._conn_factory() as conn:
+        with self._conn_factory(False) as conn:
             self._prepare_raw_table(conn, pfx)
 
             insert_sql = (
@@ -132,6 +107,7 @@ class _MonkeyDBPyCursor:
     def execute(self, *args, **kwargs) -> duckdb.DuckDBPyConnection:
         print(args[0])
         return self._cur.execute(*args, **kwargs)
+
     """
 
     def __enter__(self) -> "Self":
