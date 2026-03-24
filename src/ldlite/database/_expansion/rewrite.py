@@ -27,6 +27,18 @@ class NodeContext:
     prefixes: list[str]
     prop: str | None
 
+    @property
+    def snake(self) -> str | None:
+        if self.prop is None:
+            return None
+
+        snake = "".join("_" + c.lower() if c.isupper() else c for c in self.prop)
+        # there's also sorts of weird edge cases here that don't come up in practice
+        if (naked := self.prop.lstrip("_")) and len(naked) > 0 and naked[0].isupper():
+            snake = snake.removeprefix("_")
+
+        return snake
+
     def sub_prefix(self, prefix: str | None, prop: str | None) -> NodeContext:
         return NodeContext(
             self.source,
@@ -112,10 +124,10 @@ class TypedNode(FixedValueNode):
     @property
     def alias(self) -> str:
         if len(self.ctx.prefixes) == 0:
-            return self.ctx.prop if self.ctx.prop is not None else ""
+            return self.ctx.snake if self.ctx.snake is not None else ""
 
         return "__".join(self.ctx.prefixes) + (
-            ("_" + self.ctx.prop) if self.ctx.prop is not None else ""
+            ("_" + self.ctx.snake) if self.ctx.snake is not None else ""
         )
 
     @property
