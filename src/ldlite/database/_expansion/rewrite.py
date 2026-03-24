@@ -27,17 +27,24 @@ class NodeContext:
     prefixes: list[str]
     prop: str | None
 
-    @property
-    def snake(self) -> str | None:
-        if self.prop is None:
-            return None
-
-        snake = "".join("_" + c.lower() if c.isupper() else c for c in self.prop)
+    @staticmethod
+    def _snake(not_snake: str) -> str:
+        snake = "".join("_" + c.lower() if c.isupper() else c for c in not_snake)
         # there's also sorts of weird edge cases here that don't come up in practice
-        if (naked := self.prop.lstrip("_")) and len(naked) > 0 and naked[0].isupper():
+        if (naked := not_snake.lstrip("_")) and len(naked) > 0 and naked[0].isupper():
             snake = snake.removeprefix("_")
 
         return snake
+
+    @property
+    def snake_prop(self) -> str | None:
+        if self.prop is None:
+            return None
+        return self._snake(self.prop)
+
+    @property
+    def snake_prefixes(self) -> list[str]:
+        return [self._snake(p) for p in self.prefixes]
 
     def sub_prefix(self, prefix: str | None, prop: str | None) -> NodeContext:
         return NodeContext(
@@ -68,13 +75,20 @@ class Node:
         return sql.SQL("->").join([sql.Literal(p) for p in self.ctx.prefixes])
 
     @property
-    def _json_source(self) -> sql.Composed:
-        return self.ctx.column + sql.SQL("->").join(
-            [sql.Literal(p) for p in self.ctx.prefixes],
+    def _json_source(self) -> sql.Composable:
+        if len(self.ctx.prefixes) == 0:
+            return self.ctx.column
+
+        return (
+            self.ctx.column
+            + sql.SQL("->")
+            + sql.SQL("->").join(
+                [sql.Literal(p) for p in self.ctx.prefixes],
+            )
         )
 
     @property
-    def json_value(self) -> sql.Composed:
+    def json_value(self) -> sql.Composable:
         if self.ctx.prop is None:
             return self._json_source
         return self._json_source + sql.SQL("->") + sql.Literal(self.ctx.prop)
@@ -124,10 +138,10 @@ class TypedNode(FixedValueNode):
     @property
     def alias(self) -> str:
         if len(self.ctx.prefixes) == 0:
-            return self.ctx.snake if self.ctx.snake is not None else ""
+            return self.ctx.snake_prop if self.ctx.snake_prop is not None else ""
 
-        return "__".join(self.ctx.prefixes) + (
-            ("_" + self.ctx.snake) if self.ctx.snake is not None else ""
+        return "__".join(self.ctx.snake_prefixes) + (
+            ("__" + self.ctx.snake_prop) if self.ctx.snake_prop is not None else ""
         )
 
     @property
@@ -348,9 +362,12 @@ SELECT
                 )
                 + sql.SQL("\n    ,").join(
                     [
-                        t.stmt
-                        for o in self.descendents(ObjectNode)
-                        for t in o.direct(TypedNode)
+                        sql.Identifier("__id"),
+                        *[
+                            t.stmt
+                            for o in self.descendents(ObjectNode)
+                            for t in o.direct(TypedNode)
+                        ],
                     ],
                 )
                 + sql.SQL("""
