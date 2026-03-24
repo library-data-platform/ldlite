@@ -111,8 +111,11 @@ class TypedNode(FixedValueNode):
 
     @property
     def alias(self) -> str:
+        if len(self.ctx.prefixes) == 0:
+            return self.ctx.prop if self.ctx.prop is not None else ""
+
         return "__".join(self.ctx.prefixes) + (
-            ("__" + self.ctx.prop) if self.ctx.prop is not None else ""
+            ("_" + self.ctx.prop) if self.ctx.prop is not None else ""
         )
 
     @property

@@ -262,7 +262,7 @@ WHERE table_schema = $1 and table_name IN ($2, $3);""",
                         )
 
                         count = sql.SQL("SELECT COUNT(*) FROM {table}").format(
-                            table=pfx.output_table("").id,
+                            table=pfx.output_table(None).id,
                         )
                         cur.execute(count.as_string())
                         total = cast("tuple[int]", cur.fetchone())[0]
