@@ -267,7 +267,7 @@ FROM (
         SELECT """)
                 + self.json_value
                 + sql.SQL(""" AS ld_value
-        FROM {source}
+        FROM {source_table}
         WHERE jsonb_typeof(ld_value) = 'object'
     ) j
     CROSS JOIN LATERAL jsonb_each(j.ld_value) WITH ORDINALITY k("key", "value", ord)
@@ -275,7 +275,7 @@ FROM (
 WHERE json_type <> 'null'
 GROUP BY json_key
 ORDER BY MAX(j.ord), COUNT(*);
-""").format(source=self.ctx.source)
+""").format(source_table=self.ctx.source)
             )
 
             cur.execute(key_discovery.as_string())

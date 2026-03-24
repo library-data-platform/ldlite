@@ -103,7 +103,8 @@ class PostgresDatabase(TypedDatabase[psycopg.Connection]):
                 ),
             )
 
-    def source_table_cte_stmt(self, keep_source: bool) -> str:
+    def source_stmt(self, keep_source: bool) -> sql.SQL:
         if keep_source:
-            return "WITH ld_source AS (SELECT * FROM {source_table})"
-        return "WITH ld_source AS (DELETE FROM {source_table} RETURNING *)"
+            return sql.SQL("SELECT * FROM {source_table}")
+
+        return sql.SQL("DELETE FROM {source_table} RETURNING *")

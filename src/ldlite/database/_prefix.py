@@ -34,9 +34,9 @@ class Prefix:
     def _output_table(self) -> str:
         return self._prefix + "__t"
 
-    def output_table(self, prefix: str) -> PrefixedTable:
+    def output_table(self, prefix: str | None) -> PrefixedTable:
         return self._prefixed_table(
-            self._output_table + ("" if len(prefix) == 0 else "__" + prefix),
+            self._output_table + ("" if prefix is None else "__" + prefix),
         )
 
     @property

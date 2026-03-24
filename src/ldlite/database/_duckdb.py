@@ -86,8 +86,8 @@ CREATE OR REPLACE FUNCTION jsonb_array_elements(j) AS TABLE (
 
         return total
 
-    def source_table_cte_stmt(self, keep_source: bool) -> str:  # noqa: ARG002
-        return "WITH ld_source AS (SELECT * FROM {source_table})"
+    def source_stmt(self, keep_source: bool) -> sql.SQL:  # noqa: ARG002
+        return sql.SQL("SELECT * FROM {source_table}")
 
 
 # DuckDB has some strong opinions about cursors that are different than postgres
