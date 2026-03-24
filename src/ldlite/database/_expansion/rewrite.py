@@ -102,7 +102,7 @@ class TypedNode(FixedValueNode):
     ):
         super().__init__(ctx)
 
-        self.is_mixed = json_type = other_json_type
+        self.is_mixed = json_type != other_json_type
         self.json_type: JsonType = "string" if self.is_mixed else json_type
         self.is_uuid = False
         self.is_datetime = False
@@ -140,12 +140,11 @@ class TypedNode(FixedValueNode):
 
         cte = (
             sql.SQL("""
-SELECT string_values AS MATERIALIZED (
+WITH string_values AS MATERIALIZED (
     SELECT """)
             + self.json_string
             + sql.SQL(""" AS string_value
     FROM {source}
-    WHERE string_value IS NOT NULL
 )""").format(source=self.ctx.source)
         )
 
@@ -155,15 +154,18 @@ SELECT string_values AS MATERIALIZED (
 SELECT
     NOT EXISTS(
         SELECT 1 FROM string_values
-        WHERE string_value NOT LIKE '________-____-____-____-____________'
+        WHERE
+            string_value IS NOT NULL AND
+            string_value NOT LIKE '________-____-____-____-____________'
     ) AS is_uuid
     ,NOT EXISTS(
         SELECT 1 FROM string_values
         WHERE
-        (
-            string_value NOT LIKE '____-__-__T__:__:__.___' AND
-            string_value NOT LIKE '____-__-__T__:__:__.___+__:__'
-        )
+            string_value IS NOT NULL AND
+            (
+                string_value NOT LIKE '____-__-__T__:__:__.___' AND
+                string_value NOT LIKE '____-__-__T__:__:__.___+__:__'
+            )
     ) AS is_uuid;""")
 
                 cur.execute(specify.as_string())
@@ -176,11 +178,15 @@ SELECT
 SELECT
     EXISTS(
         SELECT 1 FROM string_values
-        WHERE string_value::numeric % 1 <> 0
+        WHERE
+            string_value IS NOT NULL AND
+            string_value::numeric % 1 <> 0
     ) AS is_float
     ,EXISTS(
         SELECT 1 FROM string_values
-        WHERE string_value::numeric > 2147483647
+        WHERE
+            string_value IS NOT NULL AND
+            string_value::numeric > 2147483647
     ) AS is_bigint;""")
 
             cur.execute(specify.as_string())
@@ -251,7 +257,8 @@ SELECT
     json_key
     ,MIN(json_type) AS json_type
     ,MAX(json_type) AS other_json_type
-FROM (
+FROM
+(
     SELECT
         k."key" AS json_key
         ,jsonb_typeof(k."value") AS json_type
@@ -260,15 +267,14 @@ FROM (
     (
         SELECT """)
                 + self.json_value
-                + sql.SQL(""" AS ld_value
-        FROM {source_table}
-        WHERE jsonb_typeof(ld_value) = 'object'
+                + sql.SQL(""" AS ld_value FROM {source_table}
     ) j
     CROSS JOIN LATERAL jsonb_each(j.ld_value) WITH ORDINALITY k("key", "value", ord)
+    WHERE jsonb_typeof(j.ld_value) = 'object'
 ) key_discovery
 WHERE json_type <> 'null'
 GROUP BY json_key
-ORDER BY MAX(j.ord), COUNT(*);
+ORDER BY MAX(ord), COUNT(*);
 """).format(source_table=self.ctx.source)
             )
 
@@ -317,13 +323,11 @@ class RootNode(ObjectNode, StampableNode):
         def create_root_table(source_stmt: sql.SQL) -> sql.Composed:
             return (
                 sql.SQL("""
-CREATE OR REPLACE TABLE {output_table} AS
-WITH root_source AS (
-""").format(output_table=output_table)
+CREATE TABLE {output_table} AS
+WITH root_source AS (""").format(output_table=output_table)
                 + source_stmt.format(source_table=self.ctx.source)
                 + sql.SQL(
-                    """
-)
+                    """)
 SELECT
     """,
                 )
@@ -367,11 +371,10 @@ FROM (
     (
         SELECT """)
                 + self.json_value
-                + sql.SQL(""" AS ld_value
-        FROM {source}
-        WHERE jsonb_typeof(ld_value) = 'array'
+                + sql.SQL(""" AS ld_value FROM {source}
     ) j
     CROSS JOIN LATERAL jsonb_array_elements(j.ld_value) WITH ORDINALITY a("value", ord)
+    WHERE jsonb_typeof(j.ld_value) = 'array'
 ) expansion
 WHERE json_type <> 'null'
 """).format(source=self.ctx.source)
@@ -424,13 +427,11 @@ FROM {temp}""").format(temp=self.temp)
         def create_array_table(source_stmt: sql.SQL) -> sql.Composed:
             return (
                 sql.SQL("""
-CREATE OR REPLACE TABLE {output_table} AS
-WITH array_source AS (
-""").format(output_table=output_table)
+CREATE TABLE {output_table} AS
+WITH array_source AS (""").format(output_table=output_table)
                 + source_stmt.format(source_table=self.temp)
                 + sql.SQL(
-                    """
-)
+                    """)
 SELECT
     """,
                 )
@@ -479,14 +480,16 @@ def _non_srs_statements(
 
     root = RootNode(source_table, output_table)
     onodes: deque[ObjectNode] = deque([root])
-    while o := onodes.popleft():
+    while onodes:
+        o = onodes.popleft()
         o.load_columns(conn)
         scan_progress.total += len(o.direct(Node))
         scan_progress.update(1)
 
         onodes.extend(o.direct(ObjectNode))
         anodes = deque(o.direct(ArrayNode))
-        while a := anodes.popleft():
+        while anodes:
+            a = anodes.popleft()
             if n := a.make_temp(conn):
                 if isinstance(n, ObjectNode):
                     onodes.append(n)
