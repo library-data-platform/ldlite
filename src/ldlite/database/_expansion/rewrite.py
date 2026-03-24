@@ -237,12 +237,12 @@ class RecursiveNode(Node):
     def descendents(self, cls: type[TRode]) -> list[TRode]:
         return list(self._descendents(cls))
 
-    def _typed_columns(self) -> Iterator[TypedNode]:
+    def _typed_nodes(self) -> Iterator[TypedNode]:
         for n in self._descendents(RecursiveNode):
             yield from n.direct(TypedNode)
 
     def typed_nodes(self) -> list[TypedNode]:
-        return list(self._typed_columns())
+        return list(self._typed_nodes())
 
     def remove(self, node: RecursiveNode) -> None:
         self._children.remove(node)
@@ -296,11 +296,15 @@ class StampableNode(ABC):
     @property
     @abstractmethod
     # The Callable construct is necessary until DuckDB implements CTAS RETURNING
-    def create_statement(self) -> Callable[[sql.SQL], sql.Composed]: ...
+    def create_statement(self) -> tuple[str, Callable[[sql.SQL], sql.Composed]]: ...
 
 
 class RootNode(ObjectNode, StampableNode):
-    def __init__(self, source: sql.Identifier):
+    def __init__(
+        self,
+        source: sql.Identifier,
+        get_output_table: Callable[[str | None], tuple[str, sql.Identifier]],
+    ):
         super().__init__(
             NodeContext(
                 source,
@@ -310,28 +314,37 @@ class RootNode(ObjectNode, StampableNode):
             ),
             None,
         )
+        self.get_output_table = get_output_table
 
     @property
-    def create_statement(self) -> Callable[[sql.SQL], sql.Composed]:
+    def create_statement(self) -> tuple[str, Callable[[sql.SQL], sql.Composed]]:
+        (output_table_name, output_table) = self.get_output_table(None)
+
         def create_root_table(source_stmt: sql.SQL) -> sql.Composed:
             return (
                 sql.SQL("""
 CREATE OR REPLACE TABLE {output_table} AS
 WITH root_source AS (
-""").format(output_table=sql.Identifier(""))
-                + source_stmt.format(source=self.ctx.source)
+""").format(output_table=output_table)
+                + source_stmt.format(source_table=self.ctx.source)
                 + sql.Composed(
                     """
 )
 SELECT
     """,
                 )
-                + sql.SQL("\n    ,").join([sql.Identifier("")])
+                + sql.SQL("\n    ,").join(
+                    [
+                        t.stmt
+                        for o in self.descendents(ObjectNode)
+                        for t in o.direct(TypedNode)
+                    ],
+                )
                 + sql.Composed("""
 FROM root_source""")
             )
 
-        return create_root_table
+        return (output_table_name, create_root_table)
 
 
 class ArrayNode(RecursiveNode, StampableNode):
@@ -401,36 +414,64 @@ FROM {temp}""").format(temp=self.temp)
         return None
 
     @property
-    def create_statement(self) -> Callable[[sql.SQL], sql.Composed]:
+    def create_statement(self) -> tuple[str, Callable[[sql.SQL], sql.Composed]]:
+        p: RecursiveNode | None = self
+        parents: list[RecursiveNode] = []
+        while p is not None and (p := p.parent):
+            parents.append(p)
+        root = cast("RootNode", parents[-1])
+        (output_table_name, output_table) = root.get_output_table(
+            "__" + "__".join(self.ctx.prefixes),
+        )
+        (_, parent_table) = root.get_output_table(
+            "__" + "__".join(cast("Node", parents[0]).ctx.prefixes),
+        )
+
         def create_array_table(source_stmt: sql.SQL) -> sql.Composed:
             return (
                 sql.SQL("""
 CREATE OR REPLACE TABLE {output_table} AS
 WITH array_source AS (
-""").format(output_table=sql.Identifier(""))
-                + source_stmt.format(source=self.temp)
+""").format(output_table=output_table)
+                + source_stmt.format(source_table=self.temp)
                 + sql.Composed(
                     """
 )
 SELECT
     """,
                 )
-                + sql.SQL("\n    ,").join([sql.Identifier("")])
+                + sql.SQL("\n    ,").join(
+                    [
+                        sql.Composed("a.__id"),
+                        *[
+                            t.alias
+                            for p in reversed(parents)
+                            for t in p.direct(TypedNode)
+                        ],
+                        *[t.stmt for t in self.direct(TypedNode)],
+                        *[
+                            t.stmt
+                            for o in self.descendents(ObjectNode)
+                            for t in o.direct(TypedNode)
+                        ],
+                    ],
+                )
                 + sql.SQL("""
 FROM array_source a
-JOIN {parent} p ON
+JOIN {parent_table} p ON
     a.p__id = p.__id;
-""").format(parent=sql.Identifier(""))
+""").format(parent_table=parent_table)
             )
 
-        return create_array_table
+        return (output_table_name, create_array_table)
 
 
 def _non_srs_statements(
     conn: Conn,
     source_table: sql.Identifier,
+    output_table: Callable[[str | None], tuple[str, sql.Identifier]],
     scan_progress: tqdm[NoReturn],
-) -> Iterator[Callable[[sql.SQL], sql.Composed]]:
+) -> Iterator[tuple[str, Callable[[sql.SQL], sql.Composed]]]:
     # Here be dragons! The nodes have inner state manipulations
     # that violate the space/time continuum:
     # * o.load_columns
@@ -442,7 +483,7 @@ def _non_srs_statements(
     # we're doing all that work up front to keep the time that
     # a transaction is opened to a minimum (which is a leaky abstraction).
 
-    root = RootNode(source_table)
+    root = RootNode(source_table, output_table)
     onodes: deque[ObjectNode] = deque([root])
     while o := onodes.popleft():
         o.load_columns(conn)
@@ -475,6 +516,7 @@ def _non_srs_statements(
 def non_srs_statements(
     conn: Conn,
     source_table: sql.Identifier,
+    output_table: Callable[[str | None], tuple[str, sql.Identifier]],
     scan_progress: tqdm[NoReturn],
-) -> list[Callable[[sql.SQL], sql.Composed]]:
-    return list(_non_srs_statements(conn, source_table, scan_progress))
+) -> list[tuple[str, Callable[[sql.SQL], sql.Composed]]]:
+    return list(_non_srs_statements(conn, source_table, output_table, scan_progress))
