@@ -422,6 +422,7 @@ UPDATE "ldlite_system"."load_history_v1" SET
     "final_rowcount" = $2
     ,"transform_complete" = $3
     ,"transform_time" = $4
+    ,"index_time" = NULL
     ,"data_refresh_start" = "load_start"
     ,"data_refresh_end" = "download_complete"
 WHERE "table_prefix" = $1
