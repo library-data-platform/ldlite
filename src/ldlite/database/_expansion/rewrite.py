@@ -3,7 +3,7 @@ from __future__ import annotations
 from abc import abstractmethod
 from collections import deque
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Literal, TypeAlias, TypeVar, cast
+from typing import TYPE_CHECKING, Literal, TypeVar, cast
 from uuid import uuid4
 
 import duckdb
@@ -12,6 +12,9 @@ from psycopg import sql
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
+    from typing import NoReturn, TypeAlias
+
+    from tqdm import tqdm
 
 Conn: TypeAlias = duckdb.DuckDBPyConnection | psycopg.Connection
 JsonType: TypeAlias = Literal["array", "object", "string", "number", "boolean"]
@@ -378,6 +381,7 @@ FROM {temp}""").format(temp=self.temp)
 def _non_srs_statements(
     conn: Conn,
     source_table: sql.Identifier,
+    scan_progress: tqdm[NoReturn],
 ) -> Iterator[sql.Composed]:
     # Here be dragons! The nodes have inner state manipulations
     # that violate the space/time continuum:
@@ -394,6 +398,9 @@ def _non_srs_statements(
     onodes: deque[ObjectNode] = deque([root])
     while o := onodes.popleft():
         o.load_columns(conn)
+        scan_progress.total += len(o.direct(Node))
+        scan_progress.update(1)
+
         onodes.extend(o.direct(ObjectNode))
         anodes = deque(o.direct(ArrayNode))
         while a := anodes.popleft():
@@ -402,11 +409,15 @@ def _non_srs_statements(
                     onodes.append(n)
                 if isinstance(n, ArrayNode):
                     anodes.append(n)
+                scan_progress.total += 1
             else:
                 cast("RecursiveNode", a.parent).remove(a)
 
+            scan_progress.update(1)
+
     for t in root.typed_nodes():
         t.specify_type(conn)
+        scan_progress.update(1)
 
     yield root.create_statement
     for a in root.descendents(ArrayNode):
@@ -416,5 +427,6 @@ def _non_srs_statements(
 def non_srs_statements(
     conn: Conn,
     source_table: sql.Identifier,
+    scan_progress: tqdm[NoReturn],
 ) -> list[sql.Composed]:
-    return list(_non_srs_statements(conn, source_table))
+    return list(_non_srs_statements(conn, source_table, scan_progress))
