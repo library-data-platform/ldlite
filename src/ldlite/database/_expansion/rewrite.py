@@ -4,6 +4,7 @@ from abc import abstractmethod
 from collections import deque
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Literal, TypeAlias, TypeVar, cast
+from uuid import uuid4
 
 import duckdb
 import psycopg
@@ -29,6 +30,17 @@ class NodeContext:
             self.column,
             [*self.prefixes, *([prefix] if prefix is not None else [])],
             prop,
+        )
+
+    def array_prefix(
+        self,
+        source: sql.Identifier,
+    ) -> NodeContext:
+        return NodeContext(
+            source,
+            sql.Identifier("jsonb"),
+            [],
+            None,
         )
 
 
@@ -82,7 +94,9 @@ class TypedNode(FixedValueNode):
                 + sql.SQL(")::text)")
             )
         else:
-            str_extract = self.path + sql.SQL("->>{prop}").format(self.ctx.prop)
+            str_extract = self.path + sql.SQL("->>{prop}").format(
+                sql.Literal(self.ctx.prop),
+            )
 
         return sql.Composed(
             [
@@ -111,7 +125,9 @@ class TypedNode(FixedValueNode):
         else:
             type_extract = str_extract
 
-        return type_extract + sql.SQL(" AS {alias}").format(alias=self.alias)
+        return type_extract + sql.SQL(" AS {alias}").format(
+            alias=sql.Identifier(self.alias),
+        )
 
     def specify_type(self, conn: Conn) -> None:
         if self.is_mixed or self.json_type == "boolean":
@@ -146,6 +162,7 @@ SELECT
                 string_value NOT LIKE '____-__-__T__:__:__.___+__:__'
             )
     ) AS is_uuid;""")
+
                 cur.execute(specify.as_string())
                 if row := cur.fetchone():
                     (self.is_uuid, self.is_datetime) = row
@@ -166,6 +183,7 @@ SELECT
             string_value IS NOT NULL AND
             string_value::numeric > 2147483647
     ) AS is_bigint;""")
+
             cur.execute(specify.as_string())
             if row := cur.fetchone():
                 (self.is_float, self.is_bigint) = row
@@ -180,7 +198,9 @@ class OrdinalNode(FixedValueNode):
 
     @property
     def stmt(self) -> sql.Composed:
-        return sql.SQL('"ordinality"::smallint AS {alias}').format(alias=self.alias)
+        return sql.SQL("__o AS {alias}").format(
+            alias=sql.Identifier(self.alias),
+        )
 
 
 TNode = TypeVar("TNode", bound="Node")
@@ -193,6 +213,24 @@ class RecursiveNode(Node):
 
         self.parent = parent
         self._children: list[Node] = []
+
+    @property
+    def source_cte(self) -> sql.Composed:
+        return (
+            sql.SQL("""
+WITH source AS MATERIALIZED (
+    SELECT
+        t.{column}""").format(column=self.ctx.column)
+            + self.path
+            + (
+                sql.SQL("->{prop}").format(prop=sql.Literal(self.ctx.prop))
+                if self.ctx.prop is not None
+                else sql.SQL("")
+            )
+            + sql.SQL(""" AS ld_value
+    FROM {source} t
+)""").format(source=self.ctx.source)
+        )
 
     def _direct(self, cls: type[TNode]) -> Iterator[TNode]:
         yield from [n for n in self._children if isinstance(n, cls)]
@@ -216,36 +254,24 @@ class RecursiveNode(Node):
 class ObjectNode(RecursiveNode):
     def load_columns(self, conn: Conn) -> None:
         with conn.cursor() as cur:
-            key_discovery = (
-                sql.SQL("""
+            key_discovery = self.source_cte + sql.Composed("""
 SELECT
-    j.json_key
-    ,MIN(j.json_type) AS json_type
-    ,MAX(j.json_type) AS other_json_type
-FROM
-(
+    json_key
+    ,MIN(json_type) AS json_type
+    ,MAX(json_type) AS other_json_type
+FROM (
     SELECT
-      json_key
-      ,jsonb_typeof(json_value) AS json_type
-      ,ord
-    FROM {table} t
-    CROSS JOIN LATERAL jsonb_each(t.{column}""").format(
-                    table=self.ctx.source,
-                    json_column=self.ctx.column,
-                )
-                + self.path
-                + (
-                    sql.SQL("->{prop})").format(prop=self.ctx.prop)
-                    if self.ctx.prop is not None
-                    else sql.SQL(")")
-                )
-                + sql.Composed(""" WITH ORDINALITY k(json_key, json_value, ord)
+        j."key" AS json_key
+        ,jsonb_typeof(j."value") AS json_type
+        ,j.ord
+    FROM source t
+    CROSS JOIN LATERAL jsonb_each(t.ld_value) WITH ORDINALITY j("key", "value", ord)
+    WHERE jsonb_typeof(t.ld_value) = 'object'
 ) j
 WHERE json_type <> 'null'
 GROUP BY json_key
-ORDER BY MAX(j.ord), COUNT(*)
-                        """)
-            )
+ORDER BY MAX(j.ord), COUNT(*);""")
+
             cur.execute(key_discovery.as_string())
             for row in cur.fetchall():
                 (key, jt, ojt) = cast("tuple[str, JsonType, JsonType]", row)
@@ -260,7 +286,76 @@ ORDER BY MAX(j.ord), COUNT(*)
                     self._children.append(tnode)
 
 
-class RootNode(ObjectNode): ...
+class RootNode(ObjectNode):
+    def __init__(self, source: sql.Identifier):
+        super().__init__(
+            NodeContext(
+                source,
+                sql.Identifier("jsonb"),
+                [],
+                None,
+            ),
+            None,
+        )
 
 
-class ArrayNode(RecursiveNode): ...
+class ArrayNode(RecursiveNode):
+    def __init__(self, ctx: NodeContext, parent: RecursiveNode | None):
+        super().__init__(ctx, parent)
+        self.temp = sql.Identifier(str(uuid4()).split("-")[0])
+
+    def make_temp(self, conn: Conn) -> Node | None:
+        with conn.cursor() as cur:
+            expansion = (
+                sql.SQL("CREATE TEMPORARY TABLE {temp} AS").format(temp=self.temp)
+                + self.source_cte
+                + sql.Composed("""
+SELECT
+    __id AS parent__id
+    ,(ROW_NUMBER() OVER (ORDER BY (SELECT NULL)))::integer AS __id
+    ,ord::smallint AS __o
+    ,jsonb
+    ,json_type
+FROM (
+    SELECT
+        t.__id
+        ,a."value" AS jsonb
+        ,jsonb_typeof(a."value") AS json_type
+        ,a.ord
+    FROM source t
+    CROSS JOIN LATERAL jsonb_each(t.ld_value) WITH ORDINALITY a("value", ord)
+    WHERE jsonb_typeof(t.ld_value) = 'array'
+) a
+WHERE json_type <> 'null'
+""")
+            )
+            cur.execute(expansion.as_string())
+
+            type_discovery = sql.SQL("""
+SELECT
+    MIN(json_type) AS json_type
+    ,MAX(json_type) AS other_json_type
+FROM {temp}""").format(temp=self.temp)
+
+            cur.execute(type_discovery.as_string())
+            self._children.append(OrdinalNode(self.ctx.array_prefix(self.temp)))
+            if row := cur.fetchone():
+                (jt, ojt) = cast("tuple[JsonType, JsonType]", row)
+                node: Node
+                if jt == "array" and ojt == "array":
+                    node = ArrayNode(self.ctx.array_prefix(self.temp), self)
+                    self._children.append(node)
+                elif jt == "object" and ojt == "object":
+                    node = ObjectNode(self.ctx.array_prefix(self.temp), self)
+                    self._children.append(node)
+                else:
+                    node = TypedNode(
+                        self.ctx.array_prefix(self.temp),
+                        jt,
+                        ojt,
+                    )
+                    self._children.append(node)
+
+                return node
+
+        return None
