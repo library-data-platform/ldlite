@@ -65,28 +65,22 @@ class Node:
     def json_value(self) -> sql.Composed:
         if self.ctx.prop is None:
             return self._json_source
-        return self._json_source + sql.Composed("->") + sql.Literal(self.ctx.prop)
+        return self._json_source + sql.SQL("->") + sql.Literal(self.ctx.prop)
 
     @property
     def json_string(self) -> sql.Composed:
         if self.ctx.prop is None:
             str_extract = (
-                sql.Composed("""TRIM(BOTH '"' FROM """)
+                sql.SQL("""TRIM(BOTH '"' FROM """)
                 + self._json_source
-                + sql.Composed(")::text)")
+                + sql.SQL(")::text)")
             )
         else:
             str_extract = (
-                self._json_source + sql.Composed("->>") + sql.Literal(self.ctx.prop)
+                self._json_source + sql.SQL("->>") + sql.Literal(self.ctx.prop)
             )
 
-        return sql.Composed(
-            [
-                sql.SQL("NULLIF(NULLIF("),
-                str_extract,
-                sql.SQL(", ''), 'null')"),
-            ],
-        )
+        return sql.SQL("NULLIF(NULLIF(") + str_extract + sql.SQL(", ''), 'null')")
 
 
 class FixedValueNode(Node):
@@ -138,14 +132,14 @@ class TypedNode(FixedValueNode):
         else:
             type_extract = self.json_string
 
-        return type_extract + sql.Composed(" AS ") + sql.Identifier(self.alias)
+        return type_extract + sql.SQL(" AS ") + sql.Identifier(self.alias)
 
     def specify_type(self, conn: Conn) -> None:
         if self.is_mixed or self.json_type == "boolean":
             return
 
         cte = (
-            sql.Composed("""
+            sql.SQL("""
 SELECT string_values AS MATERIALIZED (
     SELECT """)
             + self.json_string
@@ -252,7 +246,7 @@ class ObjectNode(RecursiveNode):
     def load_columns(self, conn: Conn) -> None:
         with conn.cursor() as cur:
             key_discovery = (
-                sql.Composed("""
+                sql.SQL("""
 SELECT
     json_key
     ,MIN(json_type) AS json_type
@@ -327,7 +321,7 @@ CREATE OR REPLACE TABLE {output_table} AS
 WITH root_source AS (
 """).format(output_table=output_table)
                 + source_stmt.format(source_table=self.ctx.source)
-                + sql.Composed(
+                + sql.SQL(
                     """
 )
 SELECT
@@ -340,7 +334,7 @@ SELECT
                         for t in o.direct(TypedNode)
                     ],
                 )
-                + sql.Composed("""
+                + sql.SQL("""
 FROM root_source""")
             )
 
@@ -356,7 +350,7 @@ class ArrayNode(RecursiveNode, StampableNode):
         with conn.cursor() as cur:
             expansion = (
                 sql.SQL("CREATE TEMPORARY TABLE {temp} AS").format(temp=self.temp)
-                + sql.Composed("""
+                + sql.SQL("""
 SELECT
     __id AS parent__id
     ,(ROW_NUMBER() OVER (ORDER BY (SELECT NULL)))::integer AS __id
@@ -434,7 +428,7 @@ CREATE OR REPLACE TABLE {output_table} AS
 WITH array_source AS (
 """).format(output_table=output_table)
                 + source_stmt.format(source_table=self.temp)
-                + sql.Composed(
+                + sql.SQL(
                     """
 )
 SELECT
@@ -442,7 +436,7 @@ SELECT
                 )
                 + sql.SQL("\n    ,").join(
                     [
-                        sql.Composed("a.__id"),
+                        sql.Identifier("a", "__id"),
                         *[
                             t.alias
                             for p in reversed(parents)
