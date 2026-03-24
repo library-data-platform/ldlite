@@ -41,13 +41,13 @@ CREATE OR REPLACE FUNCTION jsonb_typeof(j) AS
     END
 ;
 
-CREATE OR REPLACE FUNCTION jsonb_object_keys(j) AS TABLE
-    SELECT je.key as ld_key, id as "ordinality" FROM json_each(j) je ORDER BY je.id
-;
-
 CREATE OR REPLACE FUNCTION jsonb_array_elements(j) AS TABLE (
     SELECT value as ld_value, rowid + 1 AS "ordinality" FROM main.json_each(j)
 );
+
+CREATE OR REPLACE FUNCTION jsonb_each(j) AS TABLE (
+    SELECT key, value, rowid AS "ordinality" FROM main.json_each(j)
+)
 """,
             )
 

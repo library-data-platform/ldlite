@@ -27,7 +27,7 @@ class JsonTC:
     assertion_params: tuple[Any, ...]
 
 
-def case_jsonb_object_keys() -> JsonTC:
+def case_jsonb_each() -> JsonTC:
     return JsonTC(
         """
 {assertion}
@@ -35,7 +35,7 @@ def case_jsonb_object_keys() -> JsonTC:
 FROM (SELECT 'k1' jkey UNION SELECT 'k2' jkey) as e
 FULL OUTER JOIN (
     SELECT k.ld_key as jkey
-    FROM j, jsonb_object_keys(j.jc->'obj') k(ld_key)
+    FROM j, jsonb_each(j.jc->'obj') k(ld_key)
 ) as a
     USING (jkey)
 WHERE e.jkey IS NULL or a.jkey IS NULL) as q;""",
