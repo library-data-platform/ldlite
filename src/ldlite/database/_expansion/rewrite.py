@@ -218,7 +218,7 @@ class RecursiveNode(Node):
     def source_cte(self) -> sql.Composed:
         return (
             sql.SQL("""
-WITH source AS MATERIALIZED (
+WITH source (
     SELECT
         t.{column}""").format(column=self.ctx.column)
             + self.path
@@ -249,6 +249,20 @@ WITH source AS MATERIALIZED (
 
     def descendents(self, cls: type[TRode]) -> list[TRode]:
         return list(self._descendents(cls))
+
+    def _typed_columns(self) -> Iterator[TypedNode]:
+        for n in self._descendents(RecursiveNode):
+            yield from n.direct(TypedNode)
+
+    def typed_nodes(self) -> list[TypedNode]:
+        return list(self._typed_columns())
+
+    def remove(self, node: RecursiveNode) -> None:
+        self._children.remove(node)
+
+    @property
+    def create_statement(self) -> sql.Composed:
+        return sql.Composed("")
 
 
 class ObjectNode(RecursiveNode):
@@ -359,3 +373,48 @@ FROM {temp}""").format(temp=self.temp)
                 return node
 
         return None
+
+
+def _non_srs_statements(
+    conn: Conn,
+    source_table: sql.Identifier,
+) -> Iterator[sql.Composed]:
+    # Here be dragons! The nodes have inner state manipulations
+    # that violate the space/time continuum:
+    # * o.load_columns
+    # * a.make_temp
+    # * t.specify_type
+    # These all are expected to be called before generating the sql
+    # as they load/prepare database information.
+    # Because building up to the transformation statements takes a long time
+    # we're doing all that work up front to keep the time
+    # that a transaction is opened to a minimum (which is a leaky abstraction).
+
+    root = RootNode(source_table)
+    onodes: deque[ObjectNode] = deque([root])
+    while o := onodes.popleft():
+        o.load_columns(conn)
+        onodes.extend(o.direct(ObjectNode))
+        anodes = deque(o.direct(ArrayNode))
+        while a := anodes.popleft():
+            if n := a.make_temp(conn):
+                if isinstance(n, ObjectNode):
+                    onodes.append(n)
+                if isinstance(n, ArrayNode):
+                    anodes.append(n)
+            else:
+                cast("RecursiveNode", a.parent).remove(a)
+
+    for t in root.typed_nodes():
+        t.specify_type(conn)
+
+    yield root.create_statement
+    for a in root.descendents(ArrayNode):
+        yield a.create_statement
+
+
+def non_srs_statements(
+    conn: Conn,
+    source_table: sql.Identifier,
+) -> list[sql.Composed]:
+    return list(_non_srs_statements(conn, source_table))
