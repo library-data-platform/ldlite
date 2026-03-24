@@ -11,7 +11,7 @@ import psycopg
 from psycopg import sql
 
 if TYPE_CHECKING:
-    from collections.abc import Iterator
+    from collections.abc import Callable, Iterator
     from typing import NoReturn, TypeAlias
 
     from tqdm import tqdm
@@ -295,7 +295,8 @@ ORDER BY MAX(j.ord), COUNT(*);
 class StampableNode(ABC):
     @property
     @abstractmethod
-    def create_statement(self) -> sql.Composed: ...
+    # The Callable construct is necessary until DuckDB implements CTAS RETURNING
+    def create_statement(self) -> Callable[[sql.SQL], sql.Composed]: ...
 
 
 class RootNode(ObjectNode, StampableNode):
@@ -311,8 +312,26 @@ class RootNode(ObjectNode, StampableNode):
         )
 
     @property
-    def create_statement(self) -> sql.Composed:
-        return sql.Composed("")
+    def create_statement(self) -> Callable[[sql.SQL], sql.Composed]:
+        def create_root_table(source_stmt: sql.SQL) -> sql.Composed:
+            return (
+                sql.SQL("""
+CREATE OR REPLACE TABLE {output_table} AS
+WITH root_source AS (
+""").format(output_table=sql.Identifier(""))
+                + source_stmt.format(source=self.ctx.source)
+                + sql.Composed(
+                    """
+)
+SELECT
+    """,
+                )
+                + sql.SQL("\n    ,").join([sql.Identifier("")])
+                + sql.Composed("""
+FROM root_source""")
+            )
+
+        return create_root_table
 
 
 class ArrayNode(RecursiveNode, StampableNode):
@@ -382,15 +401,36 @@ FROM {temp}""").format(temp=self.temp)
         return None
 
     @property
-    def create_statement(self) -> sql.Composed:
-        return sql.Composed("")
+    def create_statement(self) -> Callable[[sql.SQL], sql.Composed]:
+        def create_array_table(source_stmt: sql.SQL) -> sql.Composed:
+            return (
+                sql.SQL("""
+CREATE OR REPLACE TABLE {output_table} AS
+WITH array_source AS (
+""").format(output_table=sql.Identifier(""))
+                + source_stmt.format(source=self.temp)
+                + sql.Composed(
+                    """
+)
+SELECT
+    """,
+                )
+                + sql.SQL("\n    ,").join([sql.Identifier("")])
+                + sql.SQL("""
+FROM array_source a
+JOIN {parent} p ON
+    a.p__id = p.__id;
+""").format(parent=sql.Identifier(""))
+            )
+
+        return create_array_table
 
 
 def _non_srs_statements(
     conn: Conn,
     source_table: sql.Identifier,
     scan_progress: tqdm[NoReturn],
-) -> Iterator[sql.Composed]:
+) -> Iterator[Callable[[sql.SQL], sql.Composed]]:
     # Here be dragons! The nodes have inner state manipulations
     # that violate the space/time continuum:
     # * o.load_columns
@@ -436,5 +476,5 @@ def non_srs_statements(
     conn: Conn,
     source_table: sql.Identifier,
     scan_progress: tqdm[NoReturn],
-) -> list[sql.Composed]:
+) -> list[Callable[[sql.SQL], sql.Composed]]:
     return list(_non_srs_statements(conn, source_table, scan_progress))
