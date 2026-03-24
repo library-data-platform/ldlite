@@ -55,6 +55,39 @@ class Node:
     def path(self) -> sql.Composed:
         return sql.SQL("->").join([sql.Literal(p) for p in self.ctx.prefixes])
 
+    @property
+    def _json_source(self) -> sql.Composed:
+        return self.ctx.column + sql.SQL("->").join(
+            [sql.Literal(p) for p in self.ctx.prefixes],
+        )
+
+    @property
+    def json_value(self) -> sql.Composed:
+        if self.ctx.prop is None:
+            return self._json_source
+        return self._json_source + sql.Composed("->") + sql.Literal(self.ctx.prop)
+
+    @property
+    def json_string(self) -> sql.Composed:
+        if self.ctx.prop is None:
+            str_extract = (
+                sql.Composed("""TRIM(BOTH '"' FROM """)
+                + self._json_source
+                + sql.Composed(")::text)")
+            )
+        else:
+            str_extract = (
+                self._json_source + sql.Composed("->>") + sql.Literal(self.ctx.prop)
+            )
+
+        return sql.Composed(
+            [
+                sql.SQL("NULLIF(NULLIF("),
+                str_extract,
+                sql.SQL(", ''), 'null')"),
+            ],
+        )
+
 
 class FixedValueNode(Node):
     @property
@@ -89,60 +122,36 @@ class TypedNode(FixedValueNode):
         )
 
     @property
-    def str_extract(self) -> sql.Composed:
-        if self.ctx.prop is None:
-            str_extract = (
-                sql.SQL("""TRIM(BOTH '"' FROM ({json_col}""").format(self.ctx.column)
-                + self.path
-                + sql.SQL(")::text)")
-            )
-        else:
-            str_extract = self.path + sql.SQL("->>{prop}").format(
-                sql.Literal(self.ctx.prop),
-            )
-
-        return sql.Composed(
-            [
-                sql.SQL("NULLIF(NULLIF("),
-                str_extract,
-                sql.SQL(", ''), 'null')"),
-            ],
-        )
-
-    @property
     def stmt(self) -> sql.Composed:
-        str_extract = self.str_extract
-
         if self.json_type == "number" and self.is_float:
-            type_extract = str_extract + sql.SQL("::numeric")
+            type_extract = self.json_string + sql.SQL("::numeric")
         elif self.json_type == "number" and self.is_bigint:
-            type_extract = str_extract + sql.SQL("::bigint")
+            type_extract = self.json_string + sql.SQL("::bigint")
         elif self.json_type == "number":
-            type_extract = str_extract + sql.SQL("::integer")
+            type_extract = self.json_string + sql.SQL("::integer")
         elif self.json_type == "boolean":
-            type_extract = str_extract + sql.SQL("::bool")
+            type_extract = self.json_string + sql.SQL("::bool")
         elif self.json_type == "string" and self.is_uuid:
-            type_extract = str_extract + sql.SQL("::uuid")
+            type_extract = self.json_string + sql.SQL("::uuid")
         elif self.json_type == "string" and self.is_datetime:
-            type_extract = str_extract + sql.SQL("::timestamptz")
+            type_extract = self.json_string + sql.SQL("::timestamptz")
         else:
-            type_extract = str_extract
+            type_extract = self.json_string
 
-        return type_extract + sql.SQL(" AS {alias}").format(
-            alias=sql.Identifier(self.alias),
-        )
+        return type_extract + sql.Composed(" AS ") + sql.Identifier(self.alias)
 
     def specify_type(self, conn: Conn) -> None:
         if self.is_mixed or self.json_type == "boolean":
             return
 
         cte = (
-            sql.SQL("""
+            sql.Composed("""
 SELECT string_values AS MATERIALIZED (
     SELECT """)
-            + self.str_extract
+            + self.json_string
             + sql.SQL(""" AS string_value
     FROM {source}
+    WHERE string_value IS NOT NULL
 )""").format(source=self.ctx.source)
         )
 
@@ -152,18 +161,15 @@ SELECT string_values AS MATERIALIZED (
 SELECT
     NOT EXISTS(
         SELECT 1 FROM string_values
-        WHERE
-            string_value IS NOT NULL AND
-            string_value NOT LIKE '________-____-____-____-____________'
+        WHERE string_value NOT LIKE '________-____-____-____-____________'
     ) AS is_uuid
     ,NOT EXISTS(
         SELECT 1 FROM string_values
         WHERE
-            string_value IS NOT NULL AND
-            (
-                string_value NOT LIKE '____-__-__T__:__:__.___' OR
-                string_value NOT LIKE '____-__-__T__:__:__.___+__:__'
-            )
+        (
+            string_value NOT LIKE '____-__-__T__:__:__.___' AND
+            string_value NOT LIKE '____-__-__T__:__:__.___+__:__'
+        )
     ) AS is_uuid;""")
 
                 cur.execute(specify.as_string())
@@ -176,15 +182,11 @@ SELECT
 SELECT
     EXISTS(
         SELECT 1 FROM string_values
-        WHERE
-            string_value IS NOT NULL AND
-            string_value::numeric % 1 <> 0
+        WHERE string_value::numeric % 1 <> 0
     ) AS is_float
-    ,NOT EXISTS(
+    ,EXISTS(
         SELECT 1 FROM string_values
-        WHERE
-            string_value IS NOT NULL AND
-            string_value::numeric > 2147483647
+        WHERE string_value::numeric > 2147483647
     ) AS is_bigint;""")
 
             cur.execute(specify.as_string())
@@ -216,24 +218,6 @@ class RecursiveNode(Node):
 
         self.parent = parent
         self._children: list[Node] = []
-
-    @property
-    def source_cte(self) -> sql.Composed:
-        return (
-            sql.SQL("""
-WITH source (
-    SELECT
-        t.{column}""").format(column=self.ctx.column)
-            + self.path
-            + (
-                sql.SQL("->{prop}").format(prop=sql.Literal(self.ctx.prop))
-                if self.ctx.prop is not None
-                else sql.SQL("")
-            )
-            + sql.SQL(""" AS ld_value
-    FROM {source} t
-)""").format(source=self.ctx.source)
-        )
 
     def _direct(self, cls: type[TNode]) -> Iterator[TNode]:
         yield from [n for n in self._children if isinstance(n, cls)]
@@ -267,23 +251,32 @@ WITH source (
 class ObjectNode(RecursiveNode):
     def load_columns(self, conn: Conn) -> None:
         with conn.cursor() as cur:
-            key_discovery = self.source_cte + sql.Composed("""
+            key_discovery = (
+                sql.Composed("""
 SELECT
     json_key
     ,MIN(json_type) AS json_type
     ,MAX(json_type) AS other_json_type
 FROM (
     SELECT
-        j."key" AS json_key
-        ,jsonb_typeof(j."value") AS json_type
-        ,j.ord
-    FROM source t
-    CROSS JOIN LATERAL jsonb_each(t.ld_value) WITH ORDINALITY j("key", "value", ord)
-    WHERE jsonb_typeof(t.ld_value) = 'object'
-) j
+        k."key" AS json_key
+        ,jsonb_typeof(k."value") AS json_type
+        ,k.ord
+    FROM
+    (
+        SELECT """)
+                + self.json_value
+                + sql.SQL(""" AS ld_value
+        FROM {source}
+        WHERE jsonb_typeof(ld_value) = 'object'
+    ) j
+    CROSS JOIN LATERAL jsonb_each(j.ld_value) WITH ORDINALITY k("key", "value", ord)
+) key_discovery
 WHERE json_type <> 'null'
 GROUP BY json_key
-ORDER BY MAX(j.ord), COUNT(*);""")
+ORDER BY MAX(j.ord), COUNT(*);
+""").format(source=self.ctx.source)
+            )
 
             cur.execute(key_discovery.as_string())
             for row in cur.fetchall():
@@ -331,7 +324,6 @@ class ArrayNode(RecursiveNode, StampableNode):
         with conn.cursor() as cur:
             expansion = (
                 sql.SQL("CREATE TEMPORARY TABLE {temp} AS").format(temp=self.temp)
-                + self.source_cte
                 + sql.Composed("""
 SELECT
     __id AS parent__id
@@ -345,12 +337,18 @@ FROM (
         ,a."value" AS jsonb
         ,jsonb_typeof(a."value") AS json_type
         ,a.ord
-    FROM source t
-    CROSS JOIN LATERAL jsonb_each(t.ld_value) WITH ORDINALITY a("value", ord)
-    WHERE jsonb_typeof(t.ld_value) = 'array'
-) a
+    FROM
+    (
+        SELECT """)
+                + self.json_value
+                + sql.SQL(""" AS ld_value
+        FROM {source}
+        WHERE jsonb_typeof(ld_value) = 'array'
+    ) j
+    CROSS JOIN LATERAL jsonb_array_elements(j.ld_value) WITH ORDINALITY a("value", ord)
+) expansion
 WHERE json_type <> 'null'
-""")
+""").format(source=self.ctx.source)
             )
             cur.execute(expansion.as_string())
 
