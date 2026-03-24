@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from abc import abstractmethod
+from abc import ABC, abstractmethod
 from collections import deque
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Literal, TypeVar, cast
@@ -263,10 +263,6 @@ WITH source (
     def remove(self, node: RecursiveNode) -> None:
         self._children.remove(node)
 
-    @property
-    def create_statement(self) -> sql.Composed:
-        return sql.Composed("")
-
 
 class ObjectNode(RecursiveNode):
     def load_columns(self, conn: Conn) -> None:
@@ -303,7 +299,13 @@ ORDER BY MAX(j.ord), COUNT(*);""")
                     self._children.append(tnode)
 
 
-class RootNode(ObjectNode):
+class StampableNode(ABC):
+    @property
+    @abstractmethod
+    def create_statement(self) -> sql.Composed: ...
+
+
+class RootNode(ObjectNode, StampableNode):
     def __init__(self, source: sql.Identifier):
         super().__init__(
             NodeContext(
@@ -315,8 +317,12 @@ class RootNode(ObjectNode):
             None,
         )
 
+    @property
+    def create_statement(self) -> sql.Composed:
+        return sql.Composed("")
 
-class ArrayNode(RecursiveNode):
+
+class ArrayNode(RecursiveNode, StampableNode):
     def __init__(self, ctx: NodeContext, parent: RecursiveNode | None):
         super().__init__(ctx, parent)
         self.temp = sql.Identifier(str(uuid4()).split("-")[0])
@@ -377,6 +383,10 @@ FROM {temp}""").format(temp=self.temp)
 
         return None
 
+    @property
+    def create_statement(self) -> sql.Composed:
+        return sql.Composed("")
+
 
 def _non_srs_statements(
     conn: Conn,
@@ -391,8 +401,8 @@ def _non_srs_statements(
     # These all are expected to be called before generating the sql
     # as they load/prepare database information.
     # Because building up to the transformation statements takes a long time
-    # we're doing all that work up front to keep the time
-    # that a transaction is opened to a minimum (which is a leaky abstraction).
+    # we're doing all that work up front to keep the time that
+    # a transaction is opened to a minimum (which is a leaky abstraction).
 
     root = RootNode(source_table)
     onodes: deque[ObjectNode] = deque([root])
