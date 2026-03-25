@@ -19,136 +19,85 @@ Conn: TypeAlias = duckdb.DuckDBPyConnection | psycopg.Connection
 JsonType: TypeAlias = Literal["array", "object", "string", "number", "boolean"]
 
 
-class NodeContext:
-    def __init__(
-        self,
-        source: sql.Identifier,
-        column: sql.Identifier,
-        prefixes: list[str],
-        prop: str | None,
-    ):
-        self.source = source
-        self.column = column
-        self.prefixes = prefixes
-        self.path = prefixes
-        self.prop = prop
-
-    @staticmethod
-    def _snake(not_snake: str) -> str:
-        snake = "".join("_" + c.lower() if c.isupper() else c for c in not_snake)
-        # there's also sorts of weird edge cases here that don't come up in practice
-        if (naked := not_snake.lstrip("_")) and len(naked) > 0 and naked[0].isupper():
-            snake = snake.removeprefix("_")
-
-        return snake
-
-    @property
-    def snake_prop(self) -> str | None:
-        if self.prop is None:
-            return None
-        return self._snake(self.prop)
-
-    @property
-    def snake_prefixes(self) -> list[str]:
-        return [self._snake(p) for p in self.prefixes]
-
-    def sub_prefix(self, prefix: str | None, prop: str | None) -> NodeContext:
-        return NodeContext(
-            self.source,
-            self.column,
-            [*self.prefixes, *([prefix] if prefix is not None else [])],
-            prop,
-        )
-
-    def array_prefix(
-        self,
-        source: sql.Identifier,
-        prefix: str | None,
-    ) -> NodeContext:
-        context = NodeContext(
-            source,
-            sql.Identifier("jsonb"),
-            [*self.prefixes, *([prefix] if prefix is not None else [])],
-            None,
-        )
-        context.path = cast("list[str]", [])
-        return context
-
-
 class Node:
-    def __init__(self, ctx: NodeContext):
-        self.ctx = ctx
+    def __init__(self, source: sql.Identifier, prop: str | None):
+        self.source = source
+        self.prop = prop
+        self.snake_prop: str | None = None
 
-    @property
-    def path(self) -> sql.Composed:
-        return sql.SQL("->").join([sql.Literal(p) for p in self.ctx.path])
-
-    @property
-    def _json_source(self) -> sql.Composable:
-        if len(self.ctx.path) == 0:
-            return self.ctx.column
-
-        return self.ctx.column + sql.SQL("->") + self.path
-
-    @property
-    def json_value(self) -> sql.Composable:
-        if self.ctx.prop is None:
-            return self._json_source
-        return self._json_source + sql.SQL("->") + sql.Literal(self.ctx.prop)
-
-    @property
-    def json_string(self) -> sql.Composed:
-        if self.ctx.prop is None:
-            str_extract = (
-                sql.SQL("""TRIM(BOTH '"' FROM """)
-                + self._json_source
-                + sql.SQL("::text)")
-            )
-        else:
-            str_extract = (
-                self._json_source + sql.SQL("->>") + sql.Literal(self.ctx.prop)
+        if self.prop is not None:
+            self.snake_prop = "".join(
+                "_" + c.lower() if c.isupper() else c for c in self.prop
             )
 
-        return sql.SQL("NULLIF(NULLIF(") + str_extract + sql.SQL(", ''), 'null')")
+            # there's also sorts of weird edge cases here that don't come up in practice
+            if (
+                (naked := self.prop.lstrip("_"))
+                and len(naked) > 0
+                and naked[0].isupper()
+            ):
+                self.snake_prop = self.snake_prop.removeprefix("_")
 
 
 class FixedValueNode(Node):
-    @property
-    def alias(self) -> str:
-        return ""
+    def __init__(
+        self,
+        source: sql.Identifier,
+        prop: str | None,
+        path: sql.Composable,
+        prefix: str,
+    ):
+        super().__init__(source, prop)
+
+        self.path = path
+        self.prefix = prefix
 
     @property
-    def stmt(self) -> sql.Composed:
-        return sql.Composed("")
+    def alias(self) -> str:
+        if len(self.prefix) == 0:
+            return self.snake_prop or ""
+        return self.prefix + (
+            ("__" + self.snake_prop) if self.snake_prop is not None else ""
+        )
+
+    @property
+    def stmt(self) -> sql.Composable:
+        # this should be abstract but Python can't use ABCs as a generic
+        return sql.SQL("")
 
 
 class TypedNode(FixedValueNode):
     def __init__(
         self,
-        ctx: NodeContext,
-        json_type: JsonType,
-        other_json_type: JsonType,
+        source: sql.Identifier,
+        prop: str | None,
+        path: sql.Composable,
+        prefix: str,
+        json_types: tuple[JsonType, JsonType],
     ):
-        super().__init__(ctx)
+        super().__init__(source, prop, path, prefix)
 
-        self.is_mixed = json_type != other_json_type
-        self.json_type: JsonType = "string" if self.is_mixed else json_type
+        self.is_mixed = json_types[0] != json_types[1]
+        self.json_type: JsonType = "string" if self.is_mixed else json_types[0]
         self.is_uuid = False
         self.is_datetime = False
         self.is_float = False
         self.is_bigint = False
 
     @property
-    def alias(self) -> str:
-        if len(self.ctx.prefixes) == 0:
-            return self.ctx.snake_prop if self.ctx.snake_prop is not None else ""
+    def json_string(self) -> sql.Composable:
+        if self.prop is None:
+            str_extract = (
+                sql.SQL("""TRIM(BOTH '"' FROM (""") + self.path + sql.SQL(")::text)")
+            )
+        else:
+            str_extract = self.path + sql.SQL("->>") + sql.Literal(self.prop)
 
-        return "__".join(self.ctx.snake_prefixes) + (
-            ("__" + self.ctx.snake_prop) if self.ctx.snake_prop is not None else ""
-        )
+        return sql.SQL("NULLIF(NULLIF(") + str_extract + sql.SQL(", ''), 'null')")
 
     @property
-    def stmt(self) -> sql.Composed:
+    def stmt(self) -> sql.Composable:
+        type_extract: sql.Composable
         if self.json_type == "number" and self.is_float:
             type_extract = self.json_string + sql.SQL("::numeric")
         elif self.json_type == "number" and self.is_bigint:
@@ -177,7 +126,7 @@ WITH string_values AS MATERIALIZED (
             + self.json_string
             + sql.SQL(""" AS string_value
     FROM {source}
-)""").format(source=self.ctx.source)
+)""").format(source=self.source)
         )
 
         if self.json_type == "string":
@@ -229,12 +178,20 @@ SELECT
 
 
 class OrdinalNode(FixedValueNode):
-    @property
-    def alias(self) -> str:
-        return "__".join(self.ctx.snake_prefixes) + "__o"
+    def __init__(
+        self,
+        source: sql.Identifier,
+        path: sql.Composable,
+        prefix: str,
+    ):
+        super().__init__(source, None, path, prefix)
 
     @property
-    def stmt(self) -> sql.Composed:
+    def alias(self) -> str:
+        return self.prefix + "__o"
+
+    @property
+    def stmt(self) -> sql.Composable:
         return sql.Identifier("a", "__o") + sql.SQL(" AS {alias}").format(
             alias=sql.Identifier(self.alias),
         )
@@ -245,11 +202,71 @@ TRode = TypeVar("TRode", bound="RecursiveNode")
 
 
 class RecursiveNode(Node):
-    def __init__(self, ctx: NodeContext, parent: RecursiveNode | None):
-        super().__init__(ctx)
+    def __init__(
+        self,
+        source: sql.Identifier,
+        prop: str | None,
+        column: sql.Identifier,
+        parent: RecursiveNode | None,
+    ):
+        super().__init__(source, prop)
 
         self.parent = parent
+        self.column = column
         self._children: list[Node] = []
+
+    def _parents(self) -> Iterator[RecursiveNode]:
+        p = self.parent
+        while p is not None:
+            yield p
+            p = p.parent
+
+    @property
+    def parents(self) -> list[RecursiveNode]:
+        return list(self._parents())
+
+    @property
+    def table_parent(self) -> RecursiveNode:
+        for p in self.parents:
+            if isinstance(p, (ArrayNode, RootNode)):
+                return p
+
+        # There's "always" a root node
+        return None  # type: ignore[return-value]
+
+    @property
+    def path(self) -> sql.Composable:
+        prop_accessor: sql.Composable
+        if self.prop is None:
+            prop_accessor = sql.SQL("")
+        else:
+            prop_accessor = sql.SQL("->") + sql.Literal(self.prop)
+
+        path: list[str] = []
+        for p in self.parents:
+            if isinstance(p, (ArrayNode, RootNode)):
+                break
+            if p.prop is not None:
+                path.append(p.prop)
+
+        if len(path) == 0:
+            return self.column + prop_accessor
+
+        return (
+            self.column
+            + sql.SQL("->")
+            + sql.SQL("->").join([sql.Literal(p) for p in reversed(path)])
+            + prop_accessor
+        )
+
+    @property
+    def prefix(self) -> str:
+        if len(self.parents) == 0 or isinstance(self.parents[0], RootNode):
+            return self.snake_prop or ""
+
+        return "__".join(
+            [p.snake_prop for p in reversed(self.parents) if p.snake_prop is not None],
+        ) + (("__" + self.snake_prop) if self.snake_prop is not None else "")
 
     def _direct(self, cls: type[TNode]) -> Iterator[TNode]:
         yield from [n for n in self._children if isinstance(n, cls)]
@@ -298,7 +315,7 @@ FROM
     FROM
     (
         SELECT """)
-                + self.json_value
+                + self.path
                 + sql.SQL(""" AS ld_value FROM {source_table}
     ) j
     CROSS JOIN LATERAL jsonb_each(j.ld_value) WITH ORDINALITY k("key", "value", ord)
@@ -307,43 +324,46 @@ FROM
 WHERE json_type <> 'null'
 GROUP BY json_key
 ORDER BY MAX(ord), COUNT(*);
-""").format(source_table=self.ctx.source)
+""").format(source_table=self.source)
             )
 
             cur.execute(key_discovery.as_string())
             for row in cur.fetchall():
                 (key, jt, ojt) = cast("tuple[str, JsonType, JsonType]", row)
                 if jt == "array" and ojt == "array":
-                    anode = ArrayNode(self.ctx.sub_prefix(self.ctx.prop, key), self)
+                    anode = ArrayNode(self.source, key, self.column, self)
                     self._children.append(anode)
                 elif jt == "object" and ojt == "object":
-                    onode = ObjectNode(self.ctx.sub_prefix(self.ctx.prop, key), self)
+                    onode = ObjectNode(self.source, key, self.column, self)
                     self._children.append(onode)
                 else:
-                    tnode = TypedNode(self.ctx.sub_prefix(self.ctx.prop, key), jt, ojt)
+                    tnode = TypedNode(
+                        self.source,
+                        key,
+                        self.path,
+                        self.prefix,
+                        (jt, ojt),
+                    )
                     self._children.append(tnode)
 
 
-class StampableNode(ABC):
+class StampableTable(ABC):
     @property
     @abstractmethod
     # The Callable construct is necessary until DuckDB implements CTAS RETURNING
     def create_statement(self) -> tuple[str, Callable[[sql.SQL], sql.Composed]]: ...
 
 
-class RootNode(ObjectNode, StampableNode):
+class RootNode(ObjectNode, StampableTable):
     def __init__(
         self,
         source: sql.Identifier,
         get_output_table: Callable[[str | None], tuple[str, sql.Identifier]],
     ):
         super().__init__(
-            NodeContext(
-                source,
-                sql.Identifier("jsonb"),
-                [],
-                None,
-            ),
+            source,
+            None,
+            sql.Identifier("jsonb"),
             None,
         )
         self.get_output_table = get_output_table
@@ -357,7 +377,7 @@ class RootNode(ObjectNode, StampableNode):
                 sql.SQL("""
 CREATE TABLE {output_table} AS
 WITH root_source AS (""").format(output_table=output_table)
-                + source_stmt.format(source_table=self.ctx.source)
+                + source_stmt.format(source_table=self.source)
                 + sql.SQL(
                     """)
 SELECT
@@ -380,9 +400,15 @@ FROM root_source""")
         return (output_table_name, create_root_table)
 
 
-class ArrayNode(RecursiveNode, StampableNode):
-    def __init__(self, ctx: NodeContext, parent: RecursiveNode | None):
-        super().__init__(ctx, parent)
+class ArrayNode(RecursiveNode, StampableTable):
+    def __init__(
+        self,
+        source: sql.Identifier,
+        prop: str | None,
+        column: sql.Identifier,
+        parent: RecursiveNode | None,
+    ):
+        super().__init__(source, prop, column, parent)
         self.temp = sql.Identifier(str(uuid4()).split("-")[0])
 
     def make_temp(self, conn: Conn) -> Node | None:
@@ -405,14 +431,14 @@ FROM (
     FROM
     (
         SELECT """)
-                + self.json_value
+                + self.path
                 + sql.SQL(""" AS ld_value, __id FROM {source}
     ) j
     CROSS JOIN LATERAL jsonb_array_elements(j.ld_value) WITH ORDINALITY a("value", ord)
     WHERE jsonb_typeof(j.ld_value) = 'array'
 ) expansion
 WHERE json_type <> 'null'
-""").format(source=self.ctx.source)
+""").format(source=self.source)
             )
             cur.execute(expansion.as_string())
 
@@ -423,52 +449,42 @@ SELECT
 FROM {temp}""").format(temp=self.temp)
 
             cur.execute(type_discovery.as_string())
-            self._children.append(
-                OrdinalNode(self.ctx.array_prefix(self.temp, self.ctx.prop)),
-            )
+            self._children.append(OrdinalNode(self.temp, self.path, self.prefix))
             if row := cur.fetchone():
                 (jt, ojt) = cast("tuple[JsonType, JsonType]", row)
                 node: Node
                 if jt == "array" and ojt == "array":
-                    node = ArrayNode(
-                        self.ctx.array_prefix(self.temp, self.ctx.prop),
-                        self,
-                    )
-                    self._children.append(node)
+                    node = ArrayNode(self.temp, None, self.column, self)
                 elif jt == "object" and ojt == "object":
-                    node = ObjectNode(
-                        self.ctx.array_prefix(self.temp, self.ctx.prop),
-                        self,
-                    )
-                    self._children.append(node)
+                    node = ObjectNode(self.temp, None, self.column, self)
                 else:
                     node = TypedNode(
-                        self.ctx.array_prefix(self.temp, self.ctx.prop),
-                        jt,
-                        ojt,
+                        self.temp,
+                        None,
+                        sql.Identifier("jsonb"),
+                        self.prefix,
+                        (jt, ojt),
                     )
-                    self._children.append(node)
-
+                self._children.append(node)
                 return node
 
         return None
 
     @property
     def create_statement(self) -> tuple[str, Callable[[sql.SQL], sql.Composed]]:
-        p: RecursiveNode | None = self
+        table_parent: RecursiveNode = self
         parents: list[RecursiveNode] = []
-        while p is not None and (p := p.parent):
+        for p in self.parents:
+            if table_parent == self and isinstance(table_parent, (RootNode, ArrayNode)):
+                table_parent = p
             parents.append(p)
+
         root = cast("RootNode", parents[-1])
-        (output_table_name, output_table) = root.get_output_table(
-            "__".join(self.ctx.prefixes) + (self.ctx.prop or ""),
-        )
+        (output_table_name, output_table) = root.get_output_table(self.prefix)
         if parents[0] == parents[-1]:
             (_, parent_table) = root.get_output_table(None)
         else:
-            (_, parent_table) = root.get_output_table(
-                "__" + "__".join(cast("Node", parents[0]).ctx.prefixes),
-            )
+            (_, parent_table) = root.get_output_table(table_parent.prefix)
 
         def create_array_table(source_stmt: sql.SQL) -> sql.Composed:
             return (
