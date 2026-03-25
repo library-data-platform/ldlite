@@ -16,7 +16,7 @@ if TYPE_CHECKING:
     from tqdm import tqdm
 
 Conn: TypeAlias = duckdb.DuckDBPyConnection | psycopg.Connection
-JsonType: TypeAlias = Literal["array", "object", "string", "number", "boolean"]
+JsonType: TypeAlias = Literal["array", "object", "string", "number", "boolean", "jsonb"]
 
 
 class Node:
@@ -98,7 +98,9 @@ class TypedNode(FixedValueNode):
     @property
     def stmt(self) -> sql.Composable:
         type_extract: sql.Composable
-        if self.json_type == "number" and self.is_float:
+        if self.json_type == "jsonb":
+            type_extract = self.path
+        elif self.json_type == "number" and self.is_float:
             type_extract = self.json_string + sql.SQL("::numeric")
         elif self.json_type == "number" and self.is_bigint:
             type_extract = self.json_string + sql.SQL("::bigint")
@@ -116,7 +118,7 @@ class TypedNode(FixedValueNode):
         return type_extract + sql.SQL(" AS ") + sql.Identifier(self.alias)
 
     def specify_type(self, conn: Conn) -> None:
-        if self.is_mixed or self.json_type == "boolean":
+        if self.is_mixed or self.json_type not in ["string", "number"]:
             return
 
         cte = (
@@ -152,10 +154,10 @@ SELECT
                 cur.execute(specify.as_string())
                 if row := cur.fetchone():
                     (self.is_uuid, self.is_datetime) = row
-            return
 
-        with conn.cursor() as cur:
-            specify = cte + sql.SQL("""
+        if self.json_type == "number":
+            with conn.cursor() as cur:
+                specify = cte + sql.SQL("""
 SELECT
     EXISTS(
         SELECT 1 FROM string_values
@@ -170,11 +172,9 @@ SELECT
             string_value::numeric > 2147483647
     ) AS is_bigint;""")
 
-            cur.execute(specify.as_string())
-            if row := cur.fetchone():
-                (self.is_float, self.is_bigint) = row
-            else:
-                self.json_type = "string"
+                cur.execute(specify.as_string())
+                if row := cur.fetchone():
+                    (self.is_float, self.is_bigint) = row
 
 
 class OrdinalNode(FixedValueNode):
@@ -195,6 +195,16 @@ class OrdinalNode(FixedValueNode):
         return sql.Identifier("a", "__o") + sql.SQL(" AS {alias}").format(
             alias=sql.Identifier(self.alias),
         )
+
+
+class JsonbNode(TypedNode):
+    def __init__(
+        self,
+        source: sql.Identifier,
+        path: sql.Composable,
+        prefix: str,
+    ):
+        super().__init__(source, None, path, prefix, ("jsonb", "jsonb"))
 
 
 TNode = TypeVar("TNode", bound="Node")
@@ -233,6 +243,27 @@ class RecursiveNode(Node):
 
         # There's "always" a root node
         return None  # type: ignore[return-value]
+
+    @property
+    def depth(self) -> int:
+        depth = 0
+        prev = None
+        for p in self.parents:
+            # arrays of objects only count for a single level of depth
+            if not (isinstance(p, ObjectNode) and isinstance(prev, ArrayNode)):
+                depth += 1
+            prev = p
+
+        return depth
+
+    def replace(self, original: Node, replacement: Node) -> None:
+        self._children = [(replacement if n == original else n) for n in self._children]
+
+    def make_jsonb(self) -> None:
+        cast("RecursiveNode", self.parent).replace(
+            self,
+            JsonbNode(self.source, self.path, self.prefix),
+        )
 
     @property
     def path(self) -> sql.Composable:
@@ -274,19 +305,31 @@ class RecursiveNode(Node):
     def direct(self, cls: type[TNode]) -> list[TNode]:
         return list(self._direct(cls))
 
-    def _descendents(self, cls: type[TRode]) -> Iterator[TRode]:
-        to_visit = deque([self])
+    def _descendents(
+        self,
+        cls: type[TRode],
+        to_cls: type[TRode] | None = None,
+    ) -> Iterator[TRode]:
+        to_visit = deque(self.direct(RecursiveNode))
         while to_visit:
             n = to_visit.pop()
             if isinstance(n, cls):
                 yield n
 
+            if to_cls is not None and isinstance(n, to_cls):
+                continue
+
             to_visit.extend(n.direct(RecursiveNode))
 
-    def descendents(self, cls: type[TRode]) -> list[TRode]:
-        return list(self._descendents(cls))
+    def descendents(
+        self,
+        cls: type[TRode],
+        to_cls: type[TRode] | None = None,
+    ) -> list[TRode]:
+        return list(self._descendents(cls, to_cls))
 
     def _typed_nodes(self) -> Iterator[TypedNode]:
+        yield from self.direct(TypedNode)
         for n in self._descendents(RecursiveNode):
             yield from n.direct(TypedNode)
 
@@ -386,9 +429,10 @@ SELECT
                 + sql.SQL("\n    ,").join(
                     [
                         sql.Identifier("__id"),
+                        *[t.stmt for t in self.direct(TypedNode)],
                         *[
                             t.stmt
-                            for o in self.descendents(ObjectNode)
+                            for o in self.descendents(ObjectNode, ArrayNode)
                             for t in o.direct(TypedNode)
                         ],
                     ],
@@ -420,12 +464,12 @@ SELECT
     __id AS p__id
     ,(ROW_NUMBER() OVER (ORDER BY (SELECT NULL)))::integer AS __id
     ,ord::smallint AS __o
-    ,jsonb
+    ,array_jsonb
     ,json_type
 FROM (
     SELECT
         j.__id
-        ,a."value" AS jsonb
+        ,a."value" AS array_jsonb
         ,jsonb_typeof(a."value") AS json_type
         ,a.ord
     FROM
@@ -454,14 +498,24 @@ FROM {temp}""").format(temp=self.temp)
                 (jt, ojt) = cast("tuple[JsonType, JsonType]", row)
                 node: Node
                 if jt == "array" and ojt == "array":
-                    node = ArrayNode(self.temp, None, self.column, self)
+                    node = ArrayNode(
+                        self.temp,
+                        None,
+                        sql.Identifier("array_jsonb"),
+                        self,
+                    )
                 elif jt == "object" and ojt == "object":
-                    node = ObjectNode(self.temp, None, self.column, self)
+                    node = ObjectNode(
+                        self.temp,
+                        None,
+                        sql.Identifier("array_jsonb"),
+                        self,
+                    )
                 else:
                     node = TypedNode(
                         self.temp,
                         None,
-                        sql.Identifier("jsonb"),
+                        sql.Identifier("array_jsonb"),
                         self.prefix,
                         (jt, ojt),
                     )
@@ -475,13 +529,13 @@ FROM {temp}""").format(temp=self.temp)
         table_parent: RecursiveNode = self
         parents: list[RecursiveNode] = []
         for p in self.parents:
-            if table_parent == self and isinstance(table_parent, (RootNode, ArrayNode)):
+            if table_parent == self and isinstance(p, (RootNode, ArrayNode)):
                 table_parent = p
             parents.append(p)
 
         root = cast("RootNode", parents[-1])
         (output_table_name, output_table) = root.get_output_table(self.prefix)
-        if parents[0] == parents[-1]:
+        if not isinstance(table_parent, ArrayNode):
             (_, parent_table) = root.get_output_table(None)
         else:
             (_, parent_table) = root.get_output_table(table_parent.prefix)
@@ -503,12 +557,12 @@ SELECT
                         *[
                             sql.Identifier("p", t.alias)
                             for p in reversed(parents)
-                            for t in p.direct(TypedNode)
+                            for t in p.direct(FixedValueNode)
                         ],
                         *[t.stmt for t in self.direct(FixedValueNode)],
                         *[
                             t.stmt
-                            for o in self.descendents(ObjectNode)
+                            for o in self.descendents(ObjectNode, ArrayNode)
                             for t in o.direct(TypedNode)
                         ],
                     ],
@@ -527,6 +581,7 @@ def _non_srs_statements(
     conn: Conn,
     source_table: sql.Identifier,
     output_table: Callable[[str | None], tuple[str, sql.Identifier]],
+    json_depth: int,
     scan_progress: tqdm[NoReturn],
 ) -> Iterator[tuple[str, Callable[[sql.SQL], sql.Composed]]]:
     # Here be dragons! The nodes have inner state manipulations
@@ -539,27 +594,34 @@ def _non_srs_statements(
     # Because building up to the transformation statements takes a long time
     # we're doing all that work up front to keep the time that
     # a transaction is opened to a minimum (which is a leaky abstraction).
+    scan_progress.total = scan_progress.total if scan_progress.total is not None else 1
 
     root = RootNode(source_table, output_table)
     onodes: deque[ObjectNode] = deque([root])
     while onodes:
         o = onodes.popleft()
-        o.load_columns(conn)
-        scan_progress.total += len(o.direct(Node))
+        if o.depth < json_depth:
+            o.load_columns(conn)
+            scan_progress.total += len(o.direct(Node))
+        else:
+            o.make_jsonb()
         scan_progress.update(1)
 
         onodes.extend(o.direct(ObjectNode))
         anodes = deque(o.direct(ArrayNode))
         while anodes:
             a = anodes.popleft()
-            if n := a.make_temp(conn):
-                if isinstance(n, ObjectNode):
-                    onodes.append(n)
-                if isinstance(n, ArrayNode):
-                    anodes.append(n)
-                scan_progress.total += 1
+            if a.depth < json_depth:
+                if n := a.make_temp(conn):
+                    if isinstance(n, ObjectNode):
+                        onodes.append(n)
+                    if isinstance(n, ArrayNode):
+                        anodes.append(n)
+                    scan_progress.total += 1
+                else:
+                    cast("RecursiveNode", a.parent).remove(a)
             else:
-                cast("RecursiveNode", a.parent).remove(a)
+                a.make_jsonb()
 
             scan_progress.update(1)
 
@@ -576,6 +638,15 @@ def non_srs_statements(
     conn: Conn,
     source_table: sql.Identifier,
     output_table: Callable[[str | None], tuple[str, sql.Identifier]],
+    json_depth: int,
     scan_progress: tqdm[NoReturn],
 ) -> list[tuple[str, Callable[[sql.SQL], sql.Composed]]]:
-    return list(_non_srs_statements(conn, source_table, output_table, scan_progress))
+    return list(
+        _non_srs_statements(
+            conn,
+            source_table,
+            output_table,
+            json_depth,
+            scan_progress,
+        ),
+    )

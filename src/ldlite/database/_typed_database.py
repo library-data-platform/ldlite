@@ -225,6 +225,7 @@ WHERE table_schema = $1 and table_name IN ($2, $3);""",
                 conn,
                 pfx.raw_table[1],
                 pfx.output_table,
+                json_depth,
                 scan_progress
                 if scan_progress is not None
                 else tqdm(disable=True, total=0),
