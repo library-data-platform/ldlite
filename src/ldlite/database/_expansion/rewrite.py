@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from collections import deque
-from dataclasses import dataclass
 from typing import TYPE_CHECKING, Literal, TypeVar, cast
 from uuid import uuid4
 
@@ -20,12 +19,19 @@ Conn: TypeAlias = duckdb.DuckDBPyConnection | psycopg.Connection
 JsonType: TypeAlias = Literal["array", "object", "string", "number", "boolean"]
 
 
-@dataclass
 class NodeContext:
-    source: sql.Identifier
-    column: sql.Identifier
-    prefixes: list[str]
-    prop: str | None
+    def __init__(
+        self,
+        source: sql.Identifier,
+        column: sql.Identifier,
+        prefixes: list[str],
+        prop: str | None,
+    ):
+        self.source = source
+        self.column = column
+        self.prefixes = prefixes
+        self.path = prefixes
+        self.prop = prop
 
     @staticmethod
     def _snake(not_snake: str) -> str:
@@ -57,13 +63,16 @@ class NodeContext:
     def array_prefix(
         self,
         source: sql.Identifier,
+        prefix: str | None,
     ) -> NodeContext:
-        return NodeContext(
+        context = NodeContext(
             source,
             sql.Identifier("jsonb"),
-            [],
+            [*self.prefixes, *([prefix] if prefix is not None else [])],
             None,
         )
+        context.path = cast("list[str]", [])
+        return context
 
 
 class Node:
@@ -72,20 +81,14 @@ class Node:
 
     @property
     def path(self) -> sql.Composed:
-        return sql.SQL("->").join([sql.Literal(p) for p in self.ctx.prefixes])
+        return sql.SQL("->").join([sql.Literal(p) for p in self.ctx.path])
 
     @property
     def _json_source(self) -> sql.Composable:
-        if len(self.ctx.prefixes) == 0:
+        if len(self.ctx.path) == 0:
             return self.ctx.column
 
-        return (
-            self.ctx.column
-            + sql.SQL("->")
-            + sql.SQL("->").join(
-                [sql.Literal(p) for p in self.ctx.prefixes],
-            )
-        )
+        return self.ctx.column + sql.SQL("->") + self.path
 
     @property
     def json_value(self) -> sql.Composable:
@@ -99,7 +102,7 @@ class Node:
             str_extract = (
                 sql.SQL("""TRIM(BOTH '"' FROM """)
                 + self._json_source
-                + sql.SQL(")::text)")
+                + sql.SQL("::text)")
             )
         else:
             str_extract = (
@@ -111,12 +114,12 @@ class Node:
 
 class FixedValueNode(Node):
     @property
-    @abstractmethod
-    def alias(self) -> str: ...
+    def alias(self) -> str:
+        return ""
 
     @property
-    @abstractmethod
-    def stmt(self) -> sql.Composed: ...
+    def stmt(self) -> sql.Composed:
+        return sql.Composed("")
 
 
 class TypedNode(FixedValueNode):
@@ -228,11 +231,11 @@ SELECT
 class OrdinalNode(FixedValueNode):
     @property
     def alias(self) -> str:
-        return "__".join(self.ctx.prefixes) + "__o"
+        return "__".join(self.ctx.snake_prefixes) + "__o"
 
     @property
     def stmt(self) -> sql.Composed:
-        return sql.SQL("__o AS {alias}").format(
+        return sql.Identifier("a", "__o") + sql.SQL(" AS {alias}").format(
             alias=sql.Identifier(self.alias),
         )
 
@@ -388,14 +391,14 @@ class ArrayNode(RecursiveNode, StampableNode):
                 sql.SQL("CREATE TEMPORARY TABLE {temp} AS").format(temp=self.temp)
                 + sql.SQL("""
 SELECT
-    __id AS parent__id
+    __id AS p__id
     ,(ROW_NUMBER() OVER (ORDER BY (SELECT NULL)))::integer AS __id
     ,ord::smallint AS __o
     ,jsonb
     ,json_type
 FROM (
     SELECT
-        t.__id
+        j.__id
         ,a."value" AS jsonb
         ,jsonb_typeof(a."value") AS json_type
         ,a.ord
@@ -403,7 +406,7 @@ FROM (
     (
         SELECT """)
                 + self.json_value
-                + sql.SQL(""" AS ld_value FROM {source}
+                + sql.SQL(""" AS ld_value, __id FROM {source}
     ) j
     CROSS JOIN LATERAL jsonb_array_elements(j.ld_value) WITH ORDINALITY a("value", ord)
     WHERE jsonb_typeof(j.ld_value) = 'array'
@@ -420,19 +423,27 @@ SELECT
 FROM {temp}""").format(temp=self.temp)
 
             cur.execute(type_discovery.as_string())
-            self._children.append(OrdinalNode(self.ctx.array_prefix(self.temp)))
+            self._children.append(
+                OrdinalNode(self.ctx.array_prefix(self.temp, self.ctx.prop)),
+            )
             if row := cur.fetchone():
                 (jt, ojt) = cast("tuple[JsonType, JsonType]", row)
                 node: Node
                 if jt == "array" and ojt == "array":
-                    node = ArrayNode(self.ctx.array_prefix(self.temp), self)
+                    node = ArrayNode(
+                        self.ctx.array_prefix(self.temp, self.ctx.prop),
+                        self,
+                    )
                     self._children.append(node)
                 elif jt == "object" and ojt == "object":
-                    node = ObjectNode(self.ctx.array_prefix(self.temp), self)
+                    node = ObjectNode(
+                        self.ctx.array_prefix(self.temp, self.ctx.prop),
+                        self,
+                    )
                     self._children.append(node)
                 else:
                     node = TypedNode(
-                        self.ctx.array_prefix(self.temp),
+                        self.ctx.array_prefix(self.temp, self.ctx.prop),
                         jt,
                         ojt,
                     )
@@ -450,11 +461,14 @@ FROM {temp}""").format(temp=self.temp)
             parents.append(p)
         root = cast("RootNode", parents[-1])
         (output_table_name, output_table) = root.get_output_table(
-            "__" + "__".join(self.ctx.prefixes),
+            "__".join(self.ctx.prefixes) + (self.ctx.prop or ""),
         )
-        (_, parent_table) = root.get_output_table(
-            "__" + "__".join(cast("Node", parents[0]).ctx.prefixes),
-        )
+        if parents[0] == parents[-1]:
+            (_, parent_table) = root.get_output_table(None)
+        else:
+            (_, parent_table) = root.get_output_table(
+                "__" + "__".join(cast("Node", parents[0]).ctx.prefixes),
+            )
 
         def create_array_table(source_stmt: sql.SQL) -> sql.Composed:
             return (
@@ -471,11 +485,11 @@ SELECT
                     [
                         sql.Identifier("a", "__id"),
                         *[
-                            t.alias
+                            sql.Identifier("p", t.alias)
                             for p in reversed(parents)
                             for t in p.direct(TypedNode)
                         ],
-                        *[t.stmt for t in self.direct(TypedNode)],
+                        *[t.stmt for t in self.direct(FixedValueNode)],
                         *[
                             t.stmt
                             for o in self.descendents(ObjectNode)
