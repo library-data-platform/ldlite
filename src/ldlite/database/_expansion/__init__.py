@@ -1,167 +1,90 @@
 from __future__ import annotations
 
 from collections import deque
-from typing import TYPE_CHECKING
-
-from psycopg import sql
-
-from .nodes import ArrayNode, ObjectNode
+from typing import TYPE_CHECKING, cast
 
 if TYPE_CHECKING:
-    from .context import ExpandContext
+    from collections.abc import Callable, Iterator
+    from typing import NoReturn
+
+    from psycopg import sql
+    from tqdm import tqdm
 
 
-def expand_nonmarc(
-    root_name: str,
-    root_values: list[str],
-    ctx: ExpandContext,
-) -> list[tuple[str, sql.Composed]]:
-    (_, tables_to_create) = _expand_nonmarc(
-        ObjectNode(root_name, "", None, root_values),
-        0,
-        ctx,
-    )
-    return tables_to_create
+from .node import Conn, Node
+from .recursive_nodes import ArrayNode, ObjectNode, RecursiveNode, RootNode
 
 
-def _expand_nonmarc(  # noqa: PLR0915
-    root: ObjectNode,
-    count: int,
-    ctx: ExpandContext,
-) -> tuple[int, list[tuple[str, sql.Composed]]]:
-    ctx.scan_progress.total = (ctx.scan_progress.total or 0) + 1
-    ctx.scan_progress.refresh()
-    ctx.transform_progress.total = (ctx.transform_progress.total or 0) + 1
-    ctx.transform_progress.refresh()
-    initial_count = count
-    ctx.preprocess(ctx.conn, ctx.source_table, [root.identifier])
-    has_rows = root.unnest(
-        ctx,
-        ctx.source_table,
-        ctx.get_transform_table(count),
-        ctx.source_cte(False),
-    )
-    ctx.transform_progress.update(1)
-    if not has_rows:
-        return (0, [])
+def _non_srs_statements(
+    conn: Conn,
+    source_table: sql.Identifier,
+    output_table: Callable[[str | None], tuple[str, sql.Identifier]],
+    json_depth: int,
+    scan_progress: tqdm[NoReturn],
+) -> Iterator[tuple[str, Callable[[sql.SQL], sql.Composed]]]:
+    # Here be dragons! The nodes have inner state manipulations
+    # that violate the space/time continuum:
+    # * o.load_columns
+    # * a.make_temp
+    # * t.specify_type
+    # These all are expected to be called before generating the sql
+    # as they load/prepare database information.
+    # Because building up to the transformation statements takes a long time
+    # we're doing all that work up front to keep the time that
+    # a transaction is opened to a minimum (which is a leaky abstraction).
+    scan_progress.total = scan_progress.total if scan_progress.total is not None else 1
 
-    with ctx.conn.cursor() as cur:
-        cur.execute(
-            sql.SQL("DROP TABLE {previous_table}")
-            .format(previous_table=ctx.source_table)
-            .as_string(),
-        )
-
-    expand_children_of = deque([root])
-    while expand_children_of:
-        on = expand_children_of.popleft()
-        if ctx.transform_progress:
-            ctx.transform_progress.total += len(on.object_children)
-            ctx.transform_progress.refresh()
-        for c in on.object_children:
-            if len(c.parents) >= ctx.json_depth:
-                if c.parent is not None:
-                    c.parent.values.append(c.name)
-                continue
-            ctx.preprocess(ctx.conn, ctx.get_transform_table(count), [c.identifier])
-            c.unnest(
-                ctx,
-                ctx.get_transform_table(count),
-                ctx.get_transform_table(count + 1),
-                ctx.source_cte(False),
-            )
-            with ctx.conn.cursor() as cur:
-                cur.execute(
-                    sql.SQL("DROP TABLE {previous_table}")
-                    .format(previous_table=ctx.get_transform_table(count))
-                    .as_string(),
-                )
-            expand_children_of.append(c)
-            count += 1
-            ctx.transform_progress.update(1)
-
-    tables_to_create = []
-
-    new_source_table = ctx.get_transform_table(count)
-    arrays = root.descendents_oftype(ArrayNode)
-    ctx.transform_progress.total += len(arrays)
-    ctx.transform_progress.refresh()
-    ctx.preprocess(ctx.conn, new_source_table, [a.identifier for a in arrays])
-    for an in arrays:
-        if len(an.parents) >= ctx.json_depth:
-            continue
-        values = an.explode(
-            ctx.conn,
-            new_source_table,
-            ctx.get_transform_table(count + 1),
-            ctx.source_cte(True),
-        )
-        count += 1
-        ctx.transform_progress.update(1)
-
-        if an.is_object:
-            (sub_index, array_tables) = _expand_nonmarc(
-                ObjectNode(
-                    an.name,
-                    an.name,
-                    None,
-                    values,
-                ),
-                count + 1,
-                ctx.array_context(
-                    ctx.get_transform_table(count),
-                    ctx.json_depth - len(an.parents),
-                ),
-            )
-            count += sub_index
-            tables_to_create.extend(array_tables)
+    root = RootNode(source_table, output_table)
+    onodes: deque[ObjectNode] = deque([root])
+    while onodes:
+        o = onodes.popleft()
+        if o.depth < json_depth:
+            o.load_columns(conn)
+            scan_progress.total += len(o.direct(Node))
         else:
-            with ctx.conn.cursor() as cur:
-                (tname, tid) = ctx.get_output_table(an.name)
-                tables_to_create.append(
-                    (
-                        tname,
-                        sql.SQL(
-                            """
-CREATE TABLE {dest_table} AS
-"""
-                            + ctx.source_cte(False)
-                            + """
-SELECT {cols} FROM ld_source
-""",
-                        ).format(
-                            dest_table=tid,
-                            source_table=ctx.get_transform_table(count),
-                            cols=sql.SQL("\n    ,").join(
-                                [sql.Identifier(v) for v in [*values, an.name]],
-                            ),
-                        ),
-                    ),
-                )
+            o.make_jsonb()
+        scan_progress.update(1)
 
-    stamped_values = [
-        sql.Identifier(v) for n in root.descendents if n not in arrays for v in n.values
-    ]
+        onodes.extend(o.direct(ObjectNode))
+        anodes = deque(o.direct(ArrayNode))
+        while anodes:
+            a = anodes.popleft()
+            if a.depth < json_depth:
+                if n := a.make_temp(conn):
+                    if isinstance(n, ObjectNode):
+                        onodes.append(n)
+                    if isinstance(n, ArrayNode):
+                        anodes.append(n)
+                    scan_progress.total += 1
+                else:
+                    cast("RecursiveNode", a.parent).remove(a)
+            else:
+                a.make_jsonb()
 
-    with ctx.conn.cursor() as cur:
-        (tname, tid) = ctx.get_output_table(root.path)
-        tables_to_create.append(
-            (
-                tname,
-                sql.SQL(
-                    """
-CREATE TABLE {dest_table} AS
-"""
-                    + ctx.source_cte(False)
-                    + """
-SELECT {cols} FROM ld_source
-""",
-                ).format(
-                    dest_table=tid,
-                    source_table=new_source_table,
-                    cols=sql.SQL("\n    ,").join(stamped_values),
-                ),
-            ),
-        )
+            scan_progress.update(1)
 
-    return (count + 1 - initial_count, tables_to_create)
+    for t in root.typed_nodes():
+        t.specify_type(conn)
+        scan_progress.update(1)
+
+    yield root.create_statement
+    for a in root.descendents(ArrayNode):
+        yield a.create_statement
+
+
+def non_srs_statements(
+    conn: Conn,
+    source_table: sql.Identifier,
+    output_table: Callable[[str | None], tuple[str, sql.Identifier]],
+    json_depth: int,
+    scan_progress: tqdm[NoReturn],
+) -> list[tuple[str, Callable[[sql.SQL], sql.Composed]]]:
+    return list(
+        _non_srs_statements(
+            conn,
+            source_table,
+            output_table,
+            json_depth,
+            scan_progress,
+        ),
+    )

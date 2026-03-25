@@ -11,7 +11,7 @@ from psycopg import sql
 from tqdm import tqdm
 
 from . import Database
-from ._expansion.rewrite import non_srs_statements
+from ._expansion import non_srs_statements
 from ._prefix import Prefix
 
 if TYPE_CHECKING:
