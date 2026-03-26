@@ -25,7 +25,8 @@ jobs:
       - run: pdm install -G:all --lockfile pylock.toml
 
       # test
-      - run: pdm run test -k 'not test_srs'
+      #- run: pdm run test -k 'not test_srs'
+      - run: pdm run test
 
   test-minimal-deps:
     runs-on: ubuntu-latest
@@ -41,7 +42,8 @@ jobs:
       - run: pdm install -G:all --lockfile pylock.minimal.toml
 
       # test
-      - run: pdm run test -k 'not test_srs'
+      #- run: pdm run test -k 'not test_srs'
+      - run: pdm run test
 
   test-maximal-deps:
     runs-on: ubuntu-latest
@@ -57,4 +59,5 @@ jobs:
       - run: pdm install -G:all --lockfile pylock.maximal.toml
 
       # test
-      - run: pdm run test -k 'not test_srs'
+      #- run: pdm run test -k 'not test_srs'
+      - run: pdm run test
