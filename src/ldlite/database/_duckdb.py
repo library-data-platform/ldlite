@@ -86,9 +86,6 @@ CREATE OR REPLACE FUNCTION jsonb_each(j) AS TABLE (
 
         return total
 
-    def source_stmt(self, keep_source: bool) -> sql.SQL:  # noqa: ARG002
-        return sql.SQL("SELECT * FROM {source_table}")
-
 
 # DuckDB has some strong opinions about cursors that are different than postgres
 # https://github.com/duckdb/duckdb/issues/11018

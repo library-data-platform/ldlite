@@ -21,7 +21,7 @@ def _non_srs_statements(
     output_table: Callable[[str | None], tuple[str, sql.Identifier]],
     json_depth: int,
     scan_progress: tqdm[NoReturn],
-) -> Iterator[tuple[str, Callable[[sql.SQL], sql.Composed]]]:
+) -> Iterator[tuple[str, sql.Composed]]:
     # Here be dragons! The nodes have inner state manipulations
     # that violate the space/time continuum:
     # * o.load_columns
@@ -78,7 +78,7 @@ def non_srs_statements(
     output_table: Callable[[str | None], tuple[str, sql.Identifier]],
     json_depth: int,
     scan_progress: tqdm[NoReturn],
-) -> list[tuple[str, Callable[[sql.SQL], sql.Composed]]]:
+) -> list[tuple[str, sql.Composed]]:
     return list(
         _non_srs_statements(
             conn,

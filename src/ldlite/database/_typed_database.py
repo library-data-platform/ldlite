@@ -187,12 +187,6 @@ WHERE table_schema = $1 and table_name IN ($2, $3);""",
         column_names: list[sql.Identifier],
     ) -> None: ...
 
-    # TODO: Refactor this to use DELETE RETURNING when DuckDb resolves
-    # https://github.com/duckdb/duckdb/issues/3417
-    # Only postgres supports it which is why we have an abstraction here
-    @abstractmethod
-    def source_stmt(self, keep_source: bool) -> sql.SQL: ...
-
     def expand_prefix(
         self,
         prefix: str,
@@ -236,11 +230,8 @@ WHERE table_schema = $1 and table_name IN ($2, $3);""",
             with self._begin(conn):
                 self._drop_extracted_tables(conn, pfx)
                 with conn.cursor() as cur:
-                    for i, (_, table) in enumerate(tables_to_create):
-                        create_table = table(
-                            self.source_stmt(keep_source=(i == 0 and keep_raw)),
-                        )
-                        cur.execute(create_table.as_string())
+                    for _, table in tables_to_create:
+                        cur.execute(table.as_string())
                         transform_progress.update(1)
 
                 # duckdb can't drop the raw table when creating the output table

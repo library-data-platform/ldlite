@@ -102,9 +102,3 @@ class PostgresDatabase(TypedDatabase[psycopg.Connection]):
                     column_name=sql.SQL(",").join(column_names),
                 ),
             )
-
-    def source_stmt(self, keep_source: bool) -> sql.SQL:
-        if keep_source:
-            return sql.SQL("SELECT * FROM {source_table}")
-
-        return sql.SQL("DELETE FROM {source_table} RETURNING *")

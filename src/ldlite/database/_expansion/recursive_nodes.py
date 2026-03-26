@@ -200,8 +200,7 @@ ORDER BY MAX(ord), COUNT(*);
 class StampableTable(ABC):
     @property
     @abstractmethod
-    # The Callable construct is necessary until DuckDB implements CTAS RETURNING
-    def create_statement(self) -> tuple[str, Callable[[sql.SQL], sql.Composed]]: ...
+    def create_statement(self) -> tuple[str, sql.Composed]: ...
 
 
 class RootNode(ObjectNode, StampableTable):
@@ -219,36 +218,29 @@ class RootNode(ObjectNode, StampableTable):
         self.get_output_table = get_output_table
 
     @property
-    def create_statement(self) -> tuple[str, Callable[[sql.SQL], sql.Composed]]:
+    def create_statement(self) -> tuple[str, sql.Composed]:
         (output_table_name, output_table) = self.get_output_table(None)
 
-        def create_root_table(source_stmt: sql.SQL) -> sql.Composed:
-            return (
-                sql.SQL("""
+        return (
+            output_table_name,
+            sql.SQL("""
 CREATE TABLE {output_table} AS
-WITH root_source AS (""").format(output_table=output_table)
-                + source_stmt.format(source_table=self.source)
-                + sql.SQL(
-                    """)
 SELECT
-    """,
-                )
-                + sql.SQL("\n    ,").join(
-                    [
-                        sql.Identifier("__id"),
-                        *[t.stmt for t in self.direct(TypedNode)],
-                        *[
-                            t.stmt
-                            for o in self.descendents(ObjectNode, ArrayNode)
-                            for t in o.direct(TypedNode)
-                        ],
+    """).format(output_table=output_table)
+            + sql.SQL("\n    ,").join(
+                [
+                    sql.Identifier("__id"),
+                    *[t.stmt for t in self.direct(TypedNode)],
+                    *[
+                        t.stmt
+                        for o in self.descendents(ObjectNode, ArrayNode)
+                        for t in o.direct(TypedNode)
                     ],
-                )
-                + sql.SQL("""
-FROM root_source""")
+                ],
             )
-
-        return (output_table_name, create_root_table)
+            + sql.SQL("""
+FROM {source_table}""").format(source_table=self.source),
+        )
 
 
 class ArrayNode(RecursiveNode, StampableTable):
@@ -332,7 +324,7 @@ FROM {temp}""").format(temp=self.temp)
         return None
 
     @property
-    def create_statement(self) -> tuple[str, Callable[[sql.SQL], sql.Composed]]:
+    def create_statement(self) -> tuple[str, sql.Composed]:
         table_parent: RecursiveNode = self
         parents: list[RecursiveNode] = []
         for p in self.parents:
@@ -347,17 +339,15 @@ FROM {temp}""").format(temp=self.temp)
         else:
             (_, parent_table) = root.get_output_table(table_parent.prefix)
 
-        def create_array_table(source_stmt: sql.SQL) -> sql.Composed:
-            return (
-                sql.SQL("""
+        return (
+            output_table_name,
+            (
+                sql.SQL(
+                    """
 CREATE TABLE {output_table} AS
-WITH array_source AS (""").format(output_table=output_table)
-                + source_stmt.format(source_table=self.temp)
-                + sql.SQL(
-                    """)
 SELECT
     """,
-                )
+                ).format(output_table=output_table)
                 + sql.SQL("\n    ,").join(
                     [
                         sql.Identifier("a", "__id"),
@@ -375,10 +365,9 @@ SELECT
                     ],
                 )
                 + sql.SQL("""
-FROM array_source a
+FROM {source_table} a
 JOIN {parent_table} p ON
     a.p__id = p.__id;
-""").format(parent_table=parent_table)
-            )
-
-        return (output_table_name, create_array_table)
+""").format(source_table=self.temp, parent_table=parent_table)
+            ),
+        )
