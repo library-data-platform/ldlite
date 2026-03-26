@@ -200,13 +200,6 @@ WHERE table_schema = $1 and table_name IN ($2, $3);""",
                 conn.commit()
                 return []
 
-        transform_progress = (
-            transform_progress
-            if transform_progress is not None
-            else tqdm(disable=True, total=0)
-        )
-        transform_progress.total = 1
-
         with closing(self._conn_factory(False)) as conn:
             tables_to_create = non_srs_statements(
                 conn,
@@ -217,7 +210,21 @@ WHERE table_schema = $1 and table_name IN ($2, $3);""",
                 if scan_progress is not None
                 else tqdm(disable=True, total=0),
             )
-            transform_progress.total += len(tables_to_create) + 1
+
+            transform_progress = (
+                transform_progress
+                if transform_progress is not None
+                else tqdm(disable=True, total=0)
+            )
+            transform_progress.total = (
+                (
+                    transform_progress.total
+                    if transform_progress.total is not None
+                    else 0
+                )
+                + len(tables_to_create)
+                + 1
+            )
             transform_progress.update(1)
 
             with self._begin(conn):
@@ -227,7 +234,6 @@ WHERE table_schema = $1 and table_name IN ($2, $3);""",
                         cur.execute(table.as_string())
                         transform_progress.update(1)
 
-                # duckdb can't drop the raw table when creating the output table
                 if not keep_raw:
                     self._drop_raw_table(conn, pfx)
 
