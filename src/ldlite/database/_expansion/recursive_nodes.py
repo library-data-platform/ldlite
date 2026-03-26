@@ -239,7 +239,11 @@ SELECT
                 ],
             )
             + sql.SQL("""
-FROM {source_table}""").format(source_table=self.source),
+FROM {source_table};
+ANALYZE {output_table} (__id);""").format(
+                source_table=self.source,
+                output_table=output_table,
+            ),
         )
 
 
@@ -257,8 +261,8 @@ class ArrayNode(RecursiveNode, StampableTable):
     def make_temp(self, conn: Conn) -> Node | None:
         with conn.cursor() as cur:
             expansion = (
-                sql.SQL("CREATE TEMPORARY TABLE {temp} AS").format(temp=self.temp)
-                + sql.SQL("""
+                sql.SQL("""
+CREATE TEMPORARY TABLE {temp} AS
 SELECT
     __id AS p__id
     ,(ROW_NUMBER() OVER (ORDER BY (SELECT NULL)))::integer AS __id
@@ -273,15 +277,16 @@ FROM (
         ,a.ord
     FROM
     (
-        SELECT """)
+        SELECT """).format(temp=self.temp)
                 + self.path
                 + sql.SQL(""" AS ld_value, __id FROM {source}
     ) j
     CROSS JOIN LATERAL jsonb_array_elements(j.ld_value) WITH ORDINALITY a("value", ord)
     WHERE jsonb_typeof(j.ld_value) = 'array'
 ) expansion
-WHERE json_type <> 'null'
-""").format(source=self.source)
+WHERE json_type <> 'null';
+ANALYZE {temp} (p__id, array_jsonb, json_type);
+""").format(source=self.source, temp=self.temp)
             )
             cur.execute(expansion.as_string())
 
@@ -368,6 +373,11 @@ SELECT
 FROM {source_table} a
 JOIN {parent_table} p ON
     a.p__id = p.__id;
-""").format(source_table=self.temp, parent_table=parent_table)
+ANALYZE {output_table} (__id);
+""").format(
+                    source_table=self.temp,
+                    parent_table=parent_table,
+                    output_table=output_table,
+                )
             ),
         )

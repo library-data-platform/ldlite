@@ -85,20 +85,3 @@ class PostgresDatabase(TypedDatabase[psycopg.Connection]):
             conn.commit()
 
         return next(pkey) - 1
-
-    def preprocess_source_table(
-        self,
-        conn: psycopg.Connection,
-        table_name: sql.Identifier,
-        column_names: list[sql.Identifier],
-    ) -> None:
-        if len(column_names) == 0:
-            return
-
-        with conn.cursor() as cur:
-            cur.execute(
-                sql.SQL("ANALYZE {table_name} ({column_name})").format(
-                    table_name=table_name,
-                    column_name=sql.SQL(",").join(column_names),
-                ),
-            )

@@ -180,13 +180,6 @@ WHERE table_schema = $1 and table_name IN ($2, $3);""",
                 ).as_string(),
             )
 
-    def preprocess_source_table(
-        self,
-        conn: DB,
-        table_name: sql.Identifier,
-        column_names: list[sql.Identifier],
-    ) -> None: ...
-
     def expand_prefix(
         self,
         prefix: str,
