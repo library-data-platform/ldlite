@@ -40,9 +40,9 @@ from typing import TYPE_CHECKING, NoReturn, cast
 import duckdb
 import psycopg
 from httpx_folio.auth import FolioParams
+from psycopg import sql
 from tqdm import tqdm
 
-from ._csv import to_csv
 from ._folio import FolioClient
 from ._jsonx import Attr, transform_json
 from ._select import select
@@ -148,6 +148,7 @@ class LDLite:
         from .database._postgres import PostgresDatabase  # noqa: PLC0415
 
         self.dbtype = DBType.POSTGRES
+        self._dsn = dsn
         db = psycopg.connect(dsn)
         self.db = cast("dbapi.DBAPIConnection", db)
         self._database = PostgresDatabase(dsn)
@@ -529,13 +530,29 @@ class LDLite:
             self._check_db()
             return
 
-        autocommit(self.db, self.dbtype, False)
-        try:
-            to_csv(self.db, self.dbtype, table, filename, header)
-            if (pgdb := as_postgres(self.db, self.dbtype)) is not None:
-                pgdb.rollback()
-        finally:
-            autocommit(self.db, self.dbtype, True)
+        if self.dbtype == DBType.POSTGRES:
+            duck = duckdb.connect()
+            duck.sql("INSTALL postgres;")
+            duck.sql("LOAD postgres;")
+            duck.sql(f"ATTACH '{self._dsn}' AS pg (TYPE postgres)")
+            if len(prefix := table.split(".")) == 1:
+                table_id = sql.Identifier("pg", "public", prefix[0])
+            else:
+                table_id = sql.Identifier("pg", *prefix)
+        else:
+            duck = cast("duckdb.DuckDBPyConnection", self.db.cursor())
+            table_id = sql.Identifier(*table.split("."))
+
+        export = (
+            sql.SQL("COPY (SELECT * FROM {table}) TO {file} WITH ").format(
+                table=table_id,
+                file=sql.Literal(filename),
+            )
+            + sql.SQL("(HEADER, DELIMITER ',')")
+            if header
+            else sql.SQL("(DELIMETER ',')")
+        )
+        duck.execute(export.as_string())
 
     def to_csv(self) -> NoReturn:  # pragma: nocover
         """Deprecated; use export_csv()."""
