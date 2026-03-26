@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from collections import deque
-from typing import TYPE_CHECKING, cast
+from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from collections.abc import Callable, Iterator
@@ -12,7 +12,7 @@ if TYPE_CHECKING:
 
 
 from .node import Conn, Node
-from .recursive_nodes import ArrayNode, ObjectNode, RecursiveNode, RootNode
+from .recursive_nodes import ArrayNode, ObjectNode, RootNode
 
 
 def _non_srs_statements(
@@ -38,28 +38,34 @@ def _non_srs_statements(
     onodes: deque[ObjectNode] = deque([root])
     while onodes:
         o = onodes.popleft()
-        if o.depth < json_depth:
-            o.load_columns(conn)
-            scan_progress.total += len(o.direct(Node))
-        else:
+
+        if o.depth >= json_depth:
             o.make_jsonb()
+            scan_progress.update(1)
+            continue
+
+        o.load_columns(conn)
+        scan_progress.total += len(o.direct(Node))
         scan_progress.update(1)
 
         onodes.extend(o.direct(ObjectNode))
         anodes = deque(o.direct(ArrayNode))
         while anodes:
             a = anodes.popleft()
-            if a.depth < json_depth:
-                if n := a.make_temp(conn):
-                    if isinstance(n, ObjectNode):
-                        onodes.append(n)
-                    if isinstance(n, ArrayNode):
-                        anodes.append(n)
-                    scan_progress.total += 1
-                else:
-                    cast("RecursiveNode", a.parent).remove(a)
-            else:
+
+            if a.depth >= json_depth:
                 a.make_jsonb()
+                scan_progress.update(1)
+                continue
+
+            if n := a.make_temp(conn):
+                if isinstance(n, ObjectNode):
+                    onodes.append(n)
+                if isinstance(n, ArrayNode):
+                    anodes.append(n)
+                scan_progress.total += 1
+            else:
+                a.unparent()
 
             scan_progress.update(1)
 

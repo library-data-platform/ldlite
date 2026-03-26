@@ -63,8 +63,15 @@ class RecursiveNode(Node):
 
         return depth
 
-    def replace(self, original: Node, replacement: Node) -> None:
+    def replace(self, original: Node, replacement: Node | None) -> None:
+        if replacement is None:
+            self._children.remove(original)
+            return
+
         self._children = [(replacement if n == original else n) for n in self._children]
+
+    def unparent(self) -> None:
+        cast("RecursiveNode", self.parent).replace(self, None)
 
     def make_jsonb(self) -> None:
         cast("RecursiveNode", self.parent).replace(
@@ -142,9 +149,6 @@ class RecursiveNode(Node):
 
     def typed_nodes(self) -> list[TypedNode]:
         return list(self._typed_nodes())
-
-    def remove(self, node: RecursiveNode) -> None:
-        self._children.remove(node)
 
 
 class ObjectNode(RecursiveNode):
