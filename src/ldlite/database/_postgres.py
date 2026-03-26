@@ -80,6 +80,11 @@ class PostgresDatabase(TypedDatabase[psycopg.Connection]):
                     rb.extend(r)
                     copy.write_row((next(pkey).to_bytes(4, "big"), rb))
 
+            with conn.cursor() as cur:
+                cur.execute(
+                    sql.SQL("ANALYZE {table} (jsonb);").format(table=pfx.raw_table.id),
+                )
+
             total = next(pkey) - 1
             self._download_complete(conn, pfx, total, download_started)
             conn.commit()
