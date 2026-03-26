@@ -45,10 +45,8 @@ from tqdm import tqdm
 
 from ._folio import FolioClient
 from ._jsonx import Attr, transform_json
-from ._select import select
 from ._sqlx import (
     DBType,
-    as_postgres,
     autocommit,
     sqlid,
 )
@@ -502,16 +500,32 @@ class LDLite:
             self._check_db()
             return
 
-        f = sys.stdout
-        if self._verbose:
-            print("ldlite: reading from table: " + table, file=sys.stderr)
-        autocommit(self.db, self.dbtype, False)
-        try:
-            select(self.db, self.dbtype, table, columns, limit, f)
-            if (pgdb := as_postgres(self.db, self.dbtype)) is not None:
-                pgdb.rollback()
-        finally:
-            autocommit(self.db, self.dbtype, True)
+        if self.dbtype == DBType.POSTGRES:
+            duck = duckdb.connect()
+            duck.sql("INSTALL postgres;")
+            duck.sql("LOAD postgres;")
+            duck.sql(f"ATTACH '{self._dsn}' AS pg (TYPE postgres)")
+            if len(prefix := table.split(".")) == 1:
+                table_id = sql.Identifier("pg", "public", prefix[0])
+            else:
+                table_id = sql.Identifier("pg", *prefix)
+        else:
+            duck = cast("duckdb.DuckDBPyConnection", self.db.cursor())
+            table_id = sql.Identifier(*table.split("."))
+
+        cols = (
+            sql.SQL("*")
+            if columns is None
+            else sql.SQL(",").join([sql.Identifier(c) for c in columns])
+        )
+        export = sql.SQL("SELECT {cols} FROM {table}").format(
+            table=table_id,
+            cols=cols,
+        ) + (
+            sql.SQL("LIMIT ") + sql.Literal(limit) if limit is not None else sql.SQL("")
+        )
+        print(export.as_string())
+        duck.sql(export.as_string()).show()
 
     def export_csv(self, filename: str, table: str, header: bool = True) -> None:
         """Export a table in the reporting database to a CSV file.
