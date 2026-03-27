@@ -80,30 +80,13 @@ class PostgresDatabase(TypedDatabase[psycopg.Connection]):
                     rb.extend(r)
                     copy.write_row((next(pkey).to_bytes(4, "big"), rb))
 
+            with conn.cursor() as cur:
+                cur.execute(
+                    sql.SQL("ANALYZE {table} (jsonb);").format(table=pfx.raw_table.id),
+                )
+
             total = next(pkey) - 1
             self._download_complete(conn, pfx, total, download_started)
             conn.commit()
 
         return next(pkey) - 1
-
-    def preprocess_source_table(
-        self,
-        conn: psycopg.Connection,
-        table_name: sql.Identifier,
-        column_names: list[sql.Identifier],
-    ) -> None:
-        if len(column_names) == 0:
-            return
-
-        with conn.cursor() as cur:
-            cur.execute(
-                sql.SQL("ANALYZE {table_name} ({column_name})").format(
-                    table_name=table_name,
-                    column_name=sql.SQL(",").join(column_names),
-                ),
-            )
-
-    def source_table_cte_stmt(self, keep_source: bool) -> str:
-        if keep_source:
-            return "WITH ld_source AS (SELECT * FROM {source_table})"
-        return "WITH ld_source AS (DELETE FROM {source_table} RETURNING *)"

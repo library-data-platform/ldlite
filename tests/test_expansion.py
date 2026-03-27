@@ -52,6 +52,7 @@ def case_typed_columns() -> ExpansionTC:
     "timestamptz": "2028-01-23T00:00:00.000+00:00",
     "integer": 1,
     "numeric": 1.2,
+    "bigint": 1774374169585,
     "text": "value",
     "boolean": false,
     "uuid": "88888888-8888-1888-8888-888888888888"
@@ -60,9 +61,10 @@ def case_typed_columns() -> ExpansionTC:
             b"""
 {
     "id": "id2",
-    "timestamptz": "2025-06-20T17:37:58.675+00:00",
+    "timestamptz": "2025-06-20T17:37:58.675",
     "integer": 2,
-    "numeric": 2.3,
+    "numeric": 2,
+    "bigint": 2,
     "text": "00000000-0000-1000-A000-000000000000",
     "boolean": false,
     "uuid": "11111111-1111-1111-8111-111111111111"
@@ -82,6 +84,7 @@ WHERE TABLE_NAME = 'prefix__t' AND COLUMN_NAME = '{a[0]}'
             for a in [
                 ("integer", "integer", "INTEGER"),
                 ("numeric", "numeric", "DECIMAL(18,3)"),
+                ("bigint", "bigint", "BIGINT"),
                 ("text", "text", "VARCHAR"),
                 ("uuid", "uuid", "UUID"),
                 ("boolean", "boolean", "BOOLEAN"),

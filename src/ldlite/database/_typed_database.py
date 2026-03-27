@@ -1,4 +1,3 @@
-# pyright: reportArgumentType=false
 from __future__ import annotations
 
 from abc import abstractmethod
@@ -12,8 +11,7 @@ from psycopg import sql
 from tqdm import tqdm
 
 from . import Database
-from ._expansion import expand_nonmarc
-from ._expansion.context import ExpandContext
+from ._expansion import non_srs_statements
 from ._prefix import Prefix
 
 if TYPE_CHECKING:
@@ -182,19 +180,6 @@ WHERE table_schema = $1 and table_name IN ($2, $3);""",
                 ).as_string(),
             )
 
-    def preprocess_source_table(
-        self,
-        conn: DB,
-        table_name: sql.Identifier,
-        column_names: list[sql.Identifier],
-    ) -> None: ...
-
-    # TODO: Refactor this to use DELETE RETURNING when DuckDb resolves
-    # https://github.com/duckdb/duckdb/issues/3417
-    # Only postgres supports it which is why we have an abstraction here
-    @abstractmethod
-    def source_table_cte_stmt(self, keep_source: bool) -> str: ...
-
     def expand_prefix(
         self,
         prefix: str,
@@ -216,83 +201,67 @@ WHERE table_schema = $1 and table_name IN ($2, $3);""",
                 return []
 
         with closing(self._conn_factory(False)) as conn:
-            with conn.cursor() as cur:
-                cur.execute(
-                    sql.SQL(
-                        """
-CREATE TEMP TABLE {dest_table} AS
-"""
-                        + self.source_table_cte_stmt(keep_source=keep_raw)
-                        + """
-SELECT * from ld_source;
-""",
-                    )
-                    .format(
-                        dest_table=pfx.origin_table,
-                        source_table=pfx.raw_table.id,
-                    )
-                    .as_string(),
-                )
-
-            tables_to_create = expand_nonmarc(
-                "jsonb",
-                ["__id"],
-                ExpandContext(
-                    conn,
-                    pfx.origin_table,
-                    json_depth,
-                    pfx.transform_table,
-                    pfx.output_table,
-                    self.preprocess_source_table,  # type: ignore [arg-type]
-                    self.source_table_cte_stmt,
-                    scan_progress if scan_progress is not None else tqdm(disable=True),
-                    transform_progress
-                    if transform_progress is not None
-                    else tqdm(disable=True),
-                ),
+            tables_to_create = non_srs_statements(
+                conn,
+                pfx.raw_table[1],
+                pfx.output_table,
+                json_depth,
+                scan_progress
+                if scan_progress is not None
+                else tqdm(disable=True, total=0),
             )
+
+            transform_progress = (
+                transform_progress
+                if transform_progress is not None
+                else tqdm(disable=True, total=0)
+            )
+            transform_progress.total = (
+                (
+                    transform_progress.total
+                    if transform_progress.total is not None
+                    else 0
+                )
+                + len(tables_to_create)
+                + 1
+            )
+            transform_progress.update(1)
 
             with self._begin(conn):
                 self._drop_extracted_tables(conn, pfx)
+                with conn.cursor() as cur:
+                    for _, table in tables_to_create:
+                        cur.execute(table.as_string())
+                        transform_progress.update(1)
+
                 if not keep_raw:
                     self._drop_raw_table(conn, pfx)
-                with conn.cursor() as cur:
-                    for table in tables_to_create:
-                        cur.execute(table[1].as_string())
 
+                total = 0
                 with conn.cursor() as cur:
-                    cur.execute(
-                        sql.SQL(
-                            """
-CREATE TABLE {catalog_table} (
-    table_name text
-)
-""",
-                        )
-                        .format(catalog_table=pfx.catalog_table.id)
-                        .as_string(),
-                    )
-                    total = 0
+                    create_catalog = sql.SQL(
+                        """CREATE TABLE {catalog_table} (table_name text)""",
+                    ).format(catalog_table=pfx.catalog_table.id)
+                    cur.execute(create_catalog.as_string())
                     if len(tables_to_create) > 0:
+                        insert_catalog = sql.SQL(
+                            "INSERT INTO {catalog_table} VALUES ($1)",
+                        ).format(catalog_table=pfx.catalog_table.id)
                         cur.executemany(
-                            sql.SQL("INSERT INTO {catalog_table} VALUES ($1)")
-                            .format(
-                                catalog_table=pfx.catalog_table.id,
-                            )
-                            .as_string(),
+                            insert_catalog.as_string(),
                             [(pfx.catalog_table_row(t[0]),) for t in tables_to_create],
                         )
 
-                        cur.execute(
-                            sql.SQL("SELECT COUNT(*) FROM {table}")
-                            .format(table=pfx.output_table("").id)
-                            .as_string(),
+                        count = sql.SQL("SELECT COUNT(*) FROM {table}").format(
+                            table=pfx.output_table(None).id,
                         )
+                        cur.execute(count.as_string())
                         total = cast("tuple[int]", cur.fetchone())[0]
+                    transform_progress.update(1)
 
                 self._transform_complete(conn, pfx, total, transform_started)
 
-        return [t[0] for t in tables_to_create]
+        return [pfx.catalog_table_row(t[0]) for t in tables_to_create]
 
     def index_prefix(self, prefix: str, progress: tqdm[NoReturn] | None = None) -> None:
         pfx = Prefix(prefix)
@@ -422,6 +391,7 @@ UPDATE "ldlite_system"."load_history_v1" SET
     "final_rowcount" = $2
     ,"transform_complete" = $3
     ,"transform_time" = $4
+    ,"index_time" = NULL
     ,"data_refresh_start" = "load_start"
     ,"data_refresh_end" = "download_complete"
 WHERE "table_prefix" = $1
