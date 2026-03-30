@@ -104,9 +104,10 @@ SELECT
   ,COALESCE(query_text, 'cql.allRecords=1') AS query_text
   ,final_rowcount AS rowcount
   ,pg_size_pretty(SUM(t.table_size)) AS total_size
-  ,TO_CHAR(data_refresh_start AT TIME ZONE 'America/New_York', 'YYYY/MM/DD HH:MI AM') AS data_refresh_start
-  ,TO_CHAR(data_refresh_end AT TIME ZONE 'America/New_York', 'YYYY/MM/DD HH:MI AM') AS data_refresh_end
+  ,TO_CHAR(data_refresh_start AT TIME ZONE 'America/New_York', 'YYYY/MM/DD HH:MI AM') AS has_all_changes_before
+  ,TO_CHAR(data_refresh_end AT TIME ZONE 'America/New_York', 'YYYY/MM/DD HH:MI AM') AS has_no_changes_after
   ,EXTRACT(EPOCH FROM data_refresh_end) AS refresh_sort
+  ,SUM(t.table_size) AS size_sort
 FROM ldlite_system.load_history_v1 h
 CROSS JOIN LATERAL
 (
@@ -123,6 +124,7 @@ CROSS JOIN LATERAL
     t.table_name LIKE (h.table_prefix || '%')
   )
 ) t
+WHERE final_rowcount IS NOT NULL
 GROUP BY 1, 2, 3, 4, 6, 7, 8
 ORDER BY 8 DESC
 ```

@@ -17,7 +17,7 @@ Please see [MIGRATING.md](./MIGRATING.md) for information on breaking changes.
 
 ### Removed
 
-## [4.0.0] - March 2026
+## [4.0.0] - April
 
 ### Fixed
 * Invalid UTF8 strings when transforming json
@@ -34,9 +34,11 @@ Please see [MIGRATING.md](./MIGRATING.md) for information on breaking changes.
   * text -> timestamptz
   * numeric -> numeric or bigint or integer
 * [Breaking] The connect_db_postgres method now returns a psycopg3 connection
+* [Possibly Breaking] `select` method uses duckdb's `show` method
+* [Possibly Breaking] `export_csv` method uses duckdb's `COPY TO output.csv`
 
 ### Removed
-* [Breaking] Support for dependency versions less than the new minimum
+* [Breaking] Support for dependency versions less than the new minimum version
   * Postgres - 14
   * Python - 3.10
   * Duckdb - 1.3
