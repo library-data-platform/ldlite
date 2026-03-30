@@ -557,6 +557,7 @@ class LDLite:
             duck = cast("duckdb.DuckDBPyConnection", self.db.cursor())
             table_id = sql.Identifier(*table.split("."))
 
+        print(type(filename))
         export = (
             sql.SQL("COPY (SELECT * FROM {table}) TO {file} WITH ").format(
                 table=table_id,
@@ -566,6 +567,7 @@ class LDLite:
             if header
             else sql.SQL("(DELIMETER ',')")
         )
+        print(export.as_string())
         duck.execute(export.as_string())
 
     def to_csv(self) -> NoReturn:  # pragma: nocover
