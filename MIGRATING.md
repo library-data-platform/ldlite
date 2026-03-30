@@ -24,37 +24,45 @@ This worked well enough for small tables but performance really broke down for t
 For example, it took 6 hours each night to transform Five College's Circulation records and over 34 hours each weekend to transform our Instance records.
 
 4.0.0 has completely rebuilt the transformation logic to utilize SQL native json processing and set-operations.
-The transform time is on average 90% faster, for example Circulation now takes 20 minutes and Instances take.
+The transform time is on average 95% faster, for example Circulation now takes 8 minutes and Instances take 1.5 hours.
 While performance is not a "feature" in and of itself this change allows for more frequent loads and fresher data.
 
 Another positive to come from the rebuild is that the transformation code is no longer a scary black box.
 Better data type inference has been a common request which was always "technically" possible but difficult to implement and test.
 The new transformation logic includes more accurate datatype detection and high-performance conversion in SQL.
-In addition to simpler and faster queries, more accurate datatypes massively reduces the size of the resulting database.
-Our database is X% smaller with data stored as the appropriate types.
+
+_Another_ positive is that the data is now replaced transactionally.
+If LDLite fails to download or transform the existing data will remain in place (freshness can be checked in the ldlite_system.load_history_v1 table).
 
 SQLite support had to be removed to make this rebuild possible as it wasn't possible to write SQL compatible with all three of postgres, sqlite, and duckdb.
+Postgres 14+ and duckdb 1.14+ are now required as they contain features necessary for the rebuild.
+These will be supported as long as they are maintained by their respective projects.
+One side effect of increasing the minimum duckdb version is that the `select` and `export_csv` methods can now use the built-in functionality.
+You will see a change to the output format of both of these methods.
 
 While not a breaking change, there is one new feature to call out in more detail.
-You'll find a new `ldlite_system` schema.
-In this schema are some important functions, please do not modify them.
-You'll also find a new table load_history_v1 that records runtime information about each load performed.
+You'll find a new `ldlite_system` schema with a table `load_history_v1` that records runtime information about each load performed.
 Please see the README.md file for more documentation on this new table.
 
 The minimum supported python version is now 3.10, this has been increased from python 3.9 (which became end of life in October 2025).
 LDLite will stop supporting python 3.10 when it becames end of life itself in October 2026.
 
-Lastly, excel export has been removed.
+Lastly, `export_excel` has been removed.
 
 ##### Steps to upgrade from 3.X.X
 Please refer to the [official python docs](https://docs.python.org/release/3.10.20/using/index.html) for guidance on installing at least python 3.10.
 You can use `python3 --version` to check which version you have currently installed.
 
 This new release places more load on the Postgres server and less on the server running python.
-One "trick" previously used to speed up transformation was to start multiple ldlite processes in parallel.
-This is no longer necessary and will place too much load on the Postgres server.
-Only one LDLite process should be running at a time.
+One "trick" previously used to speed up transformation was to start 4-6 ldlite processes in parallel.
+This is no longer necessary and may place too much load on the postgres server if multiple tables are being transformed at once.
 If you have the ability, reallocating resources (especially cpu) to the Postgres server is recommended.
+The `work_mem` and `max_parallel_workers_per_gather` settings are also worth looking at.
+Because of the transactional replacement, you will need enough free disk space on postgres to store an extra copy of the largest tables.
+This is probably Instances, for Five Colleges our Instances are ~50gb and require ~80gb of free disk space to transform.
+
+If you have any issues with the new transform you can pass the `use_legacy_transform` parameter to the query method.
+This parameter will stop working in a future major release of LDLite.
 
 For the most part, the datatype changes should not be breaking but there are scenarios where it can be
 * Using `TO_TIMESTAMP(metadata_updated_date, 'YYYY-MM-DDTHH24:MI:SS.MS+OF')` instead of `metadata_updated_date::timestamptz`
