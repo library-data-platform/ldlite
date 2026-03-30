@@ -1,10 +1,17 @@
+from __future__ import annotations
+
 from dataclasses import astuple, dataclass
-from typing import cast
+from typing import TYPE_CHECKING, cast
+from uuid import uuid4
 
 import httpx
 import pytest
-from httpx_folio.auth import FolioParams
 from pytest_cases import parametrize_with_cases
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
+
+    from httpx_folio.auth import FolioParams
 
 
 @dataclass(frozen=True)
@@ -103,6 +110,52 @@ class TestIntegration:
         ld.connect_db()
         ld.query(table="g", path="/groups")
         ld.select(table="g__t")
+
+    def test_ok_postgres(
+        self,
+        folio_params: tuple[bool, FolioParams],
+        pg_dsn: None | Callable[[str], str],
+    ) -> None:
+        if pg_dsn is None:
+            pytest.skip("Specify the pg host using --pg-host to run")
+
+        from ldlite import LDLite as uut
+
+        ld = uut()
+        ld.connect_folio(*astuple(folio_params[1]))
+        ld.connect_db_postgresql(pg_dsn(str(uuid4()).split("-")[0]))
+        ld.query(table="g", path="/groups")
+        ld.select(table="g__t")
+
+    def test_ok_export_csv(
+        self,
+        folio_params: tuple[bool, FolioParams],
+        tmpdir: str,
+    ) -> None:
+        from ldlite import LDLite as uut
+
+        ld = uut()
+        ld.connect_folio(*astuple(folio_params[1]))
+        ld.connect_db()
+        ld.query(table="g", path="/groups")
+        ld.export_csv(str(tmpdir + "/g.csv"), "g__t")
+
+    def test_ok_export_csv_postgres(
+        self,
+        folio_params: tuple[bool, FolioParams],
+        pg_dsn: None | Callable[[str], str],
+        tmpdir: str,
+    ) -> None:
+        if pg_dsn is None:
+            pytest.skip("Specify the pg host using --pg-host to run")
+
+        from ldlite import LDLite as uut
+
+        ld = uut()
+        ld.connect_folio(*astuple(folio_params[1]))
+        ld.connect_db_postgresql(pg_dsn(str(uuid4()).split("-")[0]))
+        ld.query(table="g", path="/groups")
+        ld.export_csv(str(tmpdir + "/g.csv"), "g__t")
 
     def test_no_connect_folio(self) -> None:
         from ldlite import LDLite as uut
