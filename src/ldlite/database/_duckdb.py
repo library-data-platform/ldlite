@@ -47,7 +47,14 @@ CREATE OR REPLACE FUNCTION jsonb_array_elements(j) AS TABLE (
 
 CREATE OR REPLACE FUNCTION jsonb_each(j) AS TABLE (
     SELECT key, value, rowid AS "ordinality" FROM main.json_each(j)
-)
+);
+
+CREATE OR REPLACE FUNCTION scale(n) AS (
+    CASE
+        WHEN n = n::bigint THEN 0
+        ELSE 1
+    END
+);
 """,
             )
 

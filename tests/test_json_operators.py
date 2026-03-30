@@ -72,6 +72,57 @@ FROM j;""",
 
 @parametrize(
     p=[
+        ("1", False),
+        ("1.2", True),
+        ("0.03", True),
+    ],
+)
+def case_scale(p: tuple[Any, ...]) -> JsonTC:
+    return JsonTC(
+        """
+SELECT (SCALE($1::numeric){assertion})
+FROM j;""",
+        p[:1],
+        """ > 0) = $2 AND (TRUE""",
+        p[1:],
+    )
+
+
+@parametrize(
+    p=[
+        ("10.0", True),
+    ],
+)
+def case_whole_scale_postgres(p: tuple[Any, ...]) -> JsonTC:
+    return JsonTC(
+        """
+SELECT (SCALE($1::numeric){assertion})
+FROM j;""",
+        p[:1],
+        """ > 0) = $2 AND (TRUE""",
+        p[1:],
+    )
+
+
+# duckdb has no problems casting 10.0 to an integer
+@parametrize(
+    p=[
+        ("10.0", False),
+    ],
+)
+def case_whole_scale_duckdb(p: tuple[Any, ...]) -> JsonTC:
+    return JsonTC(
+        """
+SELECT (SCALE($1::numeric){assertion})
+FROM j;""",
+        p[:1],
+        """ > 0) = $2 AND (TRUE""",
+        p[1:],
+    )
+
+
+@parametrize(
+    p=[
         ("arr_str", ['"s1"', '"s2"', '"s3"']),
         ("arr_obj", ['{"k1":"v1"}', '{"k2":"v2"}']),
         ("arr_num", [1, 2, 3]),
@@ -127,6 +178,7 @@ INSERT INTO j VALUES (
     "str": "str_val",
     "num": 12,
     "float": 16.3,
+    "evenfloat": 10.0,
     "bigint": 2147483648,
     "bigfloat": 2147483648.1,
     "bool": true,

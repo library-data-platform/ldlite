@@ -137,7 +137,7 @@ SELECT
         SELECT 1 FROM string_values
         WHERE
             string_value IS NOT NULL AND
-            string_value::numeric % 1 <> 0
+            SCALE(string_value::numeric) > 0
     ) AS is_float
     ,EXISTS(
         SELECT 1 FROM string_values
