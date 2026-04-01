@@ -17,15 +17,6 @@ Please see [MIGRATING.md](./MIGRATING.md) for information on breaking changes.
 
 ### Removed
 
-## [3.2.1] - November 2025
-
-### Fixed
-
-- Endpoints which return system fields before the record list
-- Example python script
-- Columns with mixed and incompatible datatypes
-- Endless looping for calendar/calendars endpoint
-
 ## [3.2.0] - September 2025
 
 ### Added

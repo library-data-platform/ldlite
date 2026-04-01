@@ -1,5 +1,4 @@
 !precious.toml
-ldlite.sqlite
 ldlite.db
 ldlite.db.wal
 

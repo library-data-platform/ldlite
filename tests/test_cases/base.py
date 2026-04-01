@@ -33,13 +33,10 @@ class EndToEndTestCase:
         httpx_post_mock.return_value.cookies.__getitem__.return_value = "token"
 
         side_effects = []
-        for i, values in enumerate(self.values.values()):
-            *_, key = iter(values[0].keys())
+        for values in self.values.values():
+            key = next(iter(values[0].keys()))
             total_mock = MagicMock()
-            if i % 2 == 0:
-                total_mock.text = f'{{"{key}": [{{"id": ""}}], "totalRecords": 100000}}'
-            else:
-                total_mock.text = f'{{"totalRecords": 100000, "{key}": [{{"id": ""}}]}}'
+            total_mock.text = f'{{"{key}": [{{"id": ""}}], "totalRecords": 100000}}'
 
             value_mocks = []
             for v in values:

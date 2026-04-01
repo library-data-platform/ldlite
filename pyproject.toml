@@ -4,7 +4,7 @@ build-backend = "pdm.backend"
 
 [project]
 name = "ldlite"
-version = "3.2.1"
+version = "3.2.0"
 description = "Lightweight analytics tool for FOLIO services"
 authors = [
     {name = "Katherine Bargar", email = "kbargar@fivecolleges.edu"},
@@ -20,8 +20,8 @@ dependencies = [
     "tqdm>=4.64.1",
     # 3.0.6 was the original pinned dependency version
     "XlsxWriter>=3.0.6",
-    # 0.3 allows checking the path for id based paging
-    "httpx-folio>=0.3.0",
+    # 0.2 has query parameter handling, 0.2.3 is a required bug fix version
+    "httpx-folio>=0.2.3",
     # 3.9 introduces orjson.Fragment
     "orjson>=3.9",
     # 3.2 changes the sql.SQL.format signature
