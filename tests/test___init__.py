@@ -1,82 +1,17 @@
+from __future__ import annotations
+
 from dataclasses import astuple, dataclass
-from typing import cast
+from typing import TYPE_CHECKING, cast
+from uuid import uuid4
 
 import httpx
 import pytest
-from httpx_folio.auth import FolioParams
 from pytest_cases import parametrize_with_cases
 
+if TYPE_CHECKING:
+    from collections.abc import Callable
 
-def test_ok_legacy(folio_params: tuple[bool, FolioParams]) -> None:
-    from ldlite import LDLite as uut
-
-    ld = uut()
-    ld.connect_folio(*astuple(folio_params[1]))
-    ld.connect_db()
-    ld.query(table="g", path="/groups", query="cql.allRecords=1 sortby id")
-    ld.select(table="g__t")
-
-
-def test_ok_limit(folio_params: tuple[bool, FolioParams]) -> None:
-    from ldlite import LDLite as uut
-
-    ld = uut()
-    db = ld.connect_db()
-
-    ld.connect_folio(*astuple(folio_params[1]))
-    ld.page_size = 2
-    ld.query(table="g", path="/groups", query="cql.allRecords=1 sortby id", limit=5)
-
-    db.execute("SELECT COUNT(DISTINCT COLUMNS(*)) FROM g__t;")
-    actual = cast("tuple[int]", db.fetchone())[0]
-    assert actual == 5
-
-
-def test_ok_trailing_slash(folio_params: tuple[bool, FolioParams]) -> None:
-    if folio_params[0]:
-        pytest.skip("Specify an okapi environment with --folio-base-url to run")
-
-    from ldlite import LDLite as uut
-
-    ld = uut()
-    params = astuple(folio_params[1])
-    ld.connect_folio(*[params[0] + "/", *params[1:]])
-    ld.connect_db()
-    ld.query(table="g", path="/groups")
-    ld.select(table="g__t")
-
-
-def test_ok(folio_params: tuple[bool, FolioParams]) -> None:
-    from ldlite import LDLite as uut
-
-    ld = uut()
-    ld.connect_folio(*astuple(folio_params[1]))
-    ld.connect_db()
-    ld.query(table="g", path="/groups")
-    ld.select(table="g__t")
-
-
-def test_no_connect_folio() -> None:
-    from ldlite import LDLite as uut
-
-    ld = uut()
-    ld.connect_db()
-    with pytest.raises(RuntimeError):
-        ld.query(table="g", path="/groups")
-
-
-def test_no_connect_db() -> None:
-    from ldlite import LDLite as uut
-
-    ld = uut()
-    ld.connect_folio(
-        url="https://folio-etesting-snapshot-kong.ci.folio.org",
-        tenant="diku",
-        user="diku_admin",
-        password="admin",
-    )
-    with pytest.raises(RuntimeError):
-        ld.query(table="g", path="/groups")
+    from httpx_folio.auth import FolioParams
 
 
 @dataclass(frozen=True)
@@ -116,14 +51,142 @@ class FolioConnectionCases:
         )
 
 
-@parametrize_with_cases("tc", cases=FolioConnectionCases)
-def test_bad_folio_connection(
-    folio_params: tuple[bool, FolioParams],
-    tc: FolioConnectionCase,
-) -> None:
-    from ldlite import LDLite as uut
+class TestIntegration:
+    def test_ok_legacy(self, folio_params: tuple[bool, FolioParams]) -> None:
+        from ldlite import LDLite as uut
 
-    ld = uut()
-    params = astuple(folio_params[1])
-    with pytest.raises(tc.expected):
-        ld.connect_folio(*[*params[: tc.index], tc.value, *params[tc.index + 1 :]])
+        ld = uut()
+        ld.connect_folio(*astuple(folio_params[1]))
+        ld.connect_db()
+        ld.query(table="g", path="/groups", query="cql.allRecords=1 sortby id")
+        ld.select(table="g__t")
+
+    def test_ok_legacy_transform(self, folio_params: tuple[bool, FolioParams]) -> None:
+        from ldlite import LDLite as uut
+
+        ld = uut()
+        ld.connect_folio(*astuple(folio_params[1]))
+        ld.connect_db()
+        ld.query(
+            table="g",
+            path="/groups",
+            query="cql.allRecords=1 sortby id",
+            use_legacy_transform=True,
+        )
+        ld.select(table="g__t")
+
+    def test_ok_limit(self, folio_params: tuple[bool, FolioParams]) -> None:
+        from ldlite import LDLite as uut
+
+        ld = uut()
+        db = ld.connect_db()
+
+        ld.connect_folio(*astuple(folio_params[1]))
+        ld.page_size = 2
+        ld.query(table="g", path="/groups", query="cql.allRecords=1 sortby id", limit=5)
+
+        db.execute("SELECT COUNT(DISTINCT COLUMNS(*)) FROM g__t;")
+        actual = cast("tuple[int]", db.fetchone())[0]
+        assert actual == 5
+
+    def test_ok_trailing_slash(self, folio_params: tuple[bool, FolioParams]) -> None:
+        if folio_params[0]:
+            pytest.skip("Specify an okapi environment with --folio-base-url to run")
+
+        from ldlite import LDLite as uut
+
+        ld = uut()
+        params = astuple(folio_params[1])
+        ld.connect_folio(*[params[0] + "/", *params[1:]])
+        ld.connect_db()
+        ld.query(table="g", path="/groups")
+        ld.select(table="g__t")
+
+    def test_ok(self, folio_params: tuple[bool, FolioParams]) -> None:
+        from ldlite import LDLite as uut
+
+        ld = uut()
+        ld.connect_folio(*astuple(folio_params[1]))
+        ld.connect_db()
+        ld.query(table="g", path="/groups")
+        ld.select(table="g__t")
+
+    def test_ok_postgres(
+        self,
+        folio_params: tuple[bool, FolioParams],
+        pg_dsn: None | Callable[[str], str],
+    ) -> None:
+        if pg_dsn is None:
+            pytest.skip("Specify the pg host using --pg-host to run")
+
+        from ldlite import LDLite as uut
+
+        ld = uut()
+        ld.connect_folio(*astuple(folio_params[1]))
+        ld.connect_db_postgresql(pg_dsn(str(uuid4()).split("-")[0]))
+        ld.query(table="g", path="/groups")
+        ld.select(table="g__t")
+
+    def test_ok_export_csv(
+        self,
+        folio_params: tuple[bool, FolioParams],
+        tmpdir: str,
+    ) -> None:
+        from ldlite import LDLite as uut
+
+        ld = uut()
+        ld.connect_folio(*astuple(folio_params[1]))
+        ld.connect_db()
+        ld.query(table="g", path="/groups")
+        ld.export_csv(str(tmpdir + "/g.csv"), "g__t")
+
+    def test_ok_export_csv_postgres(
+        self,
+        folio_params: tuple[bool, FolioParams],
+        pg_dsn: None | Callable[[str], str],
+        tmpdir: str,
+    ) -> None:
+        if pg_dsn is None:
+            pytest.skip("Specify the pg host using --pg-host to run")
+
+        from ldlite import LDLite as uut
+
+        ld = uut()
+        ld.connect_folio(*astuple(folio_params[1]))
+        ld.connect_db_postgresql(pg_dsn(str(uuid4()).split("-")[0]))
+        ld.query(table="g", path="/groups")
+        ld.export_csv(str(tmpdir + "/g.csv"), "g__t")
+
+    def test_no_connect_folio(self) -> None:
+        from ldlite import LDLite as uut
+
+        ld = uut()
+        ld.connect_db()
+        with pytest.raises(RuntimeError):
+            ld.query(table="g", path="/groups")
+
+    def test_no_connect_db(self) -> None:
+        from ldlite import LDLite as uut
+
+        ld = uut()
+        ld.connect_folio(
+            url="https://folio-etesting-snapshot-kong.ci.folio.org",
+            tenant="diku",
+            user="diku_admin",
+            password="admin",
+        )
+        with pytest.raises(RuntimeError):
+            ld.query(table="g", path="/groups")
+
+    @parametrize_with_cases("tc", cases=FolioConnectionCases)
+    def test_bad_folio_connection(
+        self,
+        folio_params: tuple[bool, FolioParams],
+        tc: FolioConnectionCase,
+    ) -> None:
+        from ldlite import LDLite as uut
+
+        ld = uut()
+        params = astuple(folio_params[1])
+        with pytest.raises(tc.expected):
+            ld.connect_folio(*[*params[: tc.index], tc.value, *params[tc.index + 1 :]])

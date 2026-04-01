@@ -25,6 +25,7 @@ jobs:
       - run: pdm install -G:all --lockfile pylock.toml
 
       # test
+      #- run: pdm run test -k 'not test_srs'
       - run: pdm run test
 
   test-minimal-deps:
@@ -35,12 +36,13 @@ jobs:
       # install dependencies
       - uses: pdm-project/setup-pdm@v4
         with:
-          python-version: 3.9
+          python-version: "3.10"
           cache: true
           cache-dependency-path: pylock.minimal.toml
       - run: pdm install -G:all --lockfile pylock.minimal.toml
 
       # test
+      #- run: pdm run test -k 'not test_srs'
       - run: pdm run test
 
   test-maximal-deps:
@@ -51,10 +53,11 @@ jobs:
       # install dependencies
       - uses: pdm-project/setup-pdm@v4
         with:
-          python-version: 3.13
+          python-version: 3.14
           cache: true
           cache-dependency-path: pylock.maximal.toml
       - run: pdm install -G:all --lockfile pylock.maximal.toml
 
       # test
+      #- run: pdm run test -k 'not test_srs'
       - run: pdm run test

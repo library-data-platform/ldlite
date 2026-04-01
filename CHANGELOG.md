@@ -17,6 +17,43 @@ Please see [MIGRATING.md](./MIGRATING.md) for information on breaking changes.
 
 ### Removed
 
+## [4.0.0] - April
+
+### Fixed
+* Invalid UTF8 strings when transforming json
+* Logging raw table name when keep_raw=False
+
+### Added
+* Support for python 3.14 and duckdb 1.14+
+* ldlite_system.load_history_v1 table which tracks useful information about data loads
+* Generated columns are now indexed when using duckdb
+
+### Changed
+* [Possibly Breaking] Expanding json now utilizes SQL instead of python
+* [Possibly Breaking] Columns have more accurate types
+  * text -> timestamptz
+  * numeric -> numeric or bigint or integer
+* [Breaking] The connect_db_postgres method now returns a psycopg3 connection
+* [Possibly Breaking] `select` method uses duckdb's `show` method
+* [Possibly Breaking] `export_csv` method uses duckdb's `COPY TO output.csv`
+
+### Removed
+* [Breaking] Support for dependency versions less than the new minimum version
+  * Postgres - 14
+  * Python - 3.10
+  * Duckdb - 1.3
+* [Breaking] experimental_connect_sqlite
+* [Breaking] export_excel and to_xlsx
+
+## [3.2.1] - November 2025
+
+### Fixed
+
+- Endpoints which return system fields before the record list
+- Example python script
+- Columns with mixed and incompatible datatypes
+- Endless looping for calendar/calendars endpoint
+
 ## [3.2.0] - September 2025
 
 ### Added

@@ -1,7 +1,7 @@
 import json
 from dataclasses import dataclass
 from functools import cached_property
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING
 from unittest.mock import MagicMock
 from uuid import uuid4
 
@@ -10,8 +10,34 @@ if TYPE_CHECKING:
 
 
 @dataclass(frozen=True)
-class EndToEndTestCase:
-    values: dict[str, list[dict[str, Any]]]
+class Call:
+    prefix: str
+    returns: "ldlite._jsonx.Json | list[ldlite._jsonx.Json]"
+
+    # duplicate of LDLite.query default params
+    query: str | dict[str, str] | None = None
+    json_depth: int = 3
+    limit: int | None = None
+    keep_raw: bool = True
+
+    @property
+    def returns_list(self) -> list["ldlite._jsonx.Json"]:
+        if isinstance(self.returns, list):
+            return self.returns
+
+        return [self.returns]
+
+
+@dataclass(frozen=True)
+class MockedResponseTestCase:
+    calls: Call | list[Call]
+
+    @property
+    def calls_list(self) -> list[Call]:
+        if isinstance(self.calls, list):
+            return self.calls
+
+        return [self.calls]
 
     @cached_property
     def db(self) -> str:
@@ -25,21 +51,22 @@ class EndToEndTestCase:
         httpx_post_mock: MagicMock,
         client_get_mock: MagicMock,
     ) -> None:
-        # iteration hack
-        ld.page_size = 1
         # leave tqdm out of it
         ld.quiet(enable=True)
 
         httpx_post_mock.return_value.cookies.__getitem__.return_value = "token"
 
         side_effects = []
-        for values in self.values.values():
-            key = next(iter(values[0].keys()))
+        for i, call in enumerate(self.calls_list):
+            *_, key = iter(call.returns_list[0].keys())
             total_mock = MagicMock()
-            total_mock.text = f'{{"{key}": [{{"id": ""}}], "totalRecords": 100000}}'
+            if i % 2 == 0:
+                total_mock.text = f'{{"{key}": [{{"id": ""}}], "totalRecords": 100000}}'
+            else:
+                total_mock.text = f'{{"totalRecords": 100000, "{key}": [{{"id": ""}}]}}'
 
             value_mocks = []
-            for v in values:
+            for v in call.returns_list:
                 value_mock = MagicMock()
                 value_mock.text = json.dumps(v)
                 value_mocks.append(value_mock)

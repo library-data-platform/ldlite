@@ -21,12 +21,12 @@ jobs:
       - uses: pdm-project/setup-pdm@v4
         with:
           cache: true
-          cache-dependency-path: pylock.toml
-      - run: pdm install -G:all --lockfile pylock.toml
+          cache-dependency-path: pylock.lint.toml
+      - run: pdm install -G:all --lockfile pylock.lint.toml
       - uses: jaxxstorm/action-install-gh-release@v1.10.0
         with:
           repo: houseabsolute/precious
-          tag: v0.9.0
+          tag: v0.10.0
           cache: enable
 
       # lint
