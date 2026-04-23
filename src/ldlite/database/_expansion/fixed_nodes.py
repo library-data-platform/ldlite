@@ -107,7 +107,7 @@ WITH string_values AS MATERIALIZED (
 
         if self.json_type == "string":
             with conn.cursor() as cur:
-                specify = cte + sql.SQL("""
+                specify = cte + sql.SQL(r"""
 SELECT
     NOT EXISTS(
         SELECT 1 FROM string_values
@@ -119,11 +119,8 @@ SELECT
         SELECT 1 FROM string_values
         WHERE
             string_value IS NOT NULL AND
-            (
-                string_value NOT LIKE '____-__-__T__:__:__.___' AND
-                string_value NOT LIKE '____-__-__T__:__:__.___+__:__'
-            )
-    ) AS is_uuid;""")
+            string_value !~ '^[0-9]{4}-[0-9]{2}-[0-9]{2}[T ][0-9]{2}:[0-9]{2}:[0-9]{2}(\.[0-9]{1,9})?(Z|[+-][0-9]{2}(:?[0-9]{2})?)$'
+    ) AS is_datetime;""")  # noqa: E501
 
                 cur.execute(specify.as_string())
                 if row := cur.fetchone():

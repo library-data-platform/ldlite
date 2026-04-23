@@ -61,7 +61,7 @@ def case_typed_columns() -> ExpansionTC:
             b"""
 {
     "id": "id2",
-    "timestamptz": "2025-06-20T17:37:58.675",
+    "timestamptz": "2025-06-20T17:37:58.675Z",
     "integer": 2,
     "numeric": 2,
     "bigint": 2,
@@ -90,6 +90,97 @@ WHERE TABLE_NAME = 'prefix__t' AND COLUMN_NAME = '{a[0]}'
                 ("boolean", "boolean", "BOOLEAN"),
                 ("timestamptz", "timestamp with time zone", "TIMESTAMP WITH TIME ZONE"),
             ]
+        ],
+    )
+
+
+@parametrize(
+    "isodate",
+    [
+        ("z_plain", "2026-01-20T06:29:11Z"),
+        ("z_ms", "2026-01-20T06:29:11.973Z"),
+        ("z_us", "2026-01-20T06:29:11.973553Z"),
+        ("z_ns", "2026-01-20T06:29:11.123456789Z"),
+        ("2offset_plain", "2026-01-20T06:29:11+00"),
+        ("2offset_ms", "2026-01-20T06:29:11.973+01"),
+        ("2offset_us", "2026-01-20T06:29:11.973553+04"),
+        ("2offset_ns", "2026-01-20T06:29:11.123456789+04"),
+        ("4offset_plain", "2026-01-20T06:29:11+0000"),
+        ("4offset_ms", "2026-01-20T06:29:11.973+0100"),
+        ("4offset_us", "2026-01-20T06:29:11.973553+0430"),
+        ("4offset_ns", "2026-01-20T06:29:11.123456789+0430"),
+        ("2:2offset_plain", "2026-01-20T06:29:11+00:00"),
+        ("2:2offset_ms", "2026-01-20T06:29:11.973+01:00"),
+        ("2:2offset_us", "2026-01-20T06:29:11.973553+04:30"),
+        ("2:2offset_ns", "2026-01-20T06:29:11.123456789+04:30"),
+        ("2-offset_plain", "2026-01-20T06:29:11-01"),
+        ("2-offset_ms", "2026-01-20T06:29:11.973-01"),
+        ("2-offset_us", "2026-01-20T06:29:11.973553-04"),
+        ("2-offset_ns", "2026-01-20T06:29:11.123456789-04"),
+        ("4-offset_plain", "2026-01-20T06:29:11-0100"),
+        ("4-offset_ms", "2026-01-20T06:29:11.973-0100"),
+        ("4-offset_us", "2026-01-20T06:29:11.973553-0430"),
+        ("4-offset_ns", "2026-01-20T06:29:11.123456789-0430"),
+        ("2:2-offset_plain", "2026-01-20T06:29:11-01:00"),
+        ("2:2-offset_ms", "2026-01-20T06:29:11.973-01:00"),
+        ("2:2-offset_us", "2026-01-20T06:29:11.973553-04:30"),
+        ("2:2-offset_ns", "2026-01-20T06:29:11.123456789-04:30"),
+    ],
+    idgen="{isodate[0]}",
+)
+def case_iso8601(isodate: tuple[str, str]) -> ExpansionTC:
+    return ExpansionTC(
+        records=[
+            f"""{{ "{isodate[0]}": "{isodate[1]}" }}""".encode(),
+            f"""{{ "{isodate[0]}": "{isodate[1].replace("T", " ")}" }}""".encode(),
+        ],
+        assertions=[
+            Assertion(
+                """
+SELECT DATA_TYPE
+FROM INFORMATION_SCHEMA.COLUMNS
+WHERE TABLE_NAME = 'prefix__t' AND COLUMN_NAME <> '__id'
+""",
+                exp_pg="timestamp with time zone",
+                exp_duck="TIMESTAMP WITH TIME ZONE",
+            ),
+        ],
+    )
+
+
+@parametrize(
+    "isodate",
+    [
+        ("no_tz_plain", "2026-01-20T06:29:11"),
+        ("no_tz_ms", "2026-01-20T06:29:11.973"),
+        ("no_tz_us", "2026-01-20T06:29:11.973553"),
+        ("no_tz_ns", "2026-01-20T06:29:11.123456789"),
+        ("z_dot", "2026-01-20T06:29:11.Z"),
+        ("2offset_dot", "2026-01-20T06:29:11.+01"),
+        ("4offset_dot", "2026-01-20T06:29:11.+0100"),
+        ("2:2offset_dot", "2026-01-20T06:29:11.+01:00"),
+        ("2-offset_dot", "2026-01-20T06:29:11.-01"),
+        ("4-offset_dot", "2026-01-20T06:29:11.-0100"),
+        ("2:2-offset_dot", "2026-01-20T06:29:11.-01:00"),
+    ],
+    idgen="{isodate[0]}",
+)
+def case_not_iso8601(isodate: tuple[str, str]) -> ExpansionTC:
+    return ExpansionTC(
+        records=[
+            f"""{{ "{isodate[0]}": "{isodate[1]}" }}""".encode(),
+            f"""{{ "{isodate[0]}": "{isodate[1].replace("T", " ")}" }}""".encode(),
+        ],
+        assertions=[
+            Assertion(
+                """
+SELECT DATA_TYPE
+FROM INFORMATION_SCHEMA.COLUMNS
+WHERE TABLE_NAME = 'prefix__t' AND COLUMN_NAME <> '__id'
+""",
+                exp_pg="text",
+                exp_duck="VARCHAR",
+            ),
         ],
     )
 
