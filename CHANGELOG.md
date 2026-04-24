@@ -17,6 +17,11 @@ Please see [MIGRATING.md](./MIGRATING.md) for information on breaking changes.
 
 ### Removed
 
+## [4.0.1] - April
+
+### Changed
+* Relaxed datetime detection from ~rfc3339 to ~iso8601
+
 ## [4.0.0] - April
 
 ### Fixed
