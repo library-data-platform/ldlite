@@ -16,6 +16,7 @@ Please see [MIGRATING.md](./MIGRATING.md) for information on breaking changes.
 ### Changed
 
 ### Removed
+* [Breaking] Remove legacy transformation codepath
 
 ## [4.0.1] - April
 

@@ -44,12 +44,6 @@ from psycopg import sql
 from tqdm import tqdm
 
 from ._folio import FolioClient
-from ._jsonx import Attr, transform_json
-from ._sqlx import (
-    DBType,
-    autocommit,
-    sqlid,
-)
 from .database import Database
 
 if TYPE_CHECKING:
@@ -73,7 +67,6 @@ class LDLite:
         """
         self._verbose = False
         self._quiet = False
-        self.dbtype: DBType = DBType.UNDEFINED
         self.db: dbapi.DBAPIConnection | None = None
         self._database: Database | None = None
         self._folio: FolioClient | None = None
@@ -124,7 +117,6 @@ class LDLite:
         """
         from .database._duckdb import DuckDbDatabase  # noqa: PLC0415
 
-        self.dbtype = DBType.DUCKDB
         fn = filename if filename is not None else ":memory:"
         db = duckdb.connect(database=fn)
         self.db = cast("dbapi.DBAPIConnection", db.cursor())
@@ -145,7 +137,6 @@ class LDLite:
         """
         from .database._postgres import PostgresDatabase  # noqa: PLC0415
 
-        self.dbtype = DBType.POSTGRES
         self._dsn = dsn
         db = psycopg.connect(dsn)
         self.db = cast("dbapi.DBAPIConnection", db)
@@ -239,7 +230,7 @@ class LDLite:
     def _set_okapi_timeout(self, timeout: int) -> None:
         self._okapi_timeout = timeout
 
-    def query(  # noqa: C901, PLR0912, PLR0913, PLR0915
+    def query(  # noqa: C901, PLR0913
         self,
         table: str,
         path: str,
@@ -248,7 +239,6 @@ class LDLite:
         limit: int | None = None,
         transform: bool | None = None,
         keep_raw: bool = True,
-        use_legacy_transform: bool = False,
     ) -> list[str]:
         """Submits a query to a FOLIO module, and transforms and stores the result.
 
@@ -277,9 +267,6 @@ class LDLite:
 
         If *keep_raw* is set to False, then the raw table of
         __id, json will be dropped saving an estimated 20% disk space.
-
-        *use_legacy_transform* will use the pre 4.0 transformation logic.
-        This parameter is deprecated and will not function in a future release.
 
         The *transform* parameter is no longer supported and will be
         removed in the future.  Instead, specify *json_depth* as 0 to
@@ -331,7 +318,7 @@ class LDLite:
                 file=sys.stderr,
             )
 
-        processed = self._database.ingest_records(
+        self._database.ingest_records(
             table,
             cast(
                 "Iterator[bytes]",
@@ -349,114 +336,38 @@ class LDLite:
             ),
         )
 
-        if not use_legacy_transform:
-            no_iters_format = (
-                "{l_bar}{bar}| {n_fmt}/{total_fmt} [{elapsed}<{remaining}]"
-            )
-            with (
-                tqdm(
-                    desc="scanning",
-                    leave=False,
-                    disable=self._quiet,
-                    bar_format=no_iters_format,
-                ) as scan_progress,
-                tqdm(
-                    desc="transforming",
-                    leave=False,
-                    disable=self._quiet,
-                    bar_format=no_iters_format,
-                ) as transform_progress,
-            ):
-                newtables = self._database.expand_prefix(
-                    table,
-                    json_depth,
-                    keep_raw,
-                    scan_progress,
-                    transform_progress,
-                )
-            if keep_raw:
-                newtables = [table, *newtables]
-
-            with tqdm(
-                desc="indexing",
+        no_iters_format = "{l_bar}{bar}| {n_fmt}/{total_fmt} [{elapsed}<{remaining}]"
+        with (
+            tqdm(
+                desc="scanning",
                 leave=False,
                 disable=self._quiet,
                 bar_format=no_iters_format,
-            ) as progress:
-                self._database.index_prefix(table, progress)
+            ) as scan_progress,
+            tqdm(
+                desc="transforming",
+                leave=False,
+                disable=self._quiet,
+                bar_format=no_iters_format,
+            ) as transform_progress,
+        ):
+            newtables = self._database.expand_prefix(
+                table,
+                json_depth,
+                keep_raw,
+                scan_progress,
+                transform_progress,
+            )
+        if keep_raw:
+            newtables = [table, *newtables]
 
-        else:
-            try:
-                self._database.drop_extracted_tables(table)
-                newtables = [table]
-                newattrs = {}
-                if json_depth > 0:
-                    autocommit(self.db, self.dbtype, False)
-                    (jsontables, jsonattrs) = transform_json(
-                        self.db,
-                        self.dbtype,
-                        table,
-                        processed,
-                        self._quiet,
-                        json_depth,
-                    )
-                    newtables += jsontables
-                    newattrs = jsonattrs
-                    for t in newattrs:
-                        newattrs[t]["__id"] = Attr("__id", "bigint")
-                    newattrs[table] = {"__id": Attr("__id", "bigint")}
-
-                if not keep_raw:
-                    self._database.drop_raw_table(table)
-
-                indexable_attrs = [
-                    (t, a)
-                    for t, attrs in newattrs.items()
-                    for n, a in attrs.items()
-                    if n in ["__id", "id"]
-                    or n.endswith(("_id", "__o"))
-                    or a.datatype == "uuid"
-                ]
-
-            finally:
-                autocommit(self.db, self.dbtype, True)
-
-            # Create indexes on id columns (for postgres)
-            if self.dbtype == DBType.POSTGRES:
-
-                class PbarNoop:
-                    def update(self, _: int) -> None: ...
-                    def close(self) -> None: ...
-
-                pbar: tqdm | PbarNoop = PbarNoop()  # type:ignore[type-arg]
-
-                index_total = len(indexable_attrs)
-                if not self._quiet:
-                    pbar = tqdm(
-                        desc="indexing",
-                        total=index_total,
-                        leave=False,
-                        mininterval=3,
-                        smoothing=0,
-                        colour="#A9A9A9",
-                        bar_format="{desc} {bar}{postfix}",
-                    )
-                for t, attr in indexable_attrs:
-                    cur = self.db.cursor()
-                    try:
-                        cur.execute(
-                            "CREATE INDEX ON "
-                            + sqlid(t)
-                            + " ("
-                            + sqlid(attr.name)
-                            + ")",
-                        )
-                    except (RuntimeError, psycopg.Error):
-                        pass
-                    finally:
-                        cur.close()
-                    pbar.update(1)
-                pbar.close()
+        with tqdm(
+            desc="indexing",
+            leave=False,
+            disable=self._quiet,
+            bar_format=no_iters_format,
+        ) as progress:
+            self._database.index_prefix(table, progress)
 
         # Return table names
         if not self._quiet:
@@ -500,7 +411,7 @@ class LDLite:
             self._check_db()
             return
 
-        if self.dbtype == DBType.POSTGRES:
+        if isinstance(self.db, "psycopg.Connection"):
             duck = duckdb.connect()
             duck.sql("INSTALL postgres;")
             duck.sql("LOAD postgres;")
@@ -544,7 +455,7 @@ class LDLite:
             self._check_db()
             return
 
-        if self.dbtype == DBType.POSTGRES:
+        if isinstance(self.db, "psycopg.Connection"):
             duck = duckdb.connect()
             duck.sql("INSTALL postgres;")
             duck.sql("LOAD postgres;")
