@@ -101,7 +101,7 @@ class TestIntegration:
     def test_nonsrs_postgres(
         self,
         folio_params: tuple[bool, FolioParams],
-        pg_dsn: None | Callable[[str], str],
+        pg_dsn: Callable[[str], str] | None,
         tc: NonSrsCase,
     ) -> None:
         if pg_dsn is None:
@@ -149,7 +149,7 @@ class TestIntegration:
     def test_srs_postgres(
         self,
         folio_params: tuple[bool, FolioParams],
-        pg_dsn: None | Callable[[str], str],
+        pg_dsn: Callable[[str], str] | None,
         path: str,
     ) -> None:
         if pg_dsn is None:

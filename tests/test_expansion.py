@@ -852,7 +852,7 @@ def test_duckdb(tc: ExpansionTC) -> None:
 
 
 @parametrize_with_cases("tc", cases=".")
-def test_postgres(pg_dsn: None | Callable[[str], str], tc: ExpansionTC) -> None:
+def test_postgres(pg_dsn: Callable[[str], str] | None, tc: ExpansionTC) -> None:
     if pg_dsn is None:
         pytest.skip("Specify the pg host using --pg-host to run")
 

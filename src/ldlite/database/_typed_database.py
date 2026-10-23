@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from abc import abstractmethod
 from contextlib import closing, contextmanager
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import TYPE_CHECKING, Any, Generic, NoReturn, TypeVar, cast
 from uuid import uuid4
 
@@ -189,7 +189,7 @@ WHERE table_schema = $1 and table_name IN ($2, $3);""",
         transform_progress: tqdm[NoReturn] | None = None,
     ) -> list[str]:
         pfx = Prefix(prefix)
-        transform_started = datetime.now(timezone.utc)
+        transform_started = datetime.now(UTC)
         if json_depth < 1:
             with closing(self._conn_factory(True)) as conn:
                 self._drop_extracted_tables(conn, pfx)
@@ -265,7 +265,7 @@ WHERE table_schema = $1 and table_name IN ($2, $3);""",
 
     def index_prefix(self, prefix: str, progress: tqdm[NoReturn] | None = None) -> None:
         pfx = Prefix(prefix)
-        index_started = datetime.now(timezone.utc)
+        index_started = datetime.now(UTC)
         with closing(self._conn_factory(False)) as conn:
             with closing(conn.cursor()) as cur:
                 cur.execute(
@@ -348,7 +348,7 @@ ON CONFLICT ("table_prefix") DO UPDATE SET
                     Prefix(prefix).load_history_key,
                     path,
                     query,
-                    datetime.now(timezone.utc),
+                    datetime.now(UTC),
                 ),
             )
             conn.commit()
@@ -372,8 +372,8 @@ WHERE "table_prefix" = $1;
                 (
                     pfx.load_history_key,
                     rowcount,
-                    datetime.now(timezone.utc),
-                    datetime.now(timezone.utc) - download_start,
+                    datetime.now(UTC),
+                    datetime.now(UTC) - download_start,
                 ),
             )
 
@@ -399,8 +399,8 @@ WHERE "table_prefix" = $1
                 (
                     pfx.load_history_key,
                     final_rowcount,
-                    datetime.now(timezone.utc),
-                    datetime.now(timezone.utc) - transform_start,
+                    datetime.now(UTC),
+                    datetime.now(UTC) - transform_start,
                 ),
             )
 
@@ -419,6 +419,6 @@ WHERE "table_prefix" = $1
 """,
                 (
                     pfx.load_history_key,
-                    datetime.now(timezone.utc) - index_start,
+                    datetime.now(UTC) - index_start,
                 ),
             )

@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from contextlib import contextmanager
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from itertools import count
 from typing import TYPE_CHECKING
 
@@ -58,7 +58,7 @@ class PostgresDatabase(TypedDatabase[psycopg.Connection]):
         records: Iterator[bytes],
     ) -> int:
         pfx = Prefix(prefix)
-        download_started = datetime.now(timezone.utc)
+        download_started = datetime.now(UTC)
         pkey = count(1)
         with self._conn_factory(True) as conn:
             self._prepare_raw_table(conn, pfx)

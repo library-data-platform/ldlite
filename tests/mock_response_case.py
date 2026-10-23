@@ -1,7 +1,7 @@
 import json
 from dataclasses import dataclass
 from functools import cached_property
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 from unittest.mock import MagicMock
 from uuid import uuid4
 
@@ -12,7 +12,7 @@ if TYPE_CHECKING:
 @dataclass(frozen=True)
 class Call:
     prefix: str
-    returns: "ldlite._jsonx.Json | list[ldlite._jsonx.Json]"
+    returns: "dict[str, Any] | list[dict[str, Any]]"
 
     # duplicate of LDLite.query default params
     query: str | dict[str, str] | None = None
@@ -21,7 +21,7 @@ class Call:
     keep_raw: bool = True
 
     @property
-    def returns_list(self) -> list["ldlite._jsonx.Json"]:
+    def returns_list(self) -> list["dict[str, Any]"]:
         if isinstance(self.returns, list):
             return self.returns
 

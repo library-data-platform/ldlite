@@ -398,8 +398,10 @@ def case_nested_object_underexpansion() -> QueryTC:
                     (
                         "b096504a-3d54-4664-9bf5-1b872466fd66",
                         "value",
-                        '{"id":"2b94c631-fca9-4892-a730-03ee529ffe2a",'
-                        '"value":"sub-value"}',
+                        (
+                            '{"id":"2b94c631-fca9-4892-a730-03ee529ffe2a",'
+                            '"value":"sub-value"}'
+                        ),
                     ),
                 ],
             ),
@@ -825,7 +827,7 @@ def test_duckdb(
 def test_postgres(
     client_get_mock: MagicMock,
     httpx_post_mock: MagicMock,
-    pg_dsn: None | Callable[[str], str],
+    pg_dsn: Callable[[str], str] | None,
     tc: QueryTC,
 ) -> None:
     if pg_dsn is None:

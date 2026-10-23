@@ -100,7 +100,7 @@ class TestIntegration:
     def test_ok_postgres(
         self,
         folio_params: tuple[bool, FolioParams],
-        pg_dsn: None | Callable[[str], str],
+        pg_dsn: Callable[[str], str] | None,
     ) -> None:
         if pg_dsn is None:
             pytest.skip("Specify the pg host using --pg-host to run")
@@ -129,7 +129,7 @@ class TestIntegration:
     def test_ok_export_csv_postgres(
         self,
         folio_params: tuple[bool, FolioParams],
-        pg_dsn: None | Callable[[str], str],
+        pg_dsn: Callable[[str], str] | None,
         tmpdir: str,
     ) -> None:
         if pg_dsn is None:

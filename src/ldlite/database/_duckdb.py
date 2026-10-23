@@ -1,5 +1,5 @@
 from collections.abc import Iterator
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from itertools import count
 from typing import TYPE_CHECKING, Any, cast
 
@@ -10,7 +10,7 @@ from ._prefix import Prefix
 from ._typed_database import TypedDatabase
 
 if TYPE_CHECKING:
-    from typing_extensions import Self
+    from typing import Self
 
 
 class DuckDbDatabase(TypedDatabase[duckdb.DuckDBPyConnection]):
@@ -72,7 +72,7 @@ CREATE OR REPLACE FUNCTION scale(n) AS (
         records: Iterator[bytes],
     ) -> int:
         pfx = Prefix(prefix)
-        download_started = datetime.now(timezone.utc)
+        download_started = datetime.now(UTC)
         pkey = count(1)
         with self._conn_factory(False) as conn:
             self._prepare_raw_table(conn, pfx)

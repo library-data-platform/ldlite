@@ -178,7 +178,7 @@ def test_duckdb(
 def test_postgres(
     client_get_mock: MagicMock,
     httpx_post_mock: MagicMock,
-    pg_dsn: None | Callable[[str], str],
+    pg_dsn: Callable[[str], str] | None,
     tc: LoadHistoryTC,
 ) -> None:
     if pg_dsn is None:
