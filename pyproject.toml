@@ -26,7 +26,7 @@ dependencies = [
   # 3.2 changes the sql.SQL.format signature
   "psycopg>=3.2.0",
 ]
-requires-python = ">=3.10"
+requires-python = ">=3.11"
 readme = "README.md"
 license = { text = "Apache-2.0" }
 classifiers = [
@@ -81,10 +81,10 @@ test.composite = [
 ]
 lock.composite = [
   "rm -f pylock.toml pylock.maximal.toml pylock.minimal.toml",
-  "pdm lock --python=3.10",
+  "pdm lock --python=3.11",
   "cp pylock.toml pylock.lint.toml",
-  "pdm lock --lockfile pylock.maximal.toml --python=3.14",
-  "pdm lock --strategy direct_minimal_versions --lockfile pylock.minimal.toml --python=3.10",
+  "pdm lock --lockfile pylock.maximal.toml --python=3.15",
+  "pdm lock --strategy direct_minimal_versions --lockfile pylock.minimal.toml --python=3.11",
 ]
 test-install.composite = [
   "pdm sync --lockfile=pylock.minimal.toml",
