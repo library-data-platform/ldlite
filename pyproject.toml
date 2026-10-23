@@ -43,9 +43,16 @@ Homepage = "https://github.com/library-data-platform/ldlite"
 pythonpath = "src"
 addopts = ["--import-mode=importlib"]
 
-[tool.mypy]
-python_version = "3.11"
-strict = true
+[tool.ty.environment]
+python-version = '3.11'
+[tool.ty.rules]
+blanket-ignore-comment = "error"
+missing-type-argument = "error"
+possibly-unresolved-reference = "warn"
+unsupported-dynamic-base = "warn"
+[tool.ty.analysis]
+strict-literal-narrowing = true
+strict-generic-narrowing = true
 
 [tool.ruff]
 target-version = "py311"
@@ -92,6 +99,6 @@ test-install.composite = [
 ]
 
 [dependency-groups]
-lint = ["mypy==1.18.2", "ruff==0.17.2", "pre-commit-hooks==6.0.0"]
+lint = ["ty==0.0.91", "ruff==0.17.2", "pre-commit-hooks==6.0.0"]
 test = ["pytest==9.0.3", "pytest-cases==3.10.1", "coverage==7.17.0"]
 types = ["types-tqdm>=4.64.0"]

@@ -33,10 +33,10 @@ include = ["*.py"]
 cmd = ["ruff", "format", "--quiet"]
 lint_flags = ["--diff"]
 ok_exit_codes = [0]
-[commands.mypy]
+[commands.ty]
 type = "lint"
-include = ["*.py"]
+include = ["src/**/*.py", "tests/**/*.py"]
 invoke = "once"
 path_args = "none"
-cmd = ["mypy", "src/ldlite/", "tests/"]
+cmd = ["ty", "check"]
 ok_exit_codes = [0]

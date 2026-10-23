@@ -58,24 +58,6 @@ marker = "python_version >= \"3.15\" and \"test\" in dependency_groups"
 dependencies = []
 
 [[packages]]
-name = "mypy"
-version = "1.18.2"
-requires-python = ">=3.9"
-sdist = {name = "mypy-1.18.2.tar.gz", url = "https://files.pythonhosted.org/packages/c0/77/8f0d0001ffad290cef2f7f216f96c814866248a0b92a722365ed54648e7e/mypy-1.18.2.tar.gz", hashes = {sha256 = "06a398102a5f203d7477b2923dda3634c36727fa5c237d8f859ef90c42a9924b"}}
-wheels = [
-    {name = "mypy-1.18.2-py3-none-any.whl",url = "https://files.pythonhosted.org/packages/87/e3/be76d87158ebafa0309946c4a73831974d4d6ab4f4ef40c3b53a385a66fd/mypy-1.18.2-py3-none-any.whl",hashes = {sha256 = "22a1748707dd62b58d2ae53562ffc4d7f8bcc727e8ac7cbc69c053ddc874d47e"}},
-]
-marker = "python_version >= \"3.15\" and \"lint\" in dependency_groups"
-
-[packages.tool.pdm]
-dependencies = [
-    "typing-extensions>=4.6.0",
-    "mypy-extensions>=1.0.0",
-    "pathspec>=0.9.0",
-    "tomli>=1.1.0; python_version < \"3.11\"",
-]
-
-[[packages]]
 name = "pre-commit-hooks"
 version = "6.0.0"
 requires-python = ">=3.9"
@@ -152,6 +134,35 @@ wheels = [
     {name = "ruff-0.17.2-py3-none-win32.whl",url = "https://files.pythonhosted.org/packages/2c/d4/c3b74e1b4808438ea7f14bb914478025e2d51261f60774a54a0fa222ec46/ruff-0.17.2-py3-none-win32.whl",hashes = {sha256 = "6bce7d1f5165701ae18f5df85c65afe78cddfa6c5fb4b9bdb0014d60388f3edd"}},
     {name = "ruff-0.17.2-py3-none-win_amd64.whl",url = "https://files.pythonhosted.org/packages/1c/9a/c7da96c2c96d20704cf9027f7a5121da272a8c05f1d1531ba949e3b3df04/ruff-0.17.2-py3-none-win_amd64.whl",hashes = {sha256 = "1b59d447f197bef9ef48a22ba1a6016137753c6099e9bac9c36eb566e422424c"}},
     {name = "ruff-0.17.2-py3-none-win_arm64.whl",url = "https://files.pythonhosted.org/packages/81/60/a3604c79cb02777b6cb84da894104021986f06c4bc41375102cc95049a32/ruff-0.17.2-py3-none-win_arm64.whl",hashes = {sha256 = "195ad918027f817c119310ca89a42d347887dfc28934aaa869325e9c5dc9d962"}},
+]
+marker = "python_version >= \"3.15\" and \"lint\" in dependency_groups"
+
+[packages.tool.pdm]
+dependencies = []
+
+[[packages]]
+name = "ty"
+version = "0.0.91"
+requires-python = ">=3.8"
+sdist = {name = "ty-0.0.91.tar.gz", url = "https://files.pythonhosted.org/packages/08/c0/9e26817a5c94d504aab30bffbbf53f836f4763dd0a947089246ff555eebe/ty-0.0.91.tar.gz", hashes = {sha256 = "b9c434cc1e3b106b6b9353b78ef304d5904c82cf440abcafef7134270a22b41a"}}
+wheels = [
+    {name = "ty-0.0.91-py3-none-linux_armv6l.whl",url = "https://files.pythonhosted.org/packages/be/ad/0a850c1ca8e6e802e6b0f730f0d59c9769845b2fc956e3acd7f429b665f2/ty-0.0.91-py3-none-linux_armv6l.whl",hashes = {sha256 = "5d39e6e485854838eb7fcdb747495f5b90283d58bce869c17445120fe0c7e40a"}},
+    {name = "ty-0.0.91-py3-none-macosx_10_12_x86_64.whl",url = "https://files.pythonhosted.org/packages/33/87/9ccfa2d97b8b043e4d6fab10febc50ac7856b02cf7cd64910085db806bbe/ty-0.0.91-py3-none-macosx_10_12_x86_64.whl",hashes = {sha256 = "dcf953e25f90fbccf6cc27ef43fc4ef0961c89f54866e32cd1d7f24891b96084"}},
+    {name = "ty-0.0.91-py3-none-macosx_11_0_arm64.whl",url = "https://files.pythonhosted.org/packages/13/33/be8f62444c7840d1b0928c6d174540c0fe6b1b193ae9324c8249e8ed52b9/ty-0.0.91-py3-none-macosx_11_0_arm64.whl",hashes = {sha256 = "78e3e66e88a9ae903afe0981ff9bd225d452ade2aeb070715842510dfcbf6de4"}},
+    {name = "ty-0.0.91-py3-none-manylinux_2_17_aarch64.manylinux2014_aarch64.whl",url = "https://files.pythonhosted.org/packages/31/9f/a742f273c065c4f5a054cc2b44076207136ff1cd346adfb23da38d8894d8/ty-0.0.91-py3-none-manylinux_2_17_aarch64.manylinux2014_aarch64.whl",hashes = {sha256 = "89ecaf87b3d7b508f9ea1ef8715d4cf47942719659028c92fad819d82a82ccfa"}},
+    {name = "ty-0.0.91-py3-none-manylinux_2_17_armv7l.manylinux2014_armv7l.whl",url = "https://files.pythonhosted.org/packages/5a/a0/3eecf8717cbe4e05d6e02b53679aebad79f1bfcff6c9c03d7601cb7df5f9/ty-0.0.91-py3-none-manylinux_2_17_armv7l.manylinux2014_armv7l.whl",hashes = {sha256 = "0ec8fe4243aab445abece38a2b8e9b3010230d5e6b3f4e15bfa811a914d99e73"}},
+    {name = "ty-0.0.91-py3-none-manylinux_2_17_i686.manylinux2014_i686.whl",url = "https://files.pythonhosted.org/packages/09/b0/fb3edee2857e97d85b6c735901469fd523cf6792382e4fbbb00b065c186c/ty-0.0.91-py3-none-manylinux_2_17_i686.manylinux2014_i686.whl",hashes = {sha256 = "577701ec2a9cf7a50f6059069399b9437bb8af7a99df24012776e95d8a55831f"}},
+    {name = "ty-0.0.91-py3-none-manylinux_2_17_ppc64le.manylinux2014_ppc64le.whl",url = "https://files.pythonhosted.org/packages/b7/2c/82f29ee86f4171807af8ab2feaf4e51211143118a3e53e9da2c2e77eca7d/ty-0.0.91-py3-none-manylinux_2_17_ppc64le.manylinux2014_ppc64le.whl",hashes = {sha256 = "fc683f49197d63ec47b2eaa9763ddb32dafb2a31190d938b9bb8ebecc5b25173"}},
+    {name = "ty-0.0.91-py3-none-manylinux_2_17_s390x.manylinux2014_s390x.whl",url = "https://files.pythonhosted.org/packages/0b/85/e2419b19577ead84b8afa9137c12eb4bde19f926423bfe01e615db12c52c/ty-0.0.91-py3-none-manylinux_2_17_s390x.manylinux2014_s390x.whl",hashes = {sha256 = "b8bb2784572fa22f77e417844936f6a9f831a6b0ba64749ca1065c407aefcd23"}},
+    {name = "ty-0.0.91-py3-none-manylinux_2_17_x86_64.manylinux2014_x86_64.whl",url = "https://files.pythonhosted.org/packages/83/06/dc28cea0796ee0268bf987d1d6f0f168605bec8898dbdbc7676049d2667b/ty-0.0.91-py3-none-manylinux_2_17_x86_64.manylinux2014_x86_64.whl",hashes = {sha256 = "f68bb6bfc8171910335a47c7e84070f28bbbc0326bcd6ef08fe3690d0509556b"}},
+    {name = "ty-0.0.91-py3-none-manylinux_2_31_riscv64.whl",url = "https://files.pythonhosted.org/packages/1e/71/83dd28e628698059ba6fe7081acafa7a8f65cfd90fe6573907ca8219d561/ty-0.0.91-py3-none-manylinux_2_31_riscv64.whl",hashes = {sha256 = "63f268c80697d614d18e988476d2517177d66ec732ae104d86e57b60f197a416"}},
+    {name = "ty-0.0.91-py3-none-musllinux_1_2_aarch64.whl",url = "https://files.pythonhosted.org/packages/9d/5a/63c0eae2d5b02cef98a9b327b1a16b36287c140b3a7d2306ff7560177f9c/ty-0.0.91-py3-none-musllinux_1_2_aarch64.whl",hashes = {sha256 = "b0f34630aa92e222d7754d66222d116f027025cb2b9ed66e1b4b73623de74e84"}},
+    {name = "ty-0.0.91-py3-none-musllinux_1_2_armv7l.whl",url = "https://files.pythonhosted.org/packages/47/ac/fd6d20d00202949d775043c5f70679f38d0e48ea30eeacbffaf6e0a9754e/ty-0.0.91-py3-none-musllinux_1_2_armv7l.whl",hashes = {sha256 = "e62f8bbc17d481e01cce39bdfbe36beefda0478cb210e8045ef618d3f674a731"}},
+    {name = "ty-0.0.91-py3-none-musllinux_1_2_i686.whl",url = "https://files.pythonhosted.org/packages/fa/26/53dddd4f927dfaa73ea14cd71d97b4d92d685e365b5b037bac457e271403/ty-0.0.91-py3-none-musllinux_1_2_i686.whl",hashes = {sha256 = "f8bf4514a383b13d7cf86eddb55f0eb9f356fc7efeae0de714ad4fe5fc54fee8"}},
+    {name = "ty-0.0.91-py3-none-musllinux_1_2_x86_64.whl",url = "https://files.pythonhosted.org/packages/89/40/ccebba145dd244b2f6058ce2e4a6ff34dea36d4a5b38dd7a6ae983b65a3b/ty-0.0.91-py3-none-musllinux_1_2_x86_64.whl",hashes = {sha256 = "a6d93ab988c4c5ed92b52389b888d46ddede78e4646fe28db615bbeff89cdf82"}},
+    {name = "ty-0.0.91-py3-none-win32.whl",url = "https://files.pythonhosted.org/packages/08/6f/8a7701adf1f539a893274358f12ba62773d5bb40920bfc53e0d852bfd576/ty-0.0.91-py3-none-win32.whl",hashes = {sha256 = "b9f4bba8486a3d13babc11f8115369d0a0dc8bef127b7cf4f4c5eed9d4dbfa01"}},
+    {name = "ty-0.0.91-py3-none-win_amd64.whl",url = "https://files.pythonhosted.org/packages/fc/63/27c8051a72328ee81f47dace5e2c63e7db43bcae935db25a9dbd4d0e59b2/ty-0.0.91-py3-none-win_amd64.whl",hashes = {sha256 = "5ac9eaf938e7fba4dd6c3358f852e6eb3127aa7bde0a76d9807c41f60ad73a29"}},
+    {name = "ty-0.0.91-py3-none-win_arm64.whl",url = "https://files.pythonhosted.org/packages/aa/a9/1f6c3694b7b33be4ae9a272f71a99a7dd27ec020c32a22049e9c0e79f576/ty-0.0.91-py3-none-win_arm64.whl",hashes = {sha256 = "35820957639db1fb8c643273670967192c308038836005bdf3bfef111aff64a0"}},
 ]
 marker = "python_version >= \"3.15\" and \"lint\" in dependency_groups"
 
@@ -387,19 +398,6 @@ dependencies = [
 ]
 
 [[packages]]
-name = "mypy-extensions"
-version = "1.1.0"
-requires-python = ">=3.8"
-sdist = {name = "mypy_extensions-1.1.0.tar.gz", url = "https://files.pythonhosted.org/packages/a2/6e/371856a3fb9d31ca8dac321cda606860fa4548858c0cc45d9d1d4ca2628b/mypy_extensions-1.1.0.tar.gz", hashes = {sha256 = "52e68efc3284861e772bbcd66823fde5ae21fd2fdb51c62a211403730b916558"}}
-wheels = [
-    {name = "mypy_extensions-1.1.0-py3-none-any.whl",url = "https://files.pythonhosted.org/packages/79/7b/2c79738432f5c924bef5071f933bcc9efd0473bac3b4aa584a6f7c1c8df8/mypy_extensions-1.1.0-py3-none-any.whl",hashes = {sha256 = "1be4cccdb0f2482337c4743e60421de3a356cd97508abadd57d47403e94f5505"}},
-]
-marker = "python_version >= \"3.15\" and \"lint\" in dependency_groups"
-
-[packages.tool.pdm]
-dependencies = []
-
-[[packages]]
 name = "packaging"
 version = "26.3"
 requires-python = ">=3.9"
@@ -408,19 +406,6 @@ wheels = [
     {name = "packaging-26.3-py3-none-any.whl",url = "https://files.pythonhosted.org/packages/63/34/ba1c580383c9eada3711951fef0795c80b829a078d72188184bcab9dd527/packaging-26.3-py3-none-any.whl",hashes = {sha256 = "d7193f7c8e4e93f444fde0262bf90af30e16fa0ad0ad44cb553c87339b23cd1c"}},
 ]
 marker = "python_version >= \"3.15\" and \"test\" in dependency_groups"
-
-[packages.tool.pdm]
-dependencies = []
-
-[[packages]]
-name = "pathspec"
-version = "1.1.1"
-requires-python = ">=3.9"
-sdist = {name = "pathspec-1.1.1.tar.gz", url = "https://files.pythonhosted.org/packages/5a/82/42f767fc1c1143d6fd36efb827202a2d997a375e160a71eb2888a925aac1/pathspec-1.1.1.tar.gz", hashes = {sha256 = "17db5ecd524104a120e173814c90367a96a98d07c45b2e10c2f3919fff91bf5a"}}
-wheels = [
-    {name = "pathspec-1.1.1-py3-none-any.whl",url = "https://files.pythonhosted.org/packages/f1/d9/7fb5aa316bc299258e68c73ba3bddbc499654a07f151cba08f6153988714/pathspec-1.1.1-py3-none-any.whl",hashes = {sha256 = "a00ce642f577bf7f473932318056212bc4f8bfdf53128c78bbd5af0b9b20b189"}},
-]
-marker = "python_version >= \"3.15\" and \"lint\" in dependency_groups"
 
 [packages.tool.pdm]
 dependencies = []
@@ -445,19 +430,6 @@ requires-python = ">=3.9"
 sdist = {name = "ruamel_yaml-0.19.1.tar.gz", url = "https://files.pythonhosted.org/packages/c7/3b/ebda527b56beb90cb7652cb1c7e4f91f48649fbcd8d2eb2fb6e77cd3329b/ruamel_yaml-0.19.1.tar.gz", hashes = {sha256 = "53eb66cd27849eff968ebf8f0bf61f46cdac2da1d1f3576dd4ccee9b25c31993"}}
 wheels = [
     {name = "ruamel_yaml-0.19.1-py3-none-any.whl",url = "https://files.pythonhosted.org/packages/b8/0c/51f6841f1d84f404f92463fc2b1ba0da357ca1e3db6b7fbda26956c3b82a/ruamel_yaml-0.19.1-py3-none-any.whl",hashes = {sha256 = "27592957fedf6e0b62f281e96effd28043345e0e66001f97683aa9a40c667c93"}},
-]
-marker = "python_version >= \"3.15\" and \"lint\" in dependency_groups"
-
-[packages.tool.pdm]
-dependencies = []
-
-[[packages]]
-name = "typing-extensions"
-version = "4.16.0"
-requires-python = ">=3.9"
-sdist = {name = "typing_extensions-4.16.0.tar.gz", url = "https://files.pythonhosted.org/packages/f6/cc/6253133b5bb138fc3306cebfbda2c520f545d36b5be2c7255cc528bb45d6/typing_extensions-4.16.0.tar.gz", hashes = {sha256 = "dc983d19a509c94dba722ee6abd33940f7c05a89e243c47e907eb4db6f1a43e5"}}
-wheels = [
-    {name = "typing_extensions-4.16.0-py3-none-any.whl",url = "https://files.pythonhosted.org/packages/49/d3/b8441a820a491ddfc024b0b0cf0393375b75ea13866d9c66727e54c2fc80/typing_extensions-4.16.0-py3-none-any.whl",hashes = {sha256 = "481caa481374e813c1b176ada14e97f1f67a4539ce9cfeb3f350d78d6370c2e8"}},
 ]
 marker = "python_version >= \"3.15\" and \"lint\" in dependency_groups"
 
@@ -537,7 +509,7 @@ marker = "sys_platform == \"win32\" and python_version >= \"3.15\" and \"default
 dependencies = []
 
 [tool.pdm]
-hashes = {sha256 = "89cbb0218cba47f80d1bc9a5ee9c0b4485e445d2212e00c6768ece6564d47d35"}
+hashes = {sha256 = "fc7ecbc7f94cc78def86a389a990601ff0cbc1f94daaed5d853c34151784a9cc"}
 strategy = ["inherit_metadata", "static_urls"]
 
 [[tool.pdm.targets]]
