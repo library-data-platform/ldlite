@@ -509,7 +509,7 @@ marker = "sys_platform == \"win32\" and python_version >= \"3.15\" and \"default
 dependencies = []
 
 [tool.pdm]
-hashes = {sha256 = "fc7ecbc7f94cc78def86a389a990601ff0cbc1f94daaed5d853c34151784a9cc"}
+hashes = {sha256 = "d7afadf5d4ae085553a8a3b3396b39c196aade57d48142969c1c3b3af3c5d460"}
 strategy = ["inherit_metadata", "static_urls"]
 
 [[tool.pdm.targets]]
