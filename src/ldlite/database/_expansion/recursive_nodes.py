@@ -49,7 +49,7 @@ class RecursiveNode(Node):
                 return p
 
         # There's "always" a root node
-        return None  # type: ignore[return-value]
+        return None  # ty: ignore[invalid-return-type]
 
     @property
     def depth(self) -> int:

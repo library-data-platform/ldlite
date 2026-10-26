@@ -15,7 +15,7 @@ from ._expansion import non_srs_statements
 from ._prefix import Prefix
 
 if TYPE_CHECKING:
-    from collections.abc import Callable, Iterator, Sequence
+    from collections.abc import Callable, Generator, Sequence
     from typing import NoReturn
 
     import duckdb
@@ -57,7 +57,7 @@ CREATE TABLE IF NOT EXISTS "ldlite_system"."load_history_v1" (
     def _default_schema(self) -> str: ...
 
     @contextmanager
-    def _begin(self, conn: DB) -> Iterator[None]:  # noqa: ARG002
+    def _begin(self, conn: DB) -> Generator[None]:  # noqa: ARG002
         yield
 
     def drop_prefix(

@@ -12,7 +12,7 @@ from ._prefix import Prefix
 from ._typed_database import TypedDatabase
 
 if TYPE_CHECKING:
-    from collections.abc import Iterator
+    from collections.abc import Generator, Iterator
 
 
 class PostgresDatabase(TypedDatabase[psycopg.Connection]):
@@ -48,7 +48,7 @@ class PostgresDatabase(TypedDatabase[psycopg.Connection]):
         )
 
     @contextmanager
-    def _begin(self, conn: psycopg.Connection) -> Iterator[None]:
+    def _begin(self, conn: psycopg.Connection) -> Generator[None]:
         with conn.transaction():
             yield
 

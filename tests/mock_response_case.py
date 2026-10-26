@@ -34,10 +34,10 @@ class MockedResponseTestCase:
 
     @property
     def calls_list(self) -> list[Call]:
-        if isinstance(self.calls, list):
-            return self.calls
+        if isinstance(self.calls, Call):
+            return [self.calls]
 
-        return [self.calls]
+        return self.calls
 
     @cached_property
     def db(self) -> str:
