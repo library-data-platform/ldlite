@@ -38,5 +38,5 @@ type = "lint"
 include = ["src/**/*.py", "tests/**/*.py"]
 invoke = "once"
 path_args = "none"
-cmd = ["ty", "check"]
+cmd = ["ty", "check", "src/", "tests/"]
 ok_exit_codes = [0]

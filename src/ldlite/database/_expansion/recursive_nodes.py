@@ -12,7 +12,7 @@ if TYPE_CHECKING:
 
 
 from .fixed_nodes import FixedValueNode, JsonbNode, JsonType, OrdinalNode, TypedNode
-from .node import Conn, Node
+from .node import Conn, Node, literalize
 
 TNode = TypeVar("TNode", bound="Node")
 TRode = TypeVar("TRode", bound="RecursiveNode")
@@ -181,7 +181,7 @@ ORDER BY MAX(ord), COUNT(*);
 """).format(source_table=self.source)
             )
 
-            cur.execute(key_discovery.as_string())
+            cur.execute(literalize(key_discovery))
             for row in cur.fetchall():
                 (key, jt, ojt) = cast("tuple[str, JsonType, JsonType]", row)
                 if jt == "array" and ojt == "array":
@@ -292,7 +292,7 @@ WHERE json_type <> 'null';
 ANALYZE {temp} (p__id, array_jsonb, json_type);
 """).format(source=self.source, temp=self.temp)
             )
-            cur.execute(expansion.as_string())
+            cur.execute(literalize(expansion))
 
             type_discovery = sql.SQL("""
 SELECT
@@ -300,7 +300,7 @@ SELECT
     ,MAX(json_type) AS other_json_type
 FROM {temp}""").format(temp=self.temp)
 
-            cur.execute(type_discovery.as_string())
+            cur.execute(literalize(type_discovery))
             self._children.append(OrdinalNode(self.temp, self.path, self.prefix))
             if row := cur.fetchone():
                 (jt, ojt) = cast("tuple[JsonType, JsonType]", row)
