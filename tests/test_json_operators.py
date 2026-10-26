@@ -218,7 +218,7 @@ def test_duckdb(duckdb_jop_dsn: str, tc: JsonTC) -> None:
 
 
 @pytest.fixture(scope="session")
-def pg_jop_dsn(pg_dsn: None | Callable[[str], str]) -> str:
+def pg_jop_dsn(pg_dsn: Callable[[str], str] | None) -> str:
     if pg_dsn is None:
         pytest.skip("Specify the pg host using --pg-host to run")
 

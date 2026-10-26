@@ -15,11 +15,12 @@ jobs:
   test:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       # install dependencies
       - uses: pdm-project/setup-pdm@v4
         with:
+          python-version: "3.11"
           cache: true
           cache-dependency-path: pylock.toml
       - run: pdm install -G:all --lockfile pylock.toml
@@ -31,12 +32,12 @@ jobs:
   test-minimal-deps:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       # install dependencies
       - uses: pdm-project/setup-pdm@v4
         with:
-          python-version: "3.10"
+          python-version: "3.11"
           cache: true
           cache-dependency-path: pylock.minimal.toml
       - run: pdm install -G:all --lockfile pylock.minimal.toml
@@ -48,12 +49,12 @@ jobs:
   test-maximal-deps:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       # install dependencies
       - uses: pdm-project/setup-pdm@v4
         with:
-          python-version: 3.14
+          python-version: "3.15"
           cache: true
           cache-dependency-path: pylock.maximal.toml
       - run: pdm install -G:all --lockfile pylock.maximal.toml

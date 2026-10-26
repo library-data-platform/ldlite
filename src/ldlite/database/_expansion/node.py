@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, LiteralString, cast
 
 import duckdb
 import psycopg
@@ -10,7 +10,14 @@ if TYPE_CHECKING:
 
     from psycopg import sql
 
+
 Conn: TypeAlias = duckdb.DuckDBPyConnection | psycopg.Connection
+
+
+def literalize(stmt: sql.Composed) -> LiteralString:
+    # There isn't an overlap in types between duckdb/psycopg for execute
+    # This is defined twice rather than importing from a parent package
+    return cast("LiteralString", stmt.as_string())
 
 
 class Node:

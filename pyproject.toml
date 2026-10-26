@@ -13,7 +13,7 @@ authors = [
 dependencies = [
   # 1.4 introduces WITH ORDINALITY
   # 1.4.1 fixes https://github.com/duckdb/duckdb-python/issues/78
-  "duckdb>=1.4.1",
+  "duckdb>=1.5.0",
   # pytz is required for timestamptz columns in duckdb
   # 2021.3 was released with 3.10
   "pytz>=2021.3",
@@ -26,7 +26,7 @@ dependencies = [
   # 3.2 changes the sql.SQL.format signature
   "psycopg>=3.2.0",
 ]
-requires-python = ">=3.10"
+requires-python = ">=3.11"
 readme = "README.md"
 license = { text = "Apache-2.0" }
 classifiers = [
@@ -43,16 +43,23 @@ Homepage = "https://github.com/library-data-platform/ldlite"
 pythonpath = "src"
 addopts = ["--import-mode=importlib"]
 
-[tool.mypy]
-python_version = "3.10"
-strict = true
+[tool.ty.environment]
+python-version = '3.11'
+[tool.ty.rules]
+blanket-ignore-comment = "error"
+missing-type-argument = "error"
+possibly-unresolved-reference = "warn"
+unsupported-dynamic-base = "warn"
+[tool.ty.analysis]
+strict-literal-narrowing = true
+strict-generic-narrowing = true
 
 [tool.ruff]
-target-version = "py310"
+target-version = "py311"
 [tool.ruff.lint]
 select = ["ALL"]
 fixable = ["ALL"]
-ignore = ["FBT", "D105", "FIX002", "PLR2004", "TD002", "TD003", "COM812"]
+ignore = ["FBT", "CPY001", "D105", "FIX002", "PLR2004", "TD002", "TD003", "COM812"]
 pydocstyle.convention = "google"
 [tool.ruff.lint.per-file-ignores]
 "examples/*" = ["D", "INP001", "T201", "S106", "ERA001", "PERF203"]
@@ -81,10 +88,10 @@ test.composite = [
 ]
 lock.composite = [
   "rm -f pylock.toml pylock.maximal.toml pylock.minimal.toml",
-  "pdm lock --python=3.10",
+  "pdm lock --python=3.11",
   "cp pylock.toml pylock.lint.toml",
-  "pdm lock --lockfile pylock.maximal.toml --python=3.14",
-  "pdm lock --strategy direct_minimal_versions --lockfile pylock.minimal.toml --python=3.10",
+  "pdm lock --lockfile pylock.maximal.toml --python=3.15",
+  "pdm lock --strategy direct_minimal_versions --lockfile pylock.minimal.toml --python=3.11",
 ]
 test-install.composite = [
   "pdm sync --lockfile=pylock.minimal.toml",
@@ -92,6 +99,6 @@ test-install.composite = [
 ]
 
 [dependency-groups]
-lint = ["mypy==1.18.2", "ruff==0.13.1", "pre-commit-hooks==6.0.0"]
-test = ["pytest>=8.4.2", "pytest-cases>=3.9.1", "coverage>=7.10.7"]
+lint = ["ty==0.0.91", "ruff==0.17.2", "pre-commit-hooks==6.0.0"]
+test = ["pytest==9.0.3", "pytest-cases==3.10.1", "coverage==7.17.0"]
 types = ["types-tqdm>=4.64.0"]

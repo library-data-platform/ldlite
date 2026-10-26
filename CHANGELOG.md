@@ -10,13 +10,21 @@ Please see [MIGRATING.md](./MIGRATING.md) for information on breaking changes.
 ## [Unreleased]
 
 ### Added
+* Python 3.15 support
+* Postgres 19 support
+* DuckDB 2.0 support
 
 ### Fixed
 
 ### Changed
+* Switched from mypy to astral/ty for type checking
+* Upgraded developer tool versions
 
 ### Removed
 * [Breaking] Remove legacy transformation codepath
+* [Breaking] Remove Python 3.10 support
+* [Breaking] Remove Postgres 14 support
+* [Breaking] Remove DuckDB 1.4 support
 
 ## [4.0.1] - April
 

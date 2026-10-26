@@ -8,7 +8,7 @@ if TYPE_CHECKING:
     from typing import TypeAlias
 
 
-from .node import Conn, Node
+from .node import Conn, Node, literalize
 
 JsonType: TypeAlias = Literal["array", "object", "string", "number", "boolean", "jsonb"]
 
@@ -122,7 +122,7 @@ SELECT
             string_value !~ '^[0-9]{4}-[0-9]{2}-[0-9]{2}[T ][0-9]{2}:[0-9]{2}:[0-9]{2}(\.[0-9]{1,9})?(Z|[+-][0-9]{2}(:?[0-9]{2})?)$'
     ) AS is_datetime;""")  # noqa: E501
 
-                cur.execute(specify.as_string())
+                cur.execute(literalize(specify))
                 if row := cur.fetchone():
                     (self.is_uuid, self.is_datetime) = row
 
@@ -143,7 +143,7 @@ SELECT
             string_value::numeric > 2147483647
     ) AS is_bigint;""")
 
-                cur.execute(specify.as_string())
+                cur.execute(literalize(specify))
                 if row := cur.fetchone():
                     (self.is_float, self.is_bigint) = row
 

@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from contextlib import contextmanager
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from itertools import count
 from typing import TYPE_CHECKING
 
@@ -12,7 +12,7 @@ from ._prefix import Prefix
 from ._typed_database import TypedDatabase
 
 if TYPE_CHECKING:
-    from collections.abc import Iterator
+    from collections.abc import Generator, Iterator
 
 
 class PostgresDatabase(TypedDatabase[psycopg.Connection]):
@@ -48,7 +48,7 @@ class PostgresDatabase(TypedDatabase[psycopg.Connection]):
         )
 
     @contextmanager
-    def _begin(self, conn: psycopg.Connection) -> Iterator[None]:
+    def _begin(self, conn: psycopg.Connection) -> Generator[None]:
         with conn.transaction():
             yield
 
@@ -58,7 +58,7 @@ class PostgresDatabase(TypedDatabase[psycopg.Connection]):
         records: Iterator[bytes],
     ) -> int:
         pfx = Prefix(prefix)
-        download_started = datetime.now(timezone.utc)
+        download_started = datetime.now(UTC)
         pkey = count(1)
         with self._conn_factory(True) as conn:
             self._prepare_raw_table(conn, pfx)

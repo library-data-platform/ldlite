@@ -230,7 +230,7 @@ class LDLite:
     def _set_okapi_timeout(self, timeout: int) -> None:
         self._okapi_timeout = timeout
 
-    def query(  # noqa: C901, PLR0913
+    def query(  # noqa: PLR0913, PLR0917
         self,
         table: str,
         path: str,
@@ -329,7 +329,7 @@ class LDLite:
                     total=total_records,
                     mininterval=5,
                     disable=self._quiet,
-                    unit=table.split(".")[-1],
+                    unit=table.rsplit(".", maxsplit=1)[-1],
                     unit_scale=True,
                     delay=5,
                 ),
@@ -411,7 +411,7 @@ class LDLite:
             self._check_db()
             return
 
-        if isinstance(self.db, "psycopg.Connection"):
+        if isinstance(self.db, psycopg.Connection):
             duck = duckdb.connect()
             duck.sql("INSTALL postgres;")
             duck.sql("LOAD postgres;")
@@ -455,7 +455,7 @@ class LDLite:
             self._check_db()
             return
 
-        if isinstance(self.db, "psycopg.Connection"):
+        if isinstance(self.db, psycopg.Connection):
             duck = duckdb.connect()
             duck.sql("INSTALL postgres;")
             duck.sql("LOAD postgres;")

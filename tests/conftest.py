@@ -32,7 +32,7 @@ def folio_params(pytestconfig: pytest.Config) -> tuple[bool, FolioParams]:
 
 
 @pytest.fixture(scope="session")
-def pg_dsn(pytestconfig: pytest.Config) -> None | Callable[[str], str]:
+def pg_dsn(pytestconfig: pytest.Config) -> Callable[[str], str] | None:
     host = pytestconfig.getoption("pg_host")
     if host is None:
         return None

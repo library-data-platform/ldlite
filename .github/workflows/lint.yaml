@@ -15,7 +15,7 @@ jobs:
   lint:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       # install dependencies
       - uses: pdm-project/setup-pdm@v4
@@ -23,10 +23,10 @@ jobs:
           cache: true
           cache-dependency-path: pylock.lint.toml
       - run: pdm install -G:all --lockfile pylock.lint.toml
-      - uses: jaxxstorm/action-install-gh-release@v1.10.0
+      - uses: jaxxstorm/action-install-gh-release@v3.0.0
         with:
           repo: houseabsolute/precious
-          tag: v0.10.0
+          tag: v1.0.0
           cache: enable
 
       # lint
