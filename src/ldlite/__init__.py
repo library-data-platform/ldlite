@@ -41,9 +41,9 @@ import duckdb
 import psycopg
 from httpx_folio.auth import FolioParams
 from psycopg import sql
-from tqdm import tqdm
 
 from ._folio import FolioClient
+from ._progress import LoggingTqdm
 from .database import Database
 
 if TYPE_CHECKING:
@@ -321,7 +321,7 @@ class LDLite:
             table,
             cast(
                 "Iterator[bytes]",
-                tqdm(
+                LoggingTqdm(
                     records,
                     desc="downloading",
                     leave=False,
@@ -337,13 +337,13 @@ class LDLite:
 
         no_iters_format = "{l_bar}{bar}| {n_fmt}/{total_fmt} [{elapsed}<{remaining}]"
         with (
-            tqdm(
+            LoggingTqdm(
                 desc="scanning",
                 leave=False,
                 disable=self._quiet,
                 bar_format=no_iters_format,
             ) as scan_progress,
-            tqdm(
+            LoggingTqdm(
                 desc="transforming",
                 leave=False,
                 disable=self._quiet,
@@ -360,7 +360,7 @@ class LDLite:
         if keep_raw:
             newtables = [table, *newtables]
 
-        with tqdm(
+        with LoggingTqdm(
             desc="indexing",
             leave=False,
             disable=self._quiet,
