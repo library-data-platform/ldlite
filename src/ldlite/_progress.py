@@ -1,6 +1,9 @@
 import logging
 import re
-from typing import TYPE_CHECKING, Any
+from contextlib import AbstractContextManager, ExitStack
+from typing import TYPE_CHECKING, Any, Self, cast
+
+from tqdm.contrib.logging import logging_redirect_tqdm
 
 if TYPE_CHECKING:
     from typing import NoReturn
@@ -18,6 +21,7 @@ logger = logging.getLogger("ldlite")
 
 class LoggingTqdm(Progress):
     def __init__(self, *args: Any, disable: bool = False, **kwargs: Any) -> None:  # noqa: ANN401
+        self._lcm = ExitStack()
         self._logonly = disable
         if self._logonly:
             kwargs["bar_format"] = re.sub(
@@ -35,3 +39,15 @@ class LoggingTqdm(Progress):
             return
 
         super().display(msg, pos)
+
+    def __enter__(self) -> Self:
+        if not self._logonly:
+            self._lcm.enter_context(
+                cast("AbstractContextManager[None]", logging_redirect_tqdm()),
+            )
+
+        return super().__enter__()
+
+    def __exit__(self, exc_type: object, exc_value: object, traceback: object) -> None:
+        self._lcm.close()
+        super().__exit__(exc_type, exc_value, traceback)

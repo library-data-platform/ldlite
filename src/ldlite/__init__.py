@@ -317,23 +317,18 @@ class LDLite:
             records = (x for _, x in zip(range(limit), records, strict=False))
         logger.debug("estimated row count: %s", total_records)
 
-        self._database.ingest_records(
-            table,
-            cast(
-                "Iterator[bytes]",
-                LoggingTqdm(
-                    records,
-                    desc="downloading",
-                    leave=False,
-                    total=total_records,
-                    mininterval=5,
-                    disable=self._quiet,
-                    unit=table.rsplit(".", maxsplit=1)[-1],
-                    unit_scale=True,
-                    delay=5,
-                ),
-            ),
-        )
+        with LoggingTqdm(
+            records,
+            desc="downloading",
+            leave=False,
+            total=total_records,
+            mininterval=5,
+            disable=self._quiet,
+            unit=table.rsplit(".", maxsplit=1)[-1],
+            unit_scale=True,
+            delay=5,
+        ) as trecords:
+            self._database.ingest_records(table, cast("Iterator[bytes]", trecords))
 
         no_iters_format = "{l_bar}{bar}| {n_fmt}/{total_fmt} [{elapsed}<{remaining}]"
         with (
