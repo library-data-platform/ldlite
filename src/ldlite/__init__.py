@@ -53,8 +53,8 @@ if TYPE_CHECKING:
     from httpx_folio.query import QueryType
 
 
-logging.getLogger(__name__).addHandler(logging.NullHandler())
-logger = logging.getLogger(__name__)
+logging.getLogger("ldlite").addHandler(logging.NullHandler())
+logger = logging.getLogger("ldlite")
 
 
 class LDLite:
