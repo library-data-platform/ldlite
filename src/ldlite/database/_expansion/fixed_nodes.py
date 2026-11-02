@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 from typing import TYPE_CHECKING, Literal
 
 from psycopg import sql
@@ -11,6 +12,8 @@ if TYPE_CHECKING:
 from .node import Conn, Node, literalize
 
 JsonType: TypeAlias = Literal["array", "object", "string", "number", "boolean", "jsonb"]
+
+logger = logging.getLogger("ldlite.transform")
 
 
 class FixedValueNode(Node):
@@ -25,6 +28,12 @@ class FixedValueNode(Node):
 
         self.path = path
         self.prefix = prefix
+
+    def __str__(self: FixedValueNode) -> str:
+        return (
+            f"{self.__class__.__name__}"
+            f"({self.source.as_string()}, {self.path.as_string()})"
+        )
 
     @property
     def alias(self) -> str:
@@ -57,6 +66,16 @@ class TypedNode(FixedValueNode):
         self.is_datetime = False
         self.is_float = False
         self.is_bigint = False
+
+        if self.is_mixed:
+            logger.warning("Mixed types %s found for %s", json_types, self)
+
+    def __repr__(self: TypedNode) -> str:
+        return (
+            f"{self.__class__.__name__}"
+            f"({self.source.as_string()}, {self.path.as_string()}, "
+            f"{self.prop}, {self.json_type})"
+        )
 
     @property
     def json_string(self) -> sql.Composable:
@@ -93,6 +112,7 @@ class TypedNode(FixedValueNode):
 
     def specify_type(self, conn: Conn) -> None:
         if self.is_mixed or self.json_type not in ["string", "number"]:
+            logger.debug("skipped type detection for %s", self)
             return
 
         cte = (
@@ -125,6 +145,14 @@ SELECT
                 cur.execute(literalize(specify))
                 if row := cur.fetchone():
                     (self.is_uuid, self.is_datetime) = row
+                    logger.debug(
+                        "detected is_uuid=%s and is_datetime=%s for string %s",
+                        self.is_uuid,
+                        self.is_datetime,
+                        self,
+                    )
+                else:
+                    logger.warning("empty string type detection for %s", self)
 
         if self.json_type == "number":
             with conn.cursor() as cur:
@@ -146,6 +174,14 @@ SELECT
                 cur.execute(literalize(specify))
                 if row := cur.fetchone():
                     (self.is_float, self.is_bigint) = row
+                    logger.debug(
+                        "detected is_float=%s and is_bigint=%s for numeric %s",
+                        self.is_float,
+                        self.is_datetime,
+                        self,
+                    )
+                else:
+                    logger.warning("empty numeric type detection for %s", self)
 
 
 class OrdinalNode(FixedValueNode):

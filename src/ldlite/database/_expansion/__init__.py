@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 from collections import deque
 from typing import TYPE_CHECKING
 
@@ -13,6 +14,8 @@ if TYPE_CHECKING:
 
 from .node import Conn, Node
 from .recursive_nodes import ArrayNode, ObjectNode, RootNode
+
+logger = logging.getLogger("ldlite.transform")
 
 
 def _non_srs_statements(
@@ -38,13 +41,16 @@ def _non_srs_statements(
     onodes: deque[ObjectNode] = deque([root])
     while onodes:
         o = onodes.popleft()
+        logger.debug("processing object %s with %s objects remaining", o, len(onodes))
 
         if o.depth >= json_depth:
-            o.make_jsonb()
+            j = o.make_jsonb()
             scan_progress.update(1)
+            logger.debug("exceeded json_depth %s for %s", json_depth, j)
             continue
 
         o.load_columns(conn)
+        logger.debug("found %s columns in %s", len(o.direct(Node)), o)
         scan_progress.total += len(o.direct(Node))
         scan_progress.update(1)
 
@@ -52,19 +58,23 @@ def _non_srs_statements(
         anodes = deque(o.direct(ArrayNode))
         while anodes:
             a = anodes.popleft()
+            logger.debug("processing array %s with %s arrays remaining", a, len(anodes))
 
             if a.depth >= json_depth:
-                a.make_jsonb()
+                j = a.make_jsonb()
                 scan_progress.update(1)
+                logger.debug("exceeded json_depth %s for %s", json_depth, j)
                 continue
 
             if n := a.make_temp(conn):
+                logger.debug("made temp table for %s containing %s", a, n)
                 if isinstance(n, ObjectNode):
                     onodes.append(n)
                 if isinstance(n, ArrayNode):
                     anodes.append(n)
                 scan_progress.total += 1
             else:
+                logger.debug("array %s was unknown/null type, discarding...", a)
                 a.unparent()
 
             scan_progress.update(1)

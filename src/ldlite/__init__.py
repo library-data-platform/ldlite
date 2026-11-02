@@ -34,16 +34,16 @@ Example:
 
 """
 
-import sys
+import logging
 from typing import TYPE_CHECKING, NoReturn, cast
 
 import duckdb
 import psycopg
 from httpx_folio.auth import FolioParams
 from psycopg import sql
-from tqdm import tqdm
 
 from ._folio import FolioClient
+from ._progress import LoggingTqdm
 from .database import Database
 
 if TYPE_CHECKING:
@@ -51,6 +51,10 @@ if TYPE_CHECKING:
 
     from _typeshed import dbapi
     from httpx_folio.query import QueryType
+
+
+logging.getLogger("ldlite").addHandler(logging.NullHandler())
+logger = logging.getLogger("ldlite")
 
 
 class LDLite:
@@ -299,8 +303,7 @@ class LDLite:
             path,
             query if query and isinstance(query, str) else None,
         )
-        if not self._quiet:
-            print("ldlite: querying: " + path, file=sys.stderr)
+        logger.info("querying: %s", path)
 
         (total_records, records) = self._folio.iterate_records(
             path,
@@ -312,39 +315,30 @@ class LDLite:
         if limit is not None:
             total_records = min(total_records, limit)
             records = (x for _, x in zip(range(limit), records, strict=False))
-        if self._verbose:
-            print(
-                "ldlite: estimated row count: " + str(total_records),
-                file=sys.stderr,
-            )
+        logger.debug("estimated row count: %s", total_records)
 
-        self._database.ingest_records(
-            table,
-            cast(
-                "Iterator[bytes]",
-                tqdm(
-                    records,
-                    desc="downloading",
-                    leave=False,
-                    total=total_records,
-                    mininterval=5,
-                    disable=self._quiet,
-                    unit=table.rsplit(".", maxsplit=1)[-1],
-                    unit_scale=True,
-                    delay=5,
-                ),
-            ),
-        )
+        with LoggingTqdm(
+            records,
+            desc="downloading",
+            leave=False,
+            total=total_records,
+            mininterval=5,
+            disable=self._quiet,
+            unit=table.rsplit(".", maxsplit=1)[-1],
+            unit_scale=True,
+            delay=5,
+        ) as trecords:
+            self._database.ingest_records(table, cast("Iterator[bytes]", trecords))
 
         no_iters_format = "{l_bar}{bar}| {n_fmt}/{total_fmt} [{elapsed}<{remaining}]"
         with (
-            tqdm(
+            LoggingTqdm(
                 desc="scanning",
                 leave=False,
                 disable=self._quiet,
                 bar_format=no_iters_format,
             ) as scan_progress,
-            tqdm(
+            LoggingTqdm(
                 desc="transforming",
                 leave=False,
                 disable=self._quiet,
@@ -361,7 +355,7 @@ class LDLite:
         if keep_raw:
             newtables = [table, *newtables]
 
-        with tqdm(
+        with LoggingTqdm(
             desc="indexing",
             leave=False,
             disable=self._quiet,
@@ -369,9 +363,7 @@ class LDLite:
         ) as progress:
             self._database.index_prefix(table, progress)
 
-        # Return table names
-        if not self._quiet:
-            print("ldlite: created tables: " + ", ".join(newtables), file=sys.stderr)
+        logger.info("created tables: %s", newtables)
         return newtables
 
     def quiet(self, enable: bool) -> None:
@@ -435,7 +427,6 @@ class LDLite:
         ) + (
             sql.SQL("LIMIT ") + sql.Literal(limit) if limit is not None else sql.SQL("")
         )
-        print(export.as_string())
         duck.sql(export.as_string()).show()
 
     def export_csv(self, filename: str, table: str, header: bool = True) -> None:
@@ -468,7 +459,6 @@ class LDLite:
             duck = cast("duckdb.DuckDBPyConnection", self.db.cursor())
             table_id = sql.Identifier(*table.split("."))
 
-        print(type(filename))
         export = (
             sql.SQL("COPY (SELECT * FROM {table}) TO {file} WITH ").format(
                 table=table_id,
@@ -478,7 +468,6 @@ class LDLite:
             if header
             else sql.SQL("(DELIMETER ',')")
         )
-        print(export.as_string())
         duck.execute(export.as_string())
 
     def to_csv(self) -> NoReturn:  # pragma: nocover

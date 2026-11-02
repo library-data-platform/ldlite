@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 from abc import abstractmethod
 from contextlib import contextmanager
 from datetime import UTC, datetime
@@ -23,6 +24,8 @@ if TYPE_CHECKING:
 
 DB = TypeVar("DB", bound="duckdb.DuckDBPyConnection | psycopg.Connection")
 
+logger = logging.getLogger("ldlite.database")
+
 
 def _literalize(stmt: sql.Composed) -> LiteralString:
     # There isn't an overlap in types between duckdb/psycopg for execute
@@ -35,6 +38,7 @@ class TypedDatabase(Database, Generic[DB]):
         self._conn_factory = conn_factory
         with self._conn_factory(True) as conn:
             with conn.cursor() as cur:
+                logger.debug("creating ldlite_system")
                 cur.execute('CREATE SCHEMA IF NOT EXISTS "ldlite_system";')
                 cur.execute("""
 CREATE TABLE IF NOT EXISTS "ldlite_system"."load_history_v1" (
@@ -74,6 +78,7 @@ CREATE TABLE IF NOT EXISTS "ldlite_system"."load_history_v1" (
         with self._conn_factory(True) as conn:
             self._drop_extracted_tables(conn, pfx)
             self._drop_raw_table(conn, pfx)
+            logger.debug("removing load_history entry for %s")
             conn.execute(
                 """
 DELETE FROM "ldlite_system"."load_history_v1"
@@ -97,6 +102,7 @@ WHERE "table_prefix" = $1;
         prefix: Prefix,
     ) -> None:
         with conn.cursor() as cur:
+            logger.debug("dropping raw table %s", prefix.raw_table.name)
             cur.execute(
                 _literalize(
                     sql.SQL("DROP TABLE IF EXISTS {table};").format(
@@ -120,6 +126,7 @@ WHERE "table_prefix" = $1;
     ) -> None:
         tables: list[Sequence[Sequence[Any]]] = []
         with conn.cursor() as cur:
+            logger.debug("dropping extracted tables for %s", prefix)
             cur.execute(
                 """
 SELECT table_name FROM information_schema.tables
@@ -132,6 +139,7 @@ WHERE table_schema = $1 and table_name IN ($2, $3);""",
             )
             for (tname,) in cur.fetchall():
                 if tname == prefix.catalog_table.name:
+                    logger.debug("found catalog table %s", tname)
                     cur.execute(
                         _literalize(
                             sql.SQL("SELECT table_name FROM {catalog};").format(
@@ -142,6 +150,7 @@ WHERE table_schema = $1 and table_name IN ($2, $3);""",
                     tables.extend(cur.fetchall())
 
                 if tname == prefix.legacy_jtable.name:
+                    logger.debug("found legacy catalog table %s", tname)
                     cur.execute(
                         _literalize(
                             sql.SQL("SELECT table_name FROM {catalog};").format(
@@ -152,6 +161,7 @@ WHERE table_schema = $1 and table_name IN ($2, $3);""",
                     tables.extend(cur.fetchall())
 
         with conn.cursor() as cur:
+            logger.debug("dropping tables %s", tables)
             for (et,) in tables:
                 cur.execute(
                     _literalize(
@@ -160,6 +170,7 @@ WHERE table_schema = $1 and table_name IN ($2, $3);""",
                         ),
                     ),
                 )
+            logger.debug("dropping catalog tables")
             cur.execute(
                 _literalize(
                     sql.SQL("DROP TABLE IF EXISTS {catalog};").format(
@@ -184,6 +195,7 @@ WHERE table_schema = $1 and table_name IN ($2, $3);""",
         prefix: Prefix,
     ) -> None:
         with conn.cursor() as cur:
+            logger.debug("creating schema for %s", prefix)
             if prefix.schema is not None:
                 cur.execute(
                     _literalize(
@@ -194,6 +206,7 @@ WHERE table_schema = $1 and table_name IN ($2, $3);""",
                 )
         self._drop_raw_table(conn, prefix)
         with conn.cursor() as cur:
+            logger.debug("creating raw table for %s", prefix.raw_table.name)
             cur.execute(
                 _literalize(
                     self._create_raw_table_sql.format(
@@ -213,6 +226,7 @@ WHERE table_schema = $1 and table_name IN ($2, $3);""",
         pfx = Prefix(prefix)
         transform_started = datetime.now(UTC)
         if json_depth < 1:
+            logger.debug("json_depth %s is <1", json_depth)
             with self._conn_factory(True) as conn:
                 self._drop_extracted_tables(conn, pfx)
                 if not keep_raw:
@@ -223,6 +237,7 @@ WHERE table_schema = $1 and table_name IN ($2, $3);""",
                 return []
 
         with self._conn_factory(False) as conn:
+            logger.debug("scanning started for %s", pfx)
             tables_to_create = non_srs_statements(
                 conn,
                 pfx.raw_table[1],
@@ -248,19 +263,24 @@ WHERE table_schema = $1 and table_name IN ($2, $3);""",
                 + 1
             )
             transform_progress.update(1)
+            logger.debug("scanning finished for %s", pfx)
 
             with self._begin(conn):
+                logger.debug("transformation started for %s", pfx)
                 self._drop_extracted_tables(conn, pfx)
                 with conn.cursor() as cur:
-                    for _, table in tables_to_create:
+                    for t, table in tables_to_create:
+                        logger.debug("creating output table %s", t)
                         cur.execute(_literalize(table))
                         transform_progress.update(1)
 
                 if not keep_raw:
                     self._drop_raw_table(conn, pfx)
+                logger.debug("transformation finished for %s", pfx)
 
                 total = 0
                 with conn.cursor() as cur:
+                    logger.debug("writing catalog table %s", pfx.catalog_table.name)
                     create_catalog = sql.SQL(
                         """CREATE TABLE {catalog_table} (table_name text)""",
                     ).format(catalog_table=pfx.catalog_table.id)
@@ -290,6 +310,7 @@ WHERE table_schema = $1 and table_name IN ($2, $3);""",
         index_started = datetime.now(UTC)
         with self._conn_factory(False) as conn:
             with conn.cursor() as cur:
+                logger.debug("indexing %s", pfx)
                 cur.execute(
                     """
 SELECT table_name FROM information_schema.tables
@@ -322,6 +343,7 @@ WHERE
                     (pfx.schema or self._default_schema,),
                 )
                 indexes = cur.fetchall()
+                logger.debug("found indexes %s", indexes)
 
             if progress is not None:
                 progress.total = len(indexes)
@@ -329,6 +351,12 @@ WHERE
 
             for index in indexes:
                 with conn.cursor() as cur:
+                    logger.debug(
+                        "indexing %s column on %s.%s",
+                        index[2],
+                        index[0],
+                        index[1],
+                    )
                     cur.execute(
                         _literalize(
                             sql.SQL(
@@ -352,7 +380,9 @@ WHERE
         path: str,
         query: str | None,
     ) -> None:
+        pfx = Prefix(prefix)
         with self._conn_factory(True) as conn, conn.cursor() as cur:
+            logger.debug("writing load start for %s", pfx.load_history_key)
             cur.execute(
                 """
 INSERT INTO "ldlite_system"."load_history_v1"
@@ -369,7 +399,7 @@ ON CONFLICT ("table_prefix") DO UPDATE SET
     ,"load_start" = EXCLUDED."load_start"
 """,
                 (
-                    Prefix(prefix).load_history_key,
+                    pfx.load_history_key,
                     path,
                     query,
                     datetime.now(UTC),
@@ -385,6 +415,7 @@ ON CONFLICT ("table_prefix") DO UPDATE SET
         download_start: datetime,
     ) -> None:
         with conn.cursor() as cur:
+            logger.debug("writing download complete for %s", pfx.load_history_key)
             cur.execute(
                 """
 UPDATE "ldlite_system"."load_history_v1" SET
@@ -409,6 +440,7 @@ WHERE "table_prefix" = $1;
         transform_start: datetime,
     ) -> None:
         with conn.cursor() as cur:
+            logger.debug("writing transformation complete for %s", pfx.load_history_key)
             cur.execute(
                 """
 UPDATE "ldlite_system"."load_history_v1" SET
@@ -435,6 +467,7 @@ WHERE "table_prefix" = $1
         index_start: datetime,
     ) -> None:
         with conn.cursor() as cur:
+            logger.debug("writing indexing complete for %s", pfx.load_history_key)
             cur.execute(
                 """
 UPDATE "ldlite_system"."load_history_v1" SET

@@ -32,6 +32,12 @@ class RecursiveNode(Node):
         self.column = column
         self._children: list[Node] = []
 
+    def __repr__(self: RecursiveNode) -> str:
+        return (
+            f"{self.__class__.__name__}"
+            f"(depth={self.depth}, {self.source.as_string()}, {self.path.as_string()})"
+        )
+
     def _parents(self) -> Iterator[RecursiveNode]:
         p = self.parent
         while p is not None:
@@ -73,11 +79,13 @@ class RecursiveNode(Node):
     def unparent(self) -> None:
         cast("RecursiveNode", self.parent).replace(self, None)
 
-    def make_jsonb(self) -> None:
+    def make_jsonb(self) -> JsonbNode:
+        new_self = JsonbNode(self.source, self.path, self.prefix)
         cast("RecursiveNode", self.parent).replace(
             self,
-            JsonbNode(self.source, self.path, self.prefix),
+            new_self,
         )
+        return new_self
 
     @property
     def path(self) -> sql.Composable:

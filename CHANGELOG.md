@@ -13,12 +13,14 @@ Please see [MIGRATING.md](./MIGRATING.md) for information on breaking changes.
 * Python 3.15 support
 * Postgres 19 support
 * DuckDB 2.0 support
+* DEBUG level logging for internal operations
 
 ### Fixed
 
 ### Changed
 * Switched from mypy to astral/ty for type checking
 * Upgraded developer tool versions
+* print() statement logging is now handled by an actual logger
 
 ### Removed
 * [Breaking] Remove legacy transformation codepath

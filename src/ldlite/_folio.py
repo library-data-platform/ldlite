@@ -1,3 +1,4 @@
+import logging
 from collections.abc import Iterator
 from itertools import count
 from typing import cast
@@ -9,6 +10,8 @@ from httpx_folio.factories import (
     default_client_factory,
 )
 from httpx_folio.query import QueryParams, QueryType
+
+logger = logging.getLogger("ldlite.download")
 
 _SOURCESTATS = {
     "/source-storage/records": "/source-storage/records",
@@ -44,6 +47,7 @@ class FolioClient:
 
         client_opts = BasicClientOptions(retries=retries, timeout=timeout)
         with self._client_factory(client_opts) as client:
+            logger.debug("reading %s with %s", path, query)
             res = client.get(
                 path if not is_srs else _SOURCESTATS[path.lower()],
                 params=params.stats(),
@@ -51,8 +55,10 @@ class FolioClient:
             res.raise_for_status()
             j = orjson.loads(res.text)
             r = int(j["totalRecords"])
+            logger.debug("got %s records", r)
 
         if r == 0:
+            logger.debug("bailing early because there are no records")
             return (0, iter([]))
 
         if is_srs:
@@ -64,7 +70,7 @@ class FolioClient:
         # totalRecords and erm as of right now are the only keys like this
         # but there may end up with more
         keys = iter(j.keys())
-        while (key := next(keys)) and key in [
+        while (json_key := next(keys)) and json_key in [
             "totalRecords",
             "pageSize",
             "page",
@@ -73,19 +79,21 @@ class FolioClient:
             "total",
         ]:
             continue
+        logger.debug("selected %s as json key from options %s", json_key, j.keys())
 
-        r1 = j[key][0]
+        r1 = j[json_key][0]
         if (
-            nonid_key := cast("str", next(iter(r1.keys()))) if "id" not in r1 else None
+            nonid_sort := cast("str", next(iter(r1.keys()))) if "id" not in r1 else None
         ) or not params.can_page_by_id(path=path):
+            logger.warning("paging by offset using %s instead of by id", nonid_sort)
             return (
                 r,
                 self._iterate_records_offset(
                     client_opts,
                     path,
                     params,
-                    key,
-                    nonid_key,
+                    json_key,
+                    nonid_sort,
                 ),
             )
 
@@ -95,7 +103,7 @@ class FolioClient:
                 client_opts,
                 path,
                 params,
-                key,
+                json_key,
             ),
         )
 
@@ -120,6 +128,7 @@ class FolioClient:
                 # if they contain "newline-ish" characters like U+2028
                 record += f
                 if len(f) == 0 or f[-1] != "}":
+                    logger.warning("got fragment of srs record %f", f)
                     continue
                 yield orjson.dumps(orjson.Fragment(record))
                 record = ""
@@ -129,8 +138,8 @@ class FolioClient:
         client_opts: BasicClientOptions,
         path: str,
         params: QueryParams,
-        key: str,
-        nonid_key: str | None,
+        json_key: str,
+        nonid_sort: str | None,
     ) -> Iterator[bytes]:
         with self._client_factory(client_opts) as client:
             page = count(start=1)
@@ -138,13 +147,13 @@ class FolioClient:
                 res = client.get(
                     path,
                     params=params.offset_paging(page=next(page))
-                    if nonid_key is None
-                    else params.offset_paging(key=nonid_key, page=next(page)),
+                    if nonid_sort is None
+                    else params.offset_paging(key=nonid_sort, page=next(page)),
                 )
                 res.raise_for_status()
 
                 last = None
-                for r in (o for o in orjson.loads(res.text)[key] if o is not None):
+                for r in (o for o in orjson.loads(res.text)[json_key] if o is not None):
                     last = r
                     yield orjson.dumps(r)
 
@@ -156,7 +165,7 @@ class FolioClient:
         client_opts: BasicClientOptions,
         path: str,
         params: QueryParams,
-        key: str,
+        json_key: str,
     ) -> Iterator[bytes]:
         with self._client_factory(client_opts) as client:
             last_id: str | None = None
@@ -165,7 +174,7 @@ class FolioClient:
                 res.raise_for_status()
 
                 last = None
-                for r in (o for o in orjson.loads(res.text)[key] if o is not None):
+                for r in (o for o in orjson.loads(res.text)[json_key] if o is not None):
                     last = r
                     yield orjson.dumps(r)
 

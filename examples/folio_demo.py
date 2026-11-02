@@ -1,6 +1,7 @@
 # This script uses LDLite to extract sample data from the FOLIO demo sites.
 from __future__ import annotations
 
+import logging
 import sys
 
 import httpx
@@ -24,6 +25,17 @@ selected_site = eureka_snapshot
 ###############################################################################
 
 ld = ldlite.LDLite()
+
+logging.basicConfig(level=logging.INFO)
+# HTTPX is noisy at the INFO level
+logging.getLogger("httpx").setLevel(logging.WARNING)
+# DEBUG contains the logs for when a call to FOLIO fails and has to be retried
+logging.getLogger("httpx_retries.retry").setLevel(logging.DEBUG)
+# Optionally lower the threshold for ldlite to get information
+# logging.getLogger("ldlite").setLevel(logging.DEBUG)
+# Quiet mode is recommended for scripts for better progress output
+ld.quiet(True)
+
 ld.connect_folio(
     url=selected_site,
     tenant="diku",

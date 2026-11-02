@@ -26,6 +26,9 @@ class Prefix:
             return PrefixedTable(name, sql.Identifier(name))
         return PrefixedTable(name, sql.Identifier(self.schema, name))
 
+    def __str__(self) -> str:
+        return str((self.schema, self._prefix))
+
     @property
     def raw_table(self) -> PrefixedTable:
         return self._prefixed_table(self._prefix)
