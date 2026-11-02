@@ -1,6 +1,7 @@
 import logging
 import re
 from contextlib import AbstractContextManager, ExitStack
+from types import TracebackType
 from typing import TYPE_CHECKING, Any, Self, cast
 
 from tqdm.contrib.logging import logging_redirect_tqdm
@@ -48,6 +49,11 @@ class LoggingTqdm(Progress):
 
         return super().__enter__()
 
-    def __exit__(self, exc_type: object, exc_value: object, traceback: object) -> None:
+    def __exit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc_value: BaseException | None,
+        traceback: TracebackType | None,
+    ) -> None:
         self._lcm.close()
         super().__exit__(exc_type, exc_value, traceback)
