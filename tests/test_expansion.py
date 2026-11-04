@@ -812,6 +812,52 @@ WHERE TABLE_NAME = 'prefix'
     )
 
 
+def case_table_name_truncated() -> ExpansionTC:
+    return ExpansionTC(
+        records=[
+            b"""
+{
+    "id": "id1",
+    "intermediateArray":
+    [
+        {
+            "id": "id11",
+            "causesTheTableNameToBeTruncated": [ "value111" ],
+            "especiallyWith":
+            [
+                {
+                    "id": "id12",
+                    "multipleNestedArrays": ["value121"]
+                }
+            ]
+        }
+    ]
+}""",
+            b"""{"id": "id2", "camelValue": "value2"}""",
+        ],
+        assertions=[
+            Assertion(
+                """
+SELECT TABLE_NAME
+FROM INFORMATION_SCHEMA.TABLES
+WHERE TABLE_NAME LIKE 'prefix__t__intermediate_array__causes%'
+                """,
+                exp_duck="prefix__t__intermediate_array__causes_the_table_name_to_be_truncated",
+                exp_pg="prefix__t__intermediate_array__causes_the_table_name_to_be_trun",
+            ),
+            Assertion(
+                """
+SELECT TABLE_NAME
+FROM INFORMATION_SCHEMA.TABLES
+WHERE TABLE_NAME LIKE 'prefix__t__intermediate_array__especially_with__multiple%'
+                """,
+                exp_duck="prefix__t__intermediate_array__especially_with__multiple_nested_arrays",
+                exp_pg="prefix__t__intermediate_array__especially_with__multiple_nested",
+            ),
+        ],
+    )
+
+
 def _assert(
     conn: "dbapi.DBAPIConnection",
     db: str,
