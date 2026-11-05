@@ -241,7 +241,6 @@ WHERE table_schema = $1 and table_name IN ($2, $3);""",
             tables_to_create = non_srs_statements(
                 conn,
                 pfx.raw_table[1],
-                pfx.output_table,
                 json_depth,
                 scan_progress
                 if scan_progress is not None
@@ -269,9 +268,13 @@ WHERE table_schema = $1 and table_name IN ($2, $3);""",
                 logger.debug("transformation started for %s", pfx)
                 self._drop_extracted_tables(conn, pfx)
                 with conn.cursor() as cur:
-                    for t, table in tables_to_create:
-                        logger.debug("creating output table %s", t)
-                        cur.execute(_literalize(table))
+                    for table in tables_to_create:
+                        (_, output_table) = pfx.output_table(table.output_path)
+                        (_, parent_table) = pfx.output_table(table.parent_path)
+                        logger.debug("creating output table %s", output_table)
+                        cur.execute(
+                            _literalize(table.assemble(output_table, parent_table)),
+                        )
                         transform_progress.update(1)
 
                 if not keep_raw:
@@ -291,7 +294,14 @@ WHERE table_schema = $1 and table_name IN ($2, $3);""",
                         ).format(catalog_table=pfx.catalog_table.id)
                         cur.executemany(
                             _literalize(insert_catalog),
-                            [(pfx.catalog_table_row(t[0]),) for t in tables_to_create],
+                            [
+                                (
+                                    pfx.catalog_table_row(
+                                        pfx.output_table(t.output_path)[0],
+                                    ),
+                                )
+                                for t in tables_to_create
+                            ],
                         )
 
                         count = sql.SQL("SELECT COUNT(*) FROM {table}").format(
@@ -303,7 +313,10 @@ WHERE table_schema = $1 and table_name IN ($2, $3);""",
 
                 self._transform_complete(conn, pfx, total, transform_started)
 
-        return [pfx.catalog_table_row(t[0]) for t in tables_to_create]
+        return [
+            pfx.catalog_table_row(pfx.output_table(t.output_path)[0])
+            for t in tables_to_create
+        ]
 
     def index_prefix(self, prefix: str, progress: tqdm[NoReturn] | None = None) -> None:
         pfx = Prefix(prefix)

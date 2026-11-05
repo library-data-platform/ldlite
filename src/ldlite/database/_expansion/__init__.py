@@ -5,14 +5,14 @@ from collections import deque
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from collections.abc import Callable, Iterator
+    from collections.abc import Iterator
     from typing import NoReturn
 
     from psycopg import sql
     from tqdm import tqdm
 
 
-from .node import Conn, Node
+from .node import Conn, Node, TableCreationSql
 from .recursive_nodes import ArrayNode, ObjectNode, RootNode
 
 logger = logging.getLogger("ldlite.transform")
@@ -21,10 +21,9 @@ logger = logging.getLogger("ldlite.transform")
 def _non_srs_statements(
     conn: Conn,
     source_table: sql.Identifier,
-    output_table: Callable[[str | None], tuple[str, sql.Identifier]],
     json_depth: int,
     scan_progress: tqdm[NoReturn],
-) -> Iterator[tuple[str, sql.Composed]]:
+) -> Iterator[TableCreationSql]:
     # Here be dragons! The nodes have inner state manipulations
     # that violate the space/time continuum:
     # * o.load_columns
@@ -37,7 +36,7 @@ def _non_srs_statements(
     # a transaction is opened to a minimum (which is a leaky abstraction).
     scan_progress.total = scan_progress.total if scan_progress.total is not None else 1
 
-    root = RootNode(source_table, output_table)
+    root = RootNode(source_table)
     onodes: deque[ObjectNode] = deque([root])
     while onodes:
         o = onodes.popleft()
@@ -91,15 +90,13 @@ def _non_srs_statements(
 def non_srs_statements(
     conn: Conn,
     source_table: sql.Identifier,
-    output_table: Callable[[str | None], tuple[str, sql.Identifier]],
     json_depth: int,
     scan_progress: tqdm[NoReturn],
-) -> list[tuple[str, sql.Composed]]:
+) -> list[TableCreationSql]:
     return list(
         _non_srs_statements(
             conn,
             source_table,
-            output_table,
             json_depth,
             scan_progress,
         ),

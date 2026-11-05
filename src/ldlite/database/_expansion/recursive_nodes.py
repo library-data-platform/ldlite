@@ -8,11 +8,11 @@ from uuid import uuid4
 from psycopg import sql
 
 if TYPE_CHECKING:
-    from collections.abc import Callable, Iterator
+    from collections.abc import Iterator
 
 
 from .fixed_nodes import FixedValueNode, JsonbNode, JsonType, OrdinalNode, TypedNode
-from .node import Conn, Node, literalize
+from .node import Conn, Node, TableCreationSql, literalize
 
 TNode = TypeVar("TNode", bound="Node")
 TRode = TypeVar("TRode", bound="RecursiveNode")
@@ -212,14 +212,13 @@ ORDER BY MAX(ord), COUNT(*);
 class StampableTable(ABC):
     @property
     @abstractmethod
-    def create_statement(self) -> tuple[str, sql.Composed]: ...
+    def create_statement(self) -> TableCreationSql: ...
 
 
 class RootNode(ObjectNode, StampableTable):
     def __init__(
         self,
         source: sql.Identifier,
-        get_output_table: Callable[[str | None], tuple[str, sql.Identifier]],
     ):
         super().__init__(
             source,
@@ -227,35 +226,26 @@ class RootNode(ObjectNode, StampableTable):
             sql.Identifier("jsonb"),
             None,
         )
-        self.get_output_table = get_output_table
 
     @property
-    def create_statement(self) -> tuple[str, sql.Composed]:
-        (output_table_name, output_table) = self.get_output_table(None)
-
-        return (
-            output_table_name,
-            sql.SQL("""
-CREATE TABLE {output_table} AS
-SELECT
-    """).format(output_table=output_table)
-            + sql.SQL("\n    ,").join(
-                [
-                    sql.Identifier("__id"),
-                    *[t.stmt for t in self.direct(TypedNode)],
-                    *[
-                        t.stmt
-                        for o in self.descendents(ObjectNode, ArrayNode)
-                        for t in o.direct(TypedNode)
-                    ],
+    def create_statement(self) -> TableCreationSql:
+        return TableCreationSql(
+            output_path=None,
+            parent_path=None,
+            _columns=[
+                sql.Identifier("__id"),
+                *[t.stmt for t in self.direct(TypedNode)],
+                *[
+                    t.stmt
+                    for o in self.descendents(ObjectNode, ArrayNode)
+                    for t in o.direct(TypedNode)
                 ],
-            )
-            + sql.SQL("""
-FROM {source_table};
-ANALYZE {output_table} (__id);""").format(
-                source_table=self.source,
-                output_table=output_table,
+            ],
+            _source_stmt=sql.SQL(
+                """
+FROM {source_table} a""",
             ),
+            _source_table=self.source,
         )
 
 
@@ -341,7 +331,7 @@ FROM {temp}""").format(temp=self.temp)
         return None
 
     @property
-    def create_statement(self) -> tuple[str, sql.Composed]:
+    def create_statement(self) -> TableCreationSql:
         table_parent: RecursiveNode = self
         parents: list[RecursiveNode] = []
         for p in self.parents:
@@ -349,47 +339,28 @@ FROM {temp}""").format(temp=self.temp)
                 table_parent = p
             parents.append(p)
 
-        root = cast("RootNode", parents[-1])
-        (output_table_name, output_table) = root.get_output_table(self.prefix)
-        if not isinstance(table_parent, ArrayNode):
-            (_, parent_table) = root.get_output_table(None)
-        else:
-            (_, parent_table) = root.get_output_table(table_parent.prefix)
-
-        return (
-            output_table_name,
-            (
-                sql.SQL(
-                    """
-CREATE TABLE {output_table} AS
-SELECT
-    """,
-                ).format(output_table=output_table)
-                + sql.SQL("\n    ,").join(
-                    [
-                        sql.Identifier("a", "__id"),
-                        *[
-                            sql.Identifier("p", t.alias)
-                            for p in reversed(parents)
-                            for t in p.direct(FixedValueNode)
-                        ],
-                        *[t.stmt for t in self.direct(FixedValueNode)],
-                        *[
-                            t.stmt
-                            for o in self.descendents(ObjectNode, ArrayNode)
-                            for t in o.direct(TypedNode)
-                        ],
-                    ],
-                )
-                + sql.SQL("""
+        return TableCreationSql(
+            output_path=self.prefix,
+            parent_path=table_parent.prefix
+            if isinstance(table_parent, ArrayNode)
+            else None,
+            _columns=[
+                sql.Identifier("a", "__id"),
+                *[
+                    sql.Identifier("p", t.alias)
+                    for p in reversed(parents)
+                    for t in p.direct(FixedValueNode)
+                ],
+                *[t.stmt for t in self.direct(FixedValueNode)],
+                *[
+                    t.stmt
+                    for o in self.descendents(ObjectNode, ArrayNode)
+                    for t in o.direct(TypedNode)
+                ],
+            ],
+            _source_stmt=sql.SQL("""
 FROM {source_table} a
 JOIN {parent_table} p ON
-    a.p__id = p.__id;
-ANALYZE {output_table} (__id);
-""").format(
-                    source_table=self.temp,
-                    parent_table=parent_table,
-                    output_table=output_table,
-                )
-            ),
+    a.p__id = p.__id"""),
+            _source_table=self.temp,
         )
