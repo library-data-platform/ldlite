@@ -28,7 +28,7 @@ class TableCreationSql:
     _source_stmt: sql.SQL
     _source_table: sql.Identifier
 
-    def assemble(
+    def stamp(
         self,
         output_table: sql.Identifier,
         parent_table: sql.Identifier,

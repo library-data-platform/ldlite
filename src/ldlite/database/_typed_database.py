@@ -267,13 +267,27 @@ WHERE table_schema = $1 and table_name IN ($2, $3);""",
             with self._begin(conn):
                 logger.debug("transformation started for %s", pfx)
                 self._drop_extracted_tables(conn, pfx)
-                with conn.cursor() as cur:
+
+                with conn.cursor() as catalog_cur, conn.cursor() as stamp_cur:
+                    logger.debug("writing catalog table %s", pfx.catalog_table.name)
+                    create_catalog = sql.SQL(
+                        """CREATE TABLE {catalog_table} (table_name text)""",
+                    ).format(catalog_table=pfx.catalog_table.id)
+                    catalog_cur.execute(_literalize(create_catalog))
+                    insert_catalog = sql.SQL(
+                        "INSERT INTO {catalog_table} VALUES ($1)",
+                    ).format(catalog_table=pfx.catalog_table.id)
+
                     for table in tables_to_create:
-                        (_, output_table) = pfx.output_table(table.output_path)
+                        output_table = pfx.output_table(table.output_path)
                         (_, parent_table) = pfx.output_table(table.parent_path)
-                        logger.debug("creating output table %s", output_table)
-                        cur.execute(
-                            _literalize(table.assemble(output_table, parent_table)),
+                        logger.debug("creating output table %s", output_table.name)
+                        stamp_cur.execute(
+                            _literalize(table.stamp(output_table.id, parent_table)),
+                        )
+                        catalog_cur.execute(
+                            _literalize(insert_catalog),
+                            (pfx.catalog_table_row(output_table.name),),
                         )
                         transform_progress.update(1)
 
@@ -282,28 +296,8 @@ WHERE table_schema = $1 and table_name IN ($2, $3);""",
                 logger.debug("transformation finished for %s", pfx)
 
                 total = 0
-                with conn.cursor() as cur:
-                    logger.debug("writing catalog table %s", pfx.catalog_table.name)
-                    create_catalog = sql.SQL(
-                        """CREATE TABLE {catalog_table} (table_name text)""",
-                    ).format(catalog_table=pfx.catalog_table.id)
-                    cur.execute(_literalize(create_catalog))
-                    if len(tables_to_create) > 0:
-                        insert_catalog = sql.SQL(
-                            "INSERT INTO {catalog_table} VALUES ($1)",
-                        ).format(catalog_table=pfx.catalog_table.id)
-                        cur.executemany(
-                            _literalize(insert_catalog),
-                            [
-                                (
-                                    pfx.catalog_table_row(
-                                        pfx.output_table(t.output_path)[0],
-                                    ),
-                                )
-                                for t in tables_to_create
-                            ],
-                        )
-
+                if len(tables_to_create) > 0:
+                    with conn.cursor() as cur:
                         count = sql.SQL("SELECT COUNT(*) FROM {table}").format(
                             table=pfx.output_table(None).id,
                         )
