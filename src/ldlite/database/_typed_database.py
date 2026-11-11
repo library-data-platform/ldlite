@@ -241,7 +241,6 @@ WHERE table_schema = $1 and table_name IN ($2, $3);""",
             tables_to_create = non_srs_statements(
                 conn,
                 pfx.raw_table[1],
-                pfx.output_table,
                 json_depth,
                 scan_progress
                 if scan_progress is not None
@@ -265,13 +264,32 @@ WHERE table_schema = $1 and table_name IN ($2, $3);""",
             transform_progress.update(1)
             logger.debug("scanning finished for %s", pfx)
 
+            created_tables = []
             with self._begin(conn):
                 logger.debug("transformation started for %s", pfx)
                 self._drop_extracted_tables(conn, pfx)
-                with conn.cursor() as cur:
-                    for t, table in tables_to_create:
-                        logger.debug("creating output table %s", t)
-                        cur.execute(_literalize(table))
+
+                with conn.cursor() as catalog_cur, conn.cursor() as stamp_cur:
+                    logger.debug("writing catalog table %s", pfx.catalog_table.name)
+                    create_catalog = sql.SQL(
+                        "CREATE TABLE {catalog_table} "
+                        "(table_name text, full_name text)",
+                    ).format(catalog_table=pfx.catalog_table.id)
+                    catalog_cur.execute(_literalize(create_catalog))
+                    insert_catalog = sql.SQL(
+                        "INSERT INTO {catalog_table} VALUES ($1, $2)",
+                    ).format(catalog_table=pfx.catalog_table.id)
+
+                    for table in tables_to_create:
+                        output_table = pfx.output_table(table.output_path)
+                        parent_table = pfx.output_table(table.parent_path)
+                        logger.debug("creating output table %s", output_table.name)
+                        stamp_cur.execute(
+                            _literalize(table.stamp(output_table.id, parent_table.id)),
+                        )
+                        catalog = pfx.catalog_table_row(table.output_path)
+                        catalog_cur.execute(_literalize(insert_catalog), catalog)
+                        created_tables.append(catalog[0])
                         transform_progress.update(1)
 
                 if not keep_raw:
@@ -279,21 +297,8 @@ WHERE table_schema = $1 and table_name IN ($2, $3);""",
                 logger.debug("transformation finished for %s", pfx)
 
                 total = 0
-                with conn.cursor() as cur:
-                    logger.debug("writing catalog table %s", pfx.catalog_table.name)
-                    create_catalog = sql.SQL(
-                        """CREATE TABLE {catalog_table} (table_name text)""",
-                    ).format(catalog_table=pfx.catalog_table.id)
-                    cur.execute(_literalize(create_catalog))
-                    if len(tables_to_create) > 0:
-                        insert_catalog = sql.SQL(
-                            "INSERT INTO {catalog_table} VALUES ($1)",
-                        ).format(catalog_table=pfx.catalog_table.id)
-                        cur.executemany(
-                            _literalize(insert_catalog),
-                            [(pfx.catalog_table_row(t[0]),) for t in tables_to_create],
-                        )
-
+                if len(tables_to_create) > 0:
+                    with conn.cursor() as cur:
                         count = sql.SQL("SELECT COUNT(*) FROM {table}").format(
                             table=pfx.output_table(None).id,
                         )
@@ -303,7 +308,7 @@ WHERE table_schema = $1 and table_name IN ($2, $3);""",
 
                 self._transform_complete(conn, pfx, total, transform_started)
 
-        return [pfx.catalog_table_row(t[0]) for t in tables_to_create]
+        return created_tables
 
     def index_prefix(self, prefix: str, progress: tqdm[NoReturn] | None = None) -> None:
         pfx = Prefix(prefix)

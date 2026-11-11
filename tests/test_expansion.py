@@ -423,7 +423,7 @@ def case_basic_array() -> ExpansionTC:
             Assertion("""SELECT COUNT(*) FROM tests.prefix__t__list1""", expect=6),
             Assertion("""SELECT COUNT(*) FROM tests.prefix__t__list2""", expect=2),
             Assertion(
-                """SELECT * FROM tests.prefix__tcatalog ORDER BY table_name""",
+                """SELECT table_name FROM tests.prefix__tcatalog ORDER BY table_name""",
                 expect=[
                     ("tests.prefix__t",),
                     ("tests.prefix__t__list1",),
@@ -509,7 +509,7 @@ def case_nested_arrays() -> ExpansionTC:
         assertions=[
             Assertion("""SELECT COUNT(*) FROM tests.prefix__t__sub""", expect=4),
             Assertion(
-                """SELECT * FROM tests.prefix__tcatalog ORDER BY table_name""",
+                """SELECT table_name FROM tests.prefix__tcatalog ORDER BY table_name""",
                 expect=[
                     ("tests.prefix__t",),
                     ("tests.prefix__t__sub",),
@@ -574,7 +574,7 @@ def case_basic_object() -> ExpansionTC:
         assertions=[
             Assertion("SELECT COUNT(*) FROM tests.prefix__t;", 2),
             Assertion(
-                """SELECT * FROM tests.prefix__tcatalog ORDER BY table_name""",
+                """SELECT table_name FROM tests.prefix__tcatalog ORDER BY table_name""",
                 expect=[
                     ("tests.prefix__t",),
                 ],
@@ -638,7 +638,7 @@ def case_nested_objects() -> ExpansionTC:
         assertions=[
             Assertion("SELECT COUNT(*) FROM tests.prefix__t;", 2),
             Assertion(
-                """SELECT * FROM tests.prefix__tcatalog ORDER BY table_name""",
+                """SELECT table_name FROM tests.prefix__tcatalog ORDER BY table_name""",
                 expect=[
                     ("tests.prefix__t",),
                 ],
@@ -717,7 +717,7 @@ def case_json_depth() -> ExpansionTC:
         assertions=[
             Assertion("""SELECT "depth2_obj4__id" FROM tests.prefix__t""", "id2"),
             Assertion(
-                """SELECT * FROM tests.prefix__tcatalog ORDER BY table_name""",
+                """SELECT table_name FROM tests.prefix__tcatalog ORDER BY table_name""",
                 expect=[
                     ("tests.prefix__t",),
                     ("tests.prefix__t__depth2_arr",),
@@ -807,6 +807,118 @@ FROM INFORMATION_SCHEMA.TABLES
 WHERE TABLE_NAME = 'prefix'
 """,
                 0,
+            ),
+        ],
+    )
+
+
+def case_table_name_truncated() -> ExpansionTC:
+    return ExpansionTC(
+        records=[
+            b"""
+{
+    "id": "id1",
+    "intermediateArray":
+    [
+        {
+            "id": "id11",
+            "causesTheTableNameToBeTruncated": [ "value111" ],
+            "especially":
+            {
+                "id": "id12",
+                "if":
+                [
+                    {
+                        "id": "id13",
+                        "multipleNestedArrays": ["value121"]
+                    }
+                ]
+            }
+        }
+    ]
+}""",
+        ],
+        assertions=[
+            Assertion(
+                """
+SELECT COUNT(*)
+FROM INFORMATION_SCHEMA.TABLES
+WHERE TABLE_NAME = 'prefix__t__intermediate__causes_the_table_name_to_be_truncated'
+                """,
+                expect=1,
+            ),
+            Assertion(
+                """
+SELECT COUNT(*)
+FROM INFORMATION_SCHEMA.TABLES
+WHERE TABLE_NAME = 'prefix__t__intermediate_ar__especial__i__multiple_nested_arrays'
+                """,
+                expect=1,
+            ),
+            Assertion(
+                """SELECT * FROM tests.prefix__tcatalog ORDER BY full_name""",
+                expect=[
+                    ("tests.prefix__t", "tests.prefix__t"),
+                    (
+                        "tests.prefix__t__intermediate_array",
+                        "tests.prefix__t__intermediate_array",
+                    ),
+                    (
+                        "tests.prefix__t__intermediate__causes_the_table_name_to_be_truncated",
+                        "tests.prefix__t__intermediate_array__causes_the_table_name_to_be_truncated",
+                    ),
+                    (
+                        "tests.prefix__t__intermediate_array__especially__if",
+                        "tests.prefix__t__intermediate_array__especially__if",
+                    ),
+                    (
+                        "tests.prefix__t__intermediate_ar__especial__i__multiple_nested_arrays",
+                        "tests.prefix__t__intermediate_array__especially__if__multiple_nested_arrays",
+                    ),
+                ],
+            ),
+        ],
+    )
+
+
+def case_column_name_truncated() -> ExpansionTC:
+    return ExpansionTC(
+        records=[
+            b"""
+{
+    "id": "id1",
+    "whenThereIsAnIntermediateArray":
+    [
+        {
+            "id": "id11",
+            "theColumnNameIsTruncated": 12,
+            "especially":
+            {
+                "id": "id12",
+                "if":
+                {
+                    "id": "id13",
+                    "multipleNestedObjects": 33
+                }
+            }
+        }
+    ]
+}""",
+        ],
+        assertions=[
+            Assertion(
+                """
+SELECT when_there_is_an_intermediate_arr__the_column_name_is_truncated
+FROM tests.prefix__t__when_there_is_an_intermediate_array
+                """,
+                expect=12,
+            ),
+            Assertion(
+                """
+SELECT when_there_is_an_intermediat__espec__i__multiple_nested_objects
+FROM tests.prefix__t__when_there_is_an_intermediate_array
+                """,
+                expect=33,
             ),
         ],
     )

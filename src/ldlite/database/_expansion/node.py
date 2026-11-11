@@ -1,14 +1,14 @@
 from __future__ import annotations
 
+from dataclasses import dataclass
 from typing import TYPE_CHECKING, LiteralString, cast
 
 import duckdb
 import psycopg
+from psycopg import sql
 
 if TYPE_CHECKING:
     from typing import TypeAlias
-
-    from psycopg import sql
 
 
 Conn: TypeAlias = duckdb.DuckDBPyConnection | psycopg.Connection
@@ -18,6 +18,37 @@ def literalize(stmt: sql.Composed) -> LiteralString:
     # There isn't an overlap in types between duckdb/psycopg for execute
     # This is defined twice rather than importing from a parent package
     return cast("LiteralString", stmt.as_string())
+
+
+@dataclass
+class TableCreationSql:
+    output_path: str | None
+    parent_path: str | None
+    _columns: list[sql.Composable]
+    _source_stmt: sql.SQL
+    _source_table: sql.Identifier
+
+    def stamp(
+        self,
+        output_table: sql.Identifier,
+        parent_table: sql.Identifier,
+    ) -> sql.Composed:
+        return (
+            sql.SQL(
+                """
+CREATE TABLE {output_table} AS
+SELECT
+    """,
+            ).format(output_table=output_table)
+            + sql.SQL("\n    ,").join(self._columns)
+            + self._source_stmt.format(
+                source_table=self._source_table,
+                parent_table=parent_table,
+            )
+            + sql.SQL("""
+;ANALYZE {output_table} (__id);
+""").format(output_table=output_table)
+        )
 
 
 class Node:
