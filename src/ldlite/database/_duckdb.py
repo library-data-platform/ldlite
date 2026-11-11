@@ -73,23 +73,32 @@ CREATE OR REPLACE FUNCTION scale(n) AS (
     ) -> int:
         pfx = Prefix(prefix)
         download_started = datetime.now(UTC)
+
         pkey = count(1)
-        with self._conn_factory(False) as conn:
+        keyed_records = ((next(pkey), r.decode()) for r in records)
+
+        with self._conn_factory(False) as conn, conn.begin() as tx:
             self._prepare_raw_table(conn, pfx)
 
-            insert_sql = (
-                sql.SQL("INSERT INTO {table} VALUES(?, ?);")
-                .format(table=pfx.raw_table.id)
-                .as_string()
-            )
-            # duckdb has better performance bulk inserting in a transaction
-            with conn.begin() as tx, tx.cursor() as cur:
-                for r in records:
-                    cur.execute(insert_sql, (next(pkey), r.decode()))
+            if getattr(conn, "appender", None):
+                with conn.appender(pfx.raw_table.id.as_string()) as appender:
+                    for kr in keyed_records:
+                        appender.append_row(*kr)
+                        if kr[0] % 2000 == 0:
+                            appender.flush()
+            else:
+                with conn.cursor() as cur:
+                    insert_sql = (
+                        sql.SQL("INSERT INTO {table} VALUES(?, ?);")
+                        .format(table=pfx.raw_table.id)
+                        .as_string()
+                    )
+                    for kr in keyed_records:
+                        cur.execute(insert_sql, kr)
 
-                total = next(pkey) - 1
-                self._download_complete(conn, pfx, total, download_started)
-                tx.commit()
+            total = next(pkey) - 1
+            self._download_complete(conn, pfx, total, download_started)
+            tx.commit()
 
         return total
 

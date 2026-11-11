@@ -22,6 +22,7 @@ Please see [MIGRATING.md](./MIGRATING.md) for information on breaking changes.
 * Switched from mypy to astral/ty for type checking
 * Upgraded developer tool versions
 * print() statement logging is now handled by an actual logger
+* Switched to using duckdb's appender for version 2.0+
 
 ### Removed
 * [Breaking] Remove legacy transformation codepath
