@@ -837,7 +837,6 @@ def case_table_name_truncated() -> ExpansionTC:
         }
     ]
 }""",
-            b"""{"id": "id2", "camelValue": "value2"}""",
         ],
         assertions=[
             Assertion(
@@ -877,6 +876,49 @@ WHERE TABLE_NAME = 'prefix__t__intermediate_ar__especial__i__multiple_nested_arr
                         "tests.prefix__t__intermediate_array__especially__if__multiple_nested_arrays",
                     ),
                 ],
+            ),
+        ],
+    )
+
+
+def case_column_name_truncated() -> ExpansionTC:
+    return ExpansionTC(
+        records=[
+            b"""
+{
+    "id": "id1",
+    "whenThereIsAnIntermediateArray":
+    [
+        {
+            "id": "id11",
+            "theColumnNameIsTruncated": 12,
+            "especially":
+            {
+                "id": "id12",
+                "if":
+                {
+                    "id": "id13",
+                    "multipleNestedObjects": 33
+                }
+            }
+        }
+    ]
+}""",
+        ],
+        assertions=[
+            Assertion(
+                """
+SELECT when_there_is_an_intermediate_arr__the_column_name_is_truncated
+FROM tests.prefix__t__when_there_is_an_intermediate_array
+                """,
+                expect=12,
+            ),
+            Assertion(
+                """
+SELECT when_there_is_an_intermediat__espec__i__multiple_nested_objects
+FROM tests.prefix__t__when_there_is_an_intermediate_array
+                """,
+                expect=33,
             ),
         ],
     )
