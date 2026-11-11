@@ -37,17 +37,21 @@ class Prefix:
     def _output_table(self) -> str:
         return self._prefix + "__t"
 
-    def output_table(self, prefix: str | None) -> PrefixedTable:
-        return self._prefixed_table(
-            self._output_table + ("" if prefix is None else "__" + prefix),
-        )
+    def _output_table_prefixed(self, path: str | None) -> tuple[str, str]:
+        full_name = self._output_table + ("" if path is None else "__" + path)
+        return (full_name, full_name)
+
+    def output_table(self, path: str | None) -> PrefixedTable:
+        return self._prefixed_table(self._output_table_prefixed(path)[0])
 
     @property
     def catalog_table(self) -> PrefixedTable:
         return self._prefixed_table(self._prefix + "__tcatalog")
 
-    def catalog_table_row(self, created_table: str) -> str:
-        return ((self.schema + ".") if self.schema is not None else "") + created_table
+    def catalog_table_row(self, path: str | None) -> tuple[str, str]:
+        schema = (self.schema + ".") if self.schema is not None else ""
+        (actual_name, full_name) = self._output_table_prefixed(path)
+        return (schema + actual_name, schema + full_name)
 
     @property
     def legacy_jtable(self) -> PrefixedTable:

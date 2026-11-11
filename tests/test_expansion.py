@@ -423,7 +423,7 @@ def case_basic_array() -> ExpansionTC:
             Assertion("""SELECT COUNT(*) FROM tests.prefix__t__list1""", expect=6),
             Assertion("""SELECT COUNT(*) FROM tests.prefix__t__list2""", expect=2),
             Assertion(
-                """SELECT * FROM tests.prefix__tcatalog ORDER BY table_name""",
+                """SELECT table_name FROM tests.prefix__tcatalog ORDER BY table_name""",
                 expect=[
                     ("tests.prefix__t",),
                     ("tests.prefix__t__list1",),
@@ -509,7 +509,7 @@ def case_nested_arrays() -> ExpansionTC:
         assertions=[
             Assertion("""SELECT COUNT(*) FROM tests.prefix__t__sub""", expect=4),
             Assertion(
-                """SELECT * FROM tests.prefix__tcatalog ORDER BY table_name""",
+                """SELECT table_name FROM tests.prefix__tcatalog ORDER BY table_name""",
                 expect=[
                     ("tests.prefix__t",),
                     ("tests.prefix__t__sub",),
@@ -574,7 +574,7 @@ def case_basic_object() -> ExpansionTC:
         assertions=[
             Assertion("SELECT COUNT(*) FROM tests.prefix__t;", 2),
             Assertion(
-                """SELECT * FROM tests.prefix__tcatalog ORDER BY table_name""",
+                """SELECT table_name FROM tests.prefix__tcatalog ORDER BY table_name""",
                 expect=[
                     ("tests.prefix__t",),
                 ],
@@ -638,7 +638,7 @@ def case_nested_objects() -> ExpansionTC:
         assertions=[
             Assertion("SELECT COUNT(*) FROM tests.prefix__t;", 2),
             Assertion(
-                """SELECT * FROM tests.prefix__tcatalog ORDER BY table_name""",
+                """SELECT table_name FROM tests.prefix__tcatalog ORDER BY table_name""",
                 expect=[
                     ("tests.prefix__t",),
                 ],
@@ -717,7 +717,7 @@ def case_json_depth() -> ExpansionTC:
         assertions=[
             Assertion("""SELECT "depth2_obj4__id" FROM tests.prefix__t""", "id2"),
             Assertion(
-                """SELECT * FROM tests.prefix__tcatalog ORDER BY table_name""",
+                """SELECT table_name FROM tests.prefix__tcatalog ORDER BY table_name""",
                 expect=[
                     ("tests.prefix__t",),
                     ("tests.prefix__t__depth2_arr",),
@@ -853,6 +853,28 @@ WHERE TABLE_NAME LIKE 'prefix__t__intermediate_array__especially_with__multiple%
                 """,
                 exp_duck="prefix__t__intermediate_array__especially_with__multiple_nested_arrays",
                 exp_pg="prefix__t__intermediate_array__especially_with__multiple_nested",
+            ),
+            Assertion(
+                """SELECT * FROM tests.prefix__tcatalog ORDER BY table_name""",
+                expect=[
+                    ("tests.prefix__t", "tests.prefix__t"),
+                    (
+                        "tests.prefix__t__intermediate_array",
+                        "tests.prefix__t__intermediate_array",
+                    ),
+                    (
+                        "tests.prefix__t__intermediate_array__causes_the_table_name_to_be_truncated",
+                        "tests.prefix__t__intermediate_array__causes_the_table_name_to_be_truncated",
+                    ),
+                    (
+                        "tests.prefix__t__intermediate_array__especially_with",
+                        "tests.prefix__t__intermediate_array__especially_with",
+                    ),
+                    (
+                        "tests.prefix__t__intermediate_array__especially_with__multiple_nested_arrays",
+                        "tests.prefix__t__intermediate_array__especially_with__multiple_nested_arrays",
+                    ),
+                ],
             ),
         ],
     )
