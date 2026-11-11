@@ -16,6 +16,7 @@ Please see [MIGRATING.md](./MIGRATING.md) for information on breaking changes.
 * DEBUG level logging for internal operations
 
 ### Fixed
+* [Breaking] Fixed generated identifiers that are longer than postgres' limit
 
 ### Changed
 * Switched from mypy to astral/ty for type checking
