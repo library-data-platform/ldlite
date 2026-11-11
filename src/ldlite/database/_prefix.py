@@ -1,3 +1,4 @@
+from itertools import cycle
 from typing import NamedTuple
 
 from psycopg import sql
@@ -37,12 +38,40 @@ class Prefix:
     def _output_table(self) -> str:
         return self._prefix + "__t"
 
-    def _output_table_prefixed(self, path: str | None) -> tuple[str, str]:
+    def _safe_output_table(self, path: str | None) -> tuple[str, str]:
         full_name = self._output_table + ("" if path is None else "__" + path)
-        return (full_name, full_name)
+
+        if len(base := self._output_table) > 63:
+            msg = (
+                f"Table name ({full_name}) is longer than 63 characters "
+                "and cannot be shortened"
+            )
+            raise ValueError(msg)
+
+        if path is None:
+            return (full_name, full_name)
+
+        parts = path.split("__")
+        # The intermediate values can only be shortened to a single character
+        # If the smallest possible size is still to big we have to bail
+        minimum_possible = len(base + "__" + parts[-1]) + (len(parts[:-1]))
+        if minimum_possible > 63:
+            msg = (
+                f"Table name ({full_name}) is longer than 63 characters "
+                "and cannot be shortened"
+            )
+            raise ValueError(msg)
+
+        shaveable_indices = cycle(range(len(parts) - 1))
+        while len(safe_name := base + "__" + "__".join(parts)) > 63:
+            s = next(shaveable_indices)
+            if len(parts[s]) > 1:
+                parts[s] = parts[s][:-1].strip("_")
+
+        return (safe_name, full_name)
 
     def output_table(self, path: str | None) -> PrefixedTable:
-        return self._prefixed_table(self._output_table_prefixed(path)[0])
+        return self._prefixed_table(self._safe_output_table(path)[0])
 
     @property
     def catalog_table(self) -> PrefixedTable:
@@ -50,7 +79,7 @@ class Prefix:
 
     def catalog_table_row(self, path: str | None) -> tuple[str, str]:
         schema = (self.schema + ".") if self.schema is not None else ""
-        (actual_name, full_name) = self._output_table_prefixed(path)
+        (actual_name, full_name) = self._safe_output_table(path)
         return (schema + actual_name, schema + full_name)
 
     @property

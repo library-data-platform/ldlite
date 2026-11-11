@@ -823,13 +823,17 @@ def case_table_name_truncated() -> ExpansionTC:
         {
             "id": "id11",
             "causesTheTableNameToBeTruncated": [ "value111" ],
-            "especiallyWith":
-            [
-                {
-                    "id": "id12",
-                    "multipleNestedArrays": ["value121"]
-                }
-            ]
+            "especially":
+            {
+                "id": "id12",
+                "if":
+                [
+                    {
+                        "id": "id13",
+                        "multipleNestedArrays": ["value121"]
+                    }
+                ]
+            }
         }
     ]
 }""",
@@ -838,24 +842,22 @@ def case_table_name_truncated() -> ExpansionTC:
         assertions=[
             Assertion(
                 """
-SELECT TABLE_NAME
+SELECT COUNT(*)
 FROM INFORMATION_SCHEMA.TABLES
-WHERE TABLE_NAME LIKE 'prefix__t__intermediate_array__causes%'
+WHERE TABLE_NAME = 'prefix__t__intermediate__causes_the_table_name_to_be_truncated'
                 """,
-                exp_duck="prefix__t__intermediate_array__causes_the_table_name_to_be_truncated",
-                exp_pg="prefix__t__intermediate_array__causes_the_table_name_to_be_trun",
+                expect=1,
             ),
             Assertion(
                 """
-SELECT TABLE_NAME
+SELECT COUNT(*)
 FROM INFORMATION_SCHEMA.TABLES
-WHERE TABLE_NAME LIKE 'prefix__t__intermediate_array__especially_with__multiple%'
+WHERE TABLE_NAME = 'prefix__t__intermediate_ar__especial__i__multiple_nested_arrays'
                 """,
-                exp_duck="prefix__t__intermediate_array__especially_with__multiple_nested_arrays",
-                exp_pg="prefix__t__intermediate_array__especially_with__multiple_nested",
+                expect=1,
             ),
             Assertion(
-                """SELECT * FROM tests.prefix__tcatalog ORDER BY table_name""",
+                """SELECT * FROM tests.prefix__tcatalog ORDER BY full_name""",
                 expect=[
                     ("tests.prefix__t", "tests.prefix__t"),
                     (
@@ -863,16 +865,16 @@ WHERE TABLE_NAME LIKE 'prefix__t__intermediate_array__especially_with__multiple%
                         "tests.prefix__t__intermediate_array",
                     ),
                     (
-                        "tests.prefix__t__intermediate_array__causes_the_table_name_to_be_truncated",
+                        "tests.prefix__t__intermediate__causes_the_table_name_to_be_truncated",
                         "tests.prefix__t__intermediate_array__causes_the_table_name_to_be_truncated",
                     ),
                     (
-                        "tests.prefix__t__intermediate_array__especially_with",
-                        "tests.prefix__t__intermediate_array__especially_with",
+                        "tests.prefix__t__intermediate_array__especially__if",
+                        "tests.prefix__t__intermediate_array__especially__if",
                     ),
                     (
-                        "tests.prefix__t__intermediate_array__especially_with__multiple_nested_arrays",
-                        "tests.prefix__t__intermediate_array__especially_with__multiple_nested_arrays",
+                        "tests.prefix__t__intermediate_ar__especial__i__multiple_nested_arrays",
+                        "tests.prefix__t__intermediate_array__especially__if__multiple_nested_arrays",
                     ),
                 ],
             ),
