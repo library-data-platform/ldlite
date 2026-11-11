@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+from itertools import cycle
 from typing import TYPE_CHECKING, Literal
 
 from psycopg import sql
@@ -36,12 +37,35 @@ class FixedValueNode(Node):
         )
 
     @property
-    def alias(self) -> str:
+    def _unsafe_alias(self) -> str:
         if len(self.prefix) == 0:
             return self.snake_prop or ""
         return self.prefix + (
             ("__" + self.snake_prop) if self.snake_prop is not None else ""
         )
+
+    @property
+    def alias(self) -> str:
+        if len(full_alias := self._unsafe_alias) <= 63:
+            return full_alias
+
+        # I'm not super happy that the postgres naming limit is leaking into this code
+        parts = full_alias.split("__")
+        minimum_possible = len(parts[-1]) + len("__".join([p[0] for p in parts[:-1]]))
+        if minimum_possible > 63:
+            msg = (
+                f"Column name ({full_alias}) is longer than 63 characters "
+                "and cannot be shortened"
+            )
+            raise ValueError(msg)
+
+        shaveable_indices = cycle(range(len(parts) - 1))
+        while len(safe_name := "__".join(parts)) > 63:
+            s = next(shaveable_indices)
+            if len(parts[s]) > 1:
+                parts[s] = parts[s][:-1].strip("_")
+
+        return safe_name
 
     @property
     def stmt(self) -> sql.Composable:
@@ -194,7 +218,7 @@ class OrdinalNode(FixedValueNode):
         super().__init__(source, None, path, prefix)
 
     @property
-    def alias(self) -> str:
+    def _unsafe_alias(self) -> str:
         return self.prefix + "__o"
 
     @property

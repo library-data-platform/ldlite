@@ -54,7 +54,9 @@ class Prefix:
         parts = path.split("__")
         # The intermediate values can only be shortened to a single character
         # If the smallest possible size is still to big we have to bail
-        minimum_possible = len(base + "__" + parts[-1]) + (len(parts[:-1]))
+        minimum_possible = len(base + "__" + parts[-1]) + len(
+            "__".join([p[0] for p in parts[:-1]]),
+        )
         if minimum_possible > 63:
             msg = (
                 f"Table name ({full_name}) is longer than 63 characters "
