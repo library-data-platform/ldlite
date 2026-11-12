@@ -30,16 +30,13 @@ class TableCreationSql:
 
     def stamp(
         self,
+        create_table_preamble: sql.SQL,
         output_table: sql.Identifier,
         parent_table: sql.Identifier,
     ) -> sql.Composed:
         return (
-            sql.SQL(
-                """
-CREATE TABLE {output_table} AS
-SELECT
-    """,
-            ).format(output_table=output_table)
+            create_table_preamble.format(table=output_table)
+            + sql.SQL("\nSELECT\n")
             + sql.SQL("\n    ,").join(self._columns)
             + self._source_stmt.format(
                 source_table=self._source_table,

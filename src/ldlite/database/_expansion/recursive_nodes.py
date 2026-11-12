@@ -258,13 +258,13 @@ class ArrayNode(RecursiveNode, StampableTable):
         parent: RecursiveNode | None,
     ):
         super().__init__(source, prop, column, parent)
-        self.temp = sql.Identifier(str(uuid4()).split("-")[0])
+        self.temp = sql.Identifier("ldlite_system", str(uuid4()))
 
-    def make_temp(self, conn: Conn) -> Node | None:
+    def make_temp(self, conn: Conn, create_table_preamble: sql.SQL) -> Node | None:
         with conn.cursor() as cur:
             expansion = (
-                sql.SQL("""
-CREATE TEMPORARY TABLE {temp} AS
+                create_table_preamble.format(table=self.temp)
+                + sql.SQL("""
 SELECT
     __id AS p__id
     ,(ROW_NUMBER() OVER (ORDER BY (SELECT NULL)))::integer AS __id
@@ -279,7 +279,7 @@ FROM (
         ,a.ord
     FROM
     (
-        SELECT """).format(temp=self.temp)
+        SELECT """)
                 + self.path
                 + sql.SQL(""" AS ld_value, __id FROM {source}
     ) j
@@ -361,6 +361,7 @@ FROM {temp}""").format(temp=self.temp)
             _source_stmt=sql.SQL("""
 FROM {source_table} a
 JOIN {parent_table} p ON
-    a.p__id = p.__id"""),
+    a.p__id = p.__id;
+DROP TABLE {source_table};"""),
             _source_table=self.temp,
         )

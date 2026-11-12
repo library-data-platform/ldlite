@@ -20,6 +20,7 @@ logger = logging.getLogger("ldlite.transform")
 
 def _non_srs_statements(
     conn: Conn,
+    create_table_preamble: sql.SQL,
     source_table: sql.Identifier,
     json_depth: int,
     scan_progress: tqdm[NoReturn],
@@ -65,7 +66,7 @@ def _non_srs_statements(
                 logger.debug("exceeded json_depth %s for %s", json_depth, j)
                 continue
 
-            if n := a.make_temp(conn):
+            if n := a.make_temp(conn, create_table_preamble):
                 logger.debug("made temp table for %s containing %s", a, n)
                 if isinstance(n, ObjectNode):
                     onodes.append(n)
@@ -89,6 +90,7 @@ def _non_srs_statements(
 
 def non_srs_statements(
     conn: Conn,
+    create_table_preamble: sql.SQL,
     source_table: sql.Identifier,
     json_depth: int,
     scan_progress: tqdm[NoReturn],
@@ -96,6 +98,7 @@ def non_srs_statements(
     return list(
         _non_srs_statements(
             conn,
+            create_table_preamble,
             source_table,
             json_depth,
             scan_progress,

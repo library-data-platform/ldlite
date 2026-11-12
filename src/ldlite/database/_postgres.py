@@ -44,8 +44,12 @@ class PostgresDatabase(TypedDatabase[psycopg.Connection]):
     @property
     def _create_raw_table_sql(self) -> sql.SQL:
         return sql.SQL(
-            "CREATE TABLE IF NOT EXISTS {table} (__id integer, jsonb jsonb);",
+            "CREATE UNLOGGED TABLE IF NOT EXISTS {table} (__id integer, jsonb jsonb);",
         )
+
+    @property
+    def _create_table_preamble(self) -> sql.SQL:
+        return sql.SQL("CREATE UNLOGGED TABLE {table} AS")
 
     @contextmanager
     def _begin(self, conn: psycopg.Connection) -> Generator[None]:

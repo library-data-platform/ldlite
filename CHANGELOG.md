@@ -23,6 +23,8 @@ Please see [MIGRATING.md](./MIGRATING.md) for information on breaking changes.
 * Upgraded developer tool versions
 * print() statement logging is now handled by an actual logger
 * Switched to using duckdb's appender for version 2.0+
+* Switched to standard tables from temp tables for transformation
+* Switched all tables to UNLOGGED
 
 ### Removed
 * [Breaking] Remove legacy transformation codepath

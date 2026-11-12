@@ -945,6 +945,15 @@ def _assert(
                     assert actual is not None
                     assert actual[0] == a.expected(db)
 
+        cur.execute("""
+SELECT TABLE_NAME
+FROM INFORMATION_SCHEMA.TABLES
+WHERE
+    TABLE_SCHEMA = 'ldlite_system'
+    AND TABLE_NAME NOT IN ('load_history_v1')
+""")
+        assert cur.fetchone() is None
+
 
 @parametrize_with_cases("tc", cases=".")
 def test_duckdb(tc: ExpansionTC) -> None:

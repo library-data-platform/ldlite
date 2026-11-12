@@ -215,6 +215,10 @@ WHERE table_schema = $1 and table_name IN ($2, $3);""",
                 ),
             )
 
+    @property
+    def _create_table_preamble(self) -> sql.SQL:
+        return sql.SQL("CREATE TABLE {table} AS")
+
     def expand_prefix(
         self,
         prefix: str,
@@ -240,6 +244,7 @@ WHERE table_schema = $1 and table_name IN ($2, $3);""",
             logger.debug("scanning started for %s", pfx)
             tables_to_create = non_srs_statements(
                 conn,
+                self._create_table_preamble,
                 pfx.raw_table[1],
                 json_depth,
                 scan_progress
@@ -285,7 +290,13 @@ WHERE table_schema = $1 and table_name IN ($2, $3);""",
                         parent_table = pfx.output_table(table.parent_path)
                         logger.debug("creating output table %s", output_table.name)
                         stamp_cur.execute(
-                            _literalize(table.stamp(output_table.id, parent_table.id)),
+                            _literalize(
+                                table.stamp(
+                                    self._create_table_preamble,
+                                    output_table.id,
+                                    parent_table.id,
+                                ),
+                            ),
                         )
                         catalog = pfx.catalog_table_row(table.output_path)
                         catalog_cur.execute(_literalize(insert_catalog), catalog)
